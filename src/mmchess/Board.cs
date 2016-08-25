@@ -1,3 +1,5 @@
+
+
 namespace mmchess{
     public class Board
     {
@@ -7,19 +9,19 @@ namespace mmchess{
         ulong WhiteRooks{get;set;}
         ulong WhiteQueens{get;set;}
 
-        ulong BlackPawns;
-        ulong BlackKnights;
-        ulong BlackBishops;
-        ulong BlackRooks;
-        ulong BlackQueens;
-        ulong BlackKing;
-        ulong WhiteKing;
+        ulong BlackPawns{get;set;}
+        ulong BlackKnights{get;set;}
+        ulong BlackBishops{get;set;}
+        ulong BlackRooks{get;set;}
+        ulong BlackQueens{get;set;}
+        ulong BlackKing{get;set;}
+        ulong WhiteKing{get;set;}
 
-        ulong _allpieces;
-        ulong _wpieces;
-        ulong _bpieces;
+        ulong AllPieces{get;set;}
+        ulong WhitePieces{get;set;}
+        ulong BlackPieces{get;set;}
 
-
+        byte[] _board = new byte[64];
         public void Reset(){
             WhitePawns = (0xff << 8);
             BlackPawns = (0xff << 48);
@@ -39,10 +41,49 @@ namespace mmchess{
             WhiteKing = BitMask.Mask[4];
             BlackKing = BitMask.Mask[59];
 
-            _wpieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
-            _bpieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
+            WhitePieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
+            BlackPieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
 
-            _allpieces = _wpieces | _bpieces;
+            AllPieces = WhitePieces | BlackPieces;
+        }
+
+        public void MakeMove(Move m)
+        {
+            ulong pieceboard=0,sidepieces;
+            if((m.Bits & (byte)MoveBits.BlackPiece)>0)
+            {
+                sidepieces=BlackPieces;
+                if((m.Bits & (byte)MoveBits.King) > 0)
+                    pieceboard=BlackKing;
+                if((m.Bits & (byte)MoveBits.Queen)>0)
+                    pieceboard=BlackQueens;
+                if((m.Bits & (byte)MoveBits.Bishop)>0)
+                    pieceboard=BlackBishops;
+                if((m.Bits & (byte)MoveBits.Knight)>0)
+                    pieceboard=BlackKnights;
+                if((m.Bits & (byte)MoveBits.Pawn)>0)
+                    pieceboard=BlackPawns;
+            }
+            else{
+                sidepieces=WhitePieces;
+                if((m.Bits & (byte)MoveBits.King) > 0)
+                    pieceboard=WhiteKing;
+                if((m.Bits & (byte)MoveBits.Queen)>0)
+                    pieceboard=WhiteQueens;
+                if((m.Bits & (byte)MoveBits.Bishop)>0)
+                    pieceboard=WhiteBishops;
+                if((m.Bits & (byte)MoveBits.Knight)>0)
+                    pieceboard=WhiteKnights;
+                if((m.Bits & (byte)MoveBits.Pawn)>0)
+                    pieceboard=WhitePawns;
+            }
+
+            var fromMask = BitMask.Mask[m.From];
+            var toMask = BitMask.Mask[m.To];
+            pieceboard ^= fromMask;
+            pieceboard ^= toMask;
+            sidepieces ^= fromMask;
+            sidepieces ^= toMask; 
         }
     }
 }
