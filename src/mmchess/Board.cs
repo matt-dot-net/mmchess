@@ -4,25 +4,24 @@ namespace mmchess{
     public class Board
     {
         public ulong WhitePawns{get;set;}
-        ulong WhiteKnights{get;set;}
-        ulong WhiteBishops{get;set;}
-        ulong WhiteRooks{get;set;}
-        ulong WhiteQueens{get;set;}
+        public ulong WhiteKnights{get;set;}
+        public ulong WhiteBishops{get;set;}
+        public ulong WhiteRooks{get;set;}
+        public ulong WhiteQueens{get;set;}
 
-        ulong BlackPawns{get;set;}
-        ulong BlackKnights{get;set;}
-        ulong BlackBishops{get;set;}
-        ulong BlackRooks{get;set;}
-        ulong BlackQueens{get;set;}
-        ulong BlackKing{get;set;}
-        ulong WhiteKing{get;set;}
+        public ulong BlackPawns{get;set;}
+        public ulong BlackKnights{get;set;}
+        public ulong BlackBishops{get;set;}
+        public ulong BlackRooks{get;set;}
+        public ulong BlackQueens{get;set;}
+        public ulong BlackKing{get;set;}
+        public ulong WhiteKing{get;set;}
 
-        ulong AllPieces{get;set;}
-        ulong WhitePieces{get;set;}
-        ulong BlackPieces{get;set;}
+        public ulong AllPieces{get;set;}
+        public ulong WhitePieces{get;set;}
+        public ulong BlackPieces{get;set;}
 
-        byte[] _board = new byte[64];
-        public void Reset(){
+        public void Initialize(){
             WhitePawns = (0xff << 8);
             BlackPawns = (0xff << 48);
 
