@@ -1,19 +1,19 @@
 namespace mmchess{
     public class Board
     {
-        ulong _wpawns;
-        ulong _wknights;
-        ulong _wbishops;
-        ulong _wrooks;
-        ulong _wqueens;
+        public ulong WhitePawns{get;set;}
+        ulong WhiteKnights{get;set;}
+        ulong WhiteBishops{get;set;}
+        ulong WhiteRooks{get;set;}
+        ulong WhiteQueens{get;set;}
 
-        ulong _bpawns;
-        ulong _bknights;
-        ulong _bbishops;
-        ulong _brooks;
-        ulong _bqueens;
-        ulong _bking;
-        ulong _wking;
+        ulong BlackPawns;
+        ulong BlackKnights;
+        ulong BlackBishops;
+        ulong BlackRooks;
+        ulong BlackQueens;
+        ulong BlackKing;
+        ulong WhiteKing;
 
         ulong _allpieces;
         ulong _wpieces;
@@ -21,26 +21,26 @@ namespace mmchess{
 
 
         public void Reset(){
-            _wpawns = (0xff << 8);
-            _bpawns = (0xff << 48);
+            WhitePawns = (0xff << 8);
+            BlackPawns = (0xff << 48);
 
-            _wrooks |= BitMask.Mask[0] | BitMask.Mask[7];
-            _brooks |= BitMask.Mask[63] | BitMask.Mask[56];
+            WhiteRooks |= BitMask.Mask[0] | BitMask.Mask[7];
+            BlackRooks |= BitMask.Mask[63] | BitMask.Mask[56];
 
-            _wknights |= BitMask.Mask[1] | BitMask.Mask[6];
-            _bknights |= BitMask.Mask[62] | BitMask.Mask[57];
+            WhiteKnights |= BitMask.Mask[1] | BitMask.Mask[6];
+            BlackKnights |= BitMask.Mask[62] | BitMask.Mask[57];
 
-            _wbishops |= BitMask.Mask[2] | BitMask.Mask[5];
-            _bbishops |= BitMask.Mask[61] | BitMask.Mask[58];
+            WhiteBishops |= BitMask.Mask[2] | BitMask.Mask[5];
+            BlackBishops |= BitMask.Mask[61] | BitMask.Mask[58];
             
-            _wqueens |= BitMask.Mask[3];
-            _bqueens |= BitMask.Mask[60];
+            WhiteQueens |= BitMask.Mask[3];
+            BlackQueens |= BitMask.Mask[60];
             
-            _wking = BitMask.Mask[4];
-            _bking = BitMask.Mask[59];
+            WhiteKing = BitMask.Mask[4];
+            BlackKing = BitMask.Mask[59];
 
-            _wpieces = _wpawns | _wrooks | _wknights | _wbishops | _wqueens | _wking;
-            _bpieces = _bpawns | _brooks | _bknights | _bbishops | _bqueens | _bking;
+            _wpieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
+            _bpieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
 
             _allpieces = _wpieces | _bpieces;
         }
