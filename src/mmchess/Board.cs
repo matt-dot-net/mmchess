@@ -1,5 +1,7 @@
 
 
+using System;
+
 namespace mmchess{
     public class Board
     {
@@ -21,9 +23,19 @@ namespace mmchess{
         public ulong WhitePieces{get;set;}
         public ulong BlackPieces{get;set;}
 
+
+        public Board(Board b)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Board(){
+            Initialize();
+        }
+
         public void Initialize(){
-            WhitePawns = (0xff << 8);
-            BlackPawns = (0xff << 48);
+            WhitePawns = 0xff;
+            BlackPawns = 0xff00000000000000;
 
             WhiteRooks |= BitMask.Mask[0] | BitMask.Mask[7];
             BlackRooks |= BitMask.Mask[63] | BitMask.Mask[56];
@@ -48,41 +60,37 @@ namespace mmchess{
 
         public void MakeMove(Move m)
         {
-            ulong pieceboard=0,sidepieces;
+            var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
+
             if((m.Bits & (byte)MoveBits.BlackPiece)>0)
             {
-                sidepieces=BlackPieces;
+                BlackPieces ^= moveMask;
                 if((m.Bits & (byte)MoveBits.King) > 0)
-                    pieceboard=BlackKing;
+                    BlackKing ^=moveMask;
                 if((m.Bits & (byte)MoveBits.Queen)>0)
-                    pieceboard=BlackQueens;
+                    BlackQueens ^= moveMask;
                 if((m.Bits & (byte)MoveBits.Bishop)>0)
-                    pieceboard=BlackBishops;
+                    BlackBishops ^= moveMask;
                 if((m.Bits & (byte)MoveBits.Knight)>0)
-                    pieceboard=BlackKnights;
+                    BlackKnights^=moveMask;
                 if((m.Bits & (byte)MoveBits.Pawn)>0)
-                    pieceboard=BlackPawns;
+                    BlackPawns^=moveMask;
             }
             else{
-                sidepieces=WhitePieces;
+                WhitePieces ^= moveMask;
                 if((m.Bits & (byte)MoveBits.King) > 0)
-                    pieceboard=WhiteKing;
+                    WhiteKing ^= moveMask;
                 if((m.Bits & (byte)MoveBits.Queen)>0)
-                    pieceboard=WhiteQueens;
+                    WhiteQueens^=moveMask;
                 if((m.Bits & (byte)MoveBits.Bishop)>0)
-                    pieceboard=WhiteBishops;
+                    WhiteBishops^=moveMask;
                 if((m.Bits & (byte)MoveBits.Knight)>0)
-                    pieceboard=WhiteKnights;
+                    WhiteKnights^=moveMask;
                 if((m.Bits & (byte)MoveBits.Pawn)>0)
-                    pieceboard=WhitePawns;
+                    WhitePawns^=moveMask;
             }
 
-            var fromMask = BitMask.Mask[m.From];
-            var toMask = BitMask.Mask[m.To];
-            pieceboard ^= fromMask;
-            pieceboard ^= toMask;
-            sidepieces ^= fromMask;
-            sidepieces ^= toMask; 
+            AllPieces ^= moveMask;
         }
     }
 }
