@@ -19,10 +19,16 @@ namespace mmchess.Test
         public void ResetAllPieces(){
             var testBoard = new Board();
 
-            var testMask = 0xFF000000000000FF;
+            var testMask = 0xFFFF00000000FFFF;
             Assert.Equal(testMask,testBoard.AllPieces);
         }
-        
-        
+
+        [Fact]
+        public void ResetAllPawns(){
+            var testBoard = new Board();
+            Assert.Equal((ulong)0xff00, testBoard.WhitePawns);
+            Assert.Equal((ulong)0xFF000000000000, testBoard.BlackPawns);
+
+        }
     }
 }

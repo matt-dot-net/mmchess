@@ -1,7 +1,7 @@
 namespace mmchess
 {
     public enum MoveBits{
-            BlackPiece=1,
+            Black=1,
             Capture=2,
             King=4,
             Pawn=8,
