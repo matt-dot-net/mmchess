@@ -7,12 +7,17 @@ namespace mmchess
     {
         static readonly ulong[] KnightMoves = new ulong[64];
         static readonly ulong[] KingMoves = new ulong[64];
+        static readonly ulong[,] PawnMoves = new ulong[2,64];
+       
 
         static MoveGenerator()
         {
             InitKnightMoves();
             InitKingMoves();
+            InitPawnMoves();
         }
+
+
 
         public static IList<Move> GenerateKingMoves(Board b, int sideToMove){
             ulong king = sideToMove == 1 ? b.BlackKing : b.WhiteKing;
@@ -68,6 +73,34 @@ namespace mmchess
                 }
             }
             return returnList;
+        }
+
+        static void InitPawnMoves(){
+            ulong moves=0;
+            //white
+            for(int i=8;i<64;i++){
+                moves |= BitMask.Mask[i+8];
+                if(i<16)
+                    moves|=BitMask.Mask[i+16];
+                //captures
+                if(i.File() - (i+7).File() == 1)
+                    moves|=BitMask.Mask[i+7] ;
+                if((i+9).File() - i.File() == 1)
+                    moves|=BitMask.Mask[i+9];
+                PawnMoves[0,i]=moves;
+            }
+
+             for(int i=55;i>=0;i--){
+                moves |= BitMask.Mask[i-8];
+                if(i>47)
+                    moves|=BitMask.Mask[i-16];
+                //captures
+                if(i.File() - (i-8).File() == 1)
+                    moves|=BitMask.Mask[i-9] ;
+                if((i-7).File() - i.File() == 1)
+                    moves|=BitMask.Mask[i-7];
+                PawnMoves[1,i]=moves;
+            }
         }
 
         static void InitKingMoves()
