@@ -10,7 +10,6 @@ namespace mmchess
 
         static MoveGenerator()
         {
-            //initialize KnightMoves
             InitKnightMoves();
             InitKingMoves();
         }
@@ -80,7 +79,7 @@ namespace mmchess
                 foreach (var offset in moves)
                 {
                     var proposed = i + offset;
-                    if (i < 0 || i > 63)
+                    if (proposed < 0 || proposed > 63)
                         continue;
                     
                     if (Math.Abs(proposed.Rank() - i.Rank()) > 1)
