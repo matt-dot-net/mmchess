@@ -16,5 +16,13 @@ namespace mmchess{
 
             Assert.Equal(0, results.Count);
         }       
+
+        [Fact]
+        public void PawnMovesFromStart(){
+            var testBoard = new Board();
+            var results = MoveGenerator.GeneratePawnMoves(testBoard,0);
+
+            Assert.Equal(16,results.Count);
+        }
     }
 }

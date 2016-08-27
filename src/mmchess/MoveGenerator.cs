@@ -8,7 +8,9 @@ namespace mmchess
         static readonly ulong[] KnightMoves = new ulong[64];
         static readonly ulong[] KingMoves = new ulong[64];
         static readonly ulong[,] PawnMoves = new ulong[2,64];
-        static readonly ulong [,] PawnAttacks = new ulong [2,64];       
+        static readonly ulong [,] PawnAttacks = new ulong [2,64];  
+        // static readonly ulong []DiagonalsA8toH1 = new ulong[64];
+        // static readonly ulong[] DiagonalsH8toA1 = new ulong[64];     
 
         static MoveGenerator()
         {
@@ -115,32 +117,46 @@ namespace mmchess
             return returnList;
         }
 
+        // static void InitDiagonals(){
+        //     for(int i=0;i<64;i++){
+        //         DiagonalsA8toH1[i] = BitMask.Mask[i];
+        //         for(int j=1;j<8;j++){
+        //             int sq = (j*7)+i;
+        //             if(sq.File()-i.File() == 1)
+        //                 DiagonalsA8toH1[sq]
+        //         }
+        //     }
+        // }
+
         static void InitPawnMoves(){
-            ulong moves=0;
-            ulong attacks=0;
+
             //white
-            for(int i=8;i<64;i++){
+            for(int i=8;i<56;i++){
+                ulong moves=0;
+                ulong attacks=0;
                 moves |= BitMask.Mask[i+8];
                 if(i<16)
                     moves|=BitMask.Mask[i+16];
                 //captures
-                if(i.File() - (i+7).File() == 1)
+                if(i < 57 && i.File() - (i+7).File() == 1)
                     attacks|=BitMask.Mask[i+7] ;
-                if((i+9).File() - i.File() == 1)
+                if(i < 55 && (i+9).File() - i.File() == 1)
                     attacks|=BitMask.Mask[i+9];
                 PawnMoves[0,i]=moves;
                 PawnAttacks[0,i]=attacks;
             }
             //black
-            moves=attacks=0;
-             for(int i=55;i>=0;i--){
+            
+             for(int i=55;i>7;i--){
+                ulong moves=0;
+                ulong attacks=0;
                 moves |= BitMask.Mask[i-8];
                 if(i>47)
                     moves|=BitMask.Mask[i-16];
                 //captures
-                if(i.File() - (i-8).File() == 1)
+                if(i > 9 && i.File() - (i-9).File() == 1)
                     attacks|=BitMask.Mask[i-9] ;
-                if((i-7).File() - i.File() == 1)
+                if(i > 7 && (i-7).File() - i.File() == 1)
                     attacks|=BitMask.Mask[i-7];
                 PawnMoves[1,i]=moves;
                 PawnAttacks[1,i]=attacks;

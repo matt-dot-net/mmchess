@@ -26,7 +26,7 @@ namespace  mmchess.Test
                 Bits = (byte)MoveBits.Pawn
             });
 
-            Assert.True(testBoard.EnPassantSquare==16);
+            Assert.Equal(BitMask.Mask[16], BitMask.Mask[16] & testBoard.EnPassant );
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace  mmchess.Test
                 Bits = (byte)MoveBits.Pawn | (byte)MoveBits.Black
             });
 
-            Assert.Equal(40,testBoard.EnPassantSquare);
+            Assert.Equal(BitMask.Mask[40],BitMask.Mask[40] & testBoard.EnPassant);
         }
     }
 }
