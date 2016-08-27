@@ -15,6 +15,30 @@ namespace mmchess
             InitKingMoves();
         }
 
+        public static IList<Move> GenerateKingMoves(Board b, int sideToMove){
+            ulong king = sideToMove == 1 ? b.BlackKing : b.WhiteKing;
+            ulong sidepieces = sideToMove==1 ? b.BlackPieces : b.WhitePieces;
+            var returnList = new List<Move>();
+            //only one king
+            int sq=king.BitScanForward();
+            ulong moves = KingMoves[sq];
+
+            while(moves > 0){
+                int to = moves.BitScanForward();
+                moves ^= BitMask.Mask[to];
+
+                if ((sidepieces & BitMask.Mask[to]) > 0)
+                continue;
+                var m = new Move{
+                    From = (byte)sq,
+                    To = (byte)to,
+                    Bits = (byte)((byte)MoveBits.King | (byte)sideToMove)
+                };
+                returnList.Add(m);
+            }
+            return returnList;
+            
+        }
         public static IList<Move> GenerateKnightMoves(Board b, int sideToMove)
         {
             ulong knights = sideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
@@ -59,10 +83,10 @@ namespace mmchess
                     if (i < 0 || i > 63)
                         continue;
                     
-                    if (Math.Abs(proposed.Rank() - i.Rank()) > 2)
+                    if (Math.Abs(proposed.Rank() - i.Rank()) > 1)
                         continue;
 
-                    if (Math.Abs(proposed.File() - i.File()) > 2)
+                    if (Math.Abs(proposed.File() - i.File()) > 1)
                         continue;
                     
                     mask |= BitMask.Mask[proposed];

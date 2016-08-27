@@ -9,5 +9,12 @@ namespace mmchess{
 
             Assert.Equal(4,results.Count);
         } 
+        [Fact]
+        public void KingMovesFromStartIsZero(){
+            var testBoard = new Board();
+            var results = MoveGenerator.GenerateKingMoves(testBoard,0);
+
+            Assert.Equal(0, results.Count);
+        }       
     }
 }
