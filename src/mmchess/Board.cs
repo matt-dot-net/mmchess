@@ -23,7 +23,7 @@ namespace mmchess
         public ulong WhitePieces { get; set; }
         public ulong BlackPieces { get; set; }
 
-        public byte EnPassantSquare { get; set; }
+        public ulong EnPassant {get;set;}
 
         public Board(Board b)
         {
@@ -88,7 +88,7 @@ namespace mmchess
             {
                 BlackPawns ^= moveMask;
                 if(m.From-m.To == 16)
-                    EnPassantSquare = (byte)(m.From-8);
+                    EnPassant = BitMask.Mask[m.From-8];
             }
         }
 
@@ -106,7 +106,7 @@ namespace mmchess
             if ((m.Bits & (byte)MoveBits.Pawn) > 0){
                 WhitePawns ^= moveMask;
                 if(m.To - m.From == 16)
-                    EnPassantSquare = (byte)(m.From+8);
+                    EnPassant = BitMask.Mask[m.From+8];
             }
         }
     }
