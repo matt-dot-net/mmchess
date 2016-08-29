@@ -239,7 +239,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 ulong moves = PawnMoves[b.SideToMove,sq] ;
                 moves &= ~b.AllPieces; //remove any moves which are blocked
 
-                moves |= b.EnPassant | (PawnAttacks[b.SideToMove,sq] & enemyPieces); // add any captures
+                moves |= (PawnAttacks[b.SideToMove,sq] & enemyPieces & b.EnPassant); // add any captures
 
                 while(moves > 0){
                     int to = moves.BitScanForward();
@@ -275,13 +275,13 @@ static readonly byte[]diag_andsR45 = new byte[64]
             //only one king
             int sq=king.BitScanForward();
             ulong moves = KingMoves[sq];
-
+            moves &= ~sidepieces;
+            
             while(moves > 0){
                 int to = moves.BitScanForward();
                 moves ^= BitMask.Mask[to];
-                moves &= ~sidepieces;
                 
-                continue;
+                
                 var m = new Move{
                     From = (byte)sq,
                     To = (byte)to,
