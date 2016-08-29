@@ -10,7 +10,6 @@ namespace mmchess
         public ulong WhiteBishops { get; set; }
         public ulong WhiteRooks { get; set; }
         public ulong WhiteQueens { get; set; }
-
         public ulong BlackPawns { get; set; }
         public ulong BlackKnights { get; set; }
         public ulong BlackBishops { get; set; }
@@ -18,15 +17,14 @@ namespace mmchess
         public ulong BlackQueens { get; set; }
         public ulong BlackKing { get; set; }
         public ulong WhiteKing { get; set; }
-
         public ulong AllPieces { get; set; }
         public ulong AllPiecesR90{get;set;}
         public ulong AllPiecesR45{get;set;}
         public ulong AllPiecesL45{get;set;}
         public ulong WhitePieces { get; set; }
         public ulong BlackPieces { get; set; }
-
         public ulong EnPassant {get;set;}
+        public int SideToMove{get;set;}
 
         public static readonly byte [] RotatedR45Map= new byte[64] {
  0,1,3,6,10,15,21,28,
@@ -166,6 +164,12 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[m.From]] | BitMask.Mask[RotatedL45Map[m.To]]);
             AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[m.From]] | BitMask.Mask[RotatedR45Map[m.To]]);
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
+
+            SideToMove^=1;
+        }
+
+        public void UnMakeMove(Move m){
+            throw new NotImplementedException();
         }
 
         private void UpdateBlackBoards(Move m, ulong moveMask)

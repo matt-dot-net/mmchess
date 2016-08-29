@@ -24,5 +24,12 @@ namespace mmchess{
 
             Assert.Equal(16,results.Count);
         }
+
+        [Fact]
+        public void PerfTLevel1(){
+            var testBoard = new Board();
+            List<Move> list = new List<Move>();
+            MoveGenerator.GenerateMoves(list);
+        }
     }
 }

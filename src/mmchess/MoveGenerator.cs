@@ -116,24 +116,38 @@ static readonly byte[]diag_andsR45 = new byte[64]
             InitSliders();
         }
 
-        public static IList<Move> GenerateQueenMoves(Board b, int sideToMove){
-            ulong queens = sideToMove == 1 ? b.BlackQueens : b.WhiteQueens;
-            var returnVal = new List<Move>();
-            GenerateRankAndFileMoves(b,queens,sideToMove,MoveBits.Queen,returnVal);
-            GenerateDiagonalMoves(b,queens,sideToMove,MoveBits.Queen,returnVal);
-            return returnVal;
-        }
+        public static IList<Move> GenerateMoves(Board b){
 
-        public static IList<Move> GenerateRookMoves(Board b, int sideToMove){
-            ulong rooks = sideToMove == 1 ? b.BlackRooks : b.WhiteRooks;
-
-            var list = new List<Move>();
-            GenerateRankAndFileMoves(b,rooks,sideToMove, MoveBits.Rook,list);
+            List<Move> list = new List<Move>();            
+            
+            GenerateQueenMoves(b,list);
+            GenerateRookMoves(b,list);
+            GenerateBishopMoves(b,list);
+            GenerateKnightMoves(b,list);
+            GeneratePawnMoves(b,list);
+            GenerateKingMoves(b,list);
+            
             return list;
         }
 
-        static void GenerateRankAndFileMoves(Board b, ulong pieces, int sideToMove, MoveBits which, IList<Move> list){
-            ulong sidePieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+        public static void GenerateQueenMoves(Board b, IList<Move> list){
+            ulong queens = b.SideToMove == 1 ? b.BlackQueens : b.WhiteQueens;
+            GenerateRankAndFileMoves(b,queens,MoveBits.Queen,list);
+            GenerateDiagonalMoves(b,queens,MoveBits.Queen,list);
+            
+        }
+        public static void GenerateBishopMoves(Board b, IList<Move>list){
+            ulong bishops = b.SideToMove == 1 ? b.BlackBishops : b.WhiteBishops;
+            GenerateDiagonalMoves(b,bishops,MoveBits.Bishop,list);
+        }
+        public static void GenerateRookMoves(Board b, IList<Move> list){
+            ulong rooks = b.SideToMove == 1 ? b.BlackRooks : b.WhiteRooks;
+
+            GenerateRankAndFileMoves(b,rooks, MoveBits.Rook,list);
+        }
+
+        static void GenerateRankAndFileMoves(Board b, ulong pieces, MoveBits which, IList<Move> list){
+            ulong sidePieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
             var returnVal = new List<Move>();
             while(pieces > 0){
                 int sq = pieces.BitScanForward();
@@ -151,7 +165,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     list.Add(new Move{
                         From = (byte)sq,
                         To = (byte)toSq,
-                        Bits = (byte)((byte)which | (byte)sideToMove)
+                        Bits = (byte)((byte)which | (byte)b.SideToMove)
                     });
                 }
 
@@ -167,15 +181,15 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     list.Add(new Move{
                         From = (byte)sq,
                         To = (byte)toSq,
-                        Bits = (byte)((byte)which | (byte)sideToMove)
+                        Bits = (byte)((byte)which | (byte)b.SideToMove)
                     });                    
                 }
 
             }         
         }
 
-        static void GenerateDiagonalMoves(Board b,ulong pieces, int sideToMove, MoveBits which, IList<Move> list){
-            ulong sidePieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+        static void GenerateDiagonalMoves(Board b,ulong pieces, MoveBits which, IList<Move> list){
+            ulong sidePieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
             
             while(pieces > 0){
                 int sq = pieces.BitScanForward();
@@ -193,7 +207,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     list.Add(new Move{
                         From = (byte)sq,
                         To = (byte)toSq,
-                        Bits = (byte)((byte)which | (byte)sideToMove)
+                        Bits = (byte)((byte)which | (byte)b.SideToMove)
                     });                    
                 }
 
@@ -208,24 +222,24 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     list.Add(new Move{
                         From = (byte)sq,
                         To = (byte)toSq,
-                        Bits = (byte)((byte)which | (byte)sideToMove)
+                        Bits = (byte)((byte)which | (byte)b.SideToMove)
                     });                    
                 }    
             }
         }
 
-        public static void GeneratePawnMoves(Board b, int sideToMove, IList<Move> list){
-            ulong pawns = sideToMove == 1 ? b.BlackPawns : b.WhitePawns;
-            ulong enemyPieces = sideToMove == 1? b.WhitePieces : b.BlackPieces;
+        public static void GeneratePawnMoves(Board b, IList<Move> list){
+            ulong pawns = b.SideToMove == 1 ? b.BlackPawns : b.WhitePawns;
+            ulong enemyPieces = b.SideToMove == 1? b.WhitePieces : b.BlackPieces;
             var returnList = new List<Move>();
             while(pawns > 0){
                 int sq = pawns.BitScanForward();
                 pawns ^= BitMask.Mask[sq];
                 
-                ulong moves = PawnMoves[sideToMove,sq] ;
+                ulong moves = PawnMoves[b.SideToMove,sq] ;
                 moves &= ~b.AllPieces; //remove any moves which are blocked
 
-                moves |= b.EnPassant | (PawnAttacks[sideToMove,sq] & enemyPieces); // add any captures
+                moves |= b.EnPassant | (PawnAttacks[b.SideToMove,sq] & enemyPieces); // add any captures
 
                 while(moves > 0){
                     int to = moves.BitScanForward();
@@ -234,7 +248,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     var m = new Move {
                         From = (byte)sq,
                         To = (byte)to,
-                        Bits = (byte)((byte)MoveBits.Pawn | (byte)sideToMove)
+                        Bits = (byte)((byte)MoveBits.Pawn | (byte)b.SideToMove)
                     };
                     var rank = to.Rank();
                     if(rank == 7 || rank == 0 ) //promotion
@@ -254,9 +268,9 @@ static readonly byte[]diag_andsR45 = new byte[64]
             }
         }
 
-        public static void GenerateKingMoves(Board b, int sideToMove, IList<Move> list){
-            ulong king = sideToMove == 1 ? b.BlackKing : b.WhiteKing;
-            ulong sidepieces = sideToMove==1 ? b.BlackPieces : b.WhitePieces;
+        public static void GenerateKingMoves(Board b, IList<Move> list){
+            ulong king = b.SideToMove == 1 ? b.BlackKing : b.WhiteKing;
+            ulong sidepieces = b.SideToMove==1 ? b.BlackPieces : b.WhitePieces;
             
             //only one king
             int sq=king.BitScanForward();
@@ -271,15 +285,15 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 var m = new Move{
                     From = (byte)sq,
                     To = (byte)to,
-                    Bits = (byte)((byte)MoveBits.King | (byte)sideToMove)
+                    Bits = (byte)((byte)MoveBits.King | (byte)b.SideToMove)
                 };
                 list.Add(m);
             }
         }
-        public static void GenerateKnightMoves(Board b, int sideToMove, IList<Move> list)
+        public static void GenerateKnightMoves(Board b, IList<Move> list)
         {
-            ulong knights = sideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
-            ulong sidepieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            ulong knights = b.SideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
+            ulong sidepieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
             
             while (knights > 0)
             {
@@ -300,7 +314,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     {
                         From = (byte)sq,
                         To = (byte)to,
-                        Bits = (byte)((byte)MoveBits.Knight | sideToMove)
+                        Bits = (byte)((byte)MoveBits.Knight | b.SideToMove)
                     };
                     list.Add(m);
                 }
