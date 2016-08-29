@@ -8,18 +8,213 @@ namespace mmchess
         static readonly ulong[] KnightMoves = new ulong[64];
         static readonly ulong[] KingMoves = new ulong[64];
         static readonly ulong[,] PawnMoves = new ulong[2,64];
-        static readonly ulong [,] PawnAttacks = new ulong [2,64];  
-        // static readonly ulong []DiagonalsA8toH1 = new ulong[64];
-        // static readonly ulong[] DiagonalsH8toA1 = new ulong[64];     
+        static readonly ulong [,] PawnAttacks = new ulong [2,64];
+        public static readonly ulong [,] Sliders = new ulong[64,256];
+
+
+
+
+static readonly byte [] diag_shiftsL45 = new byte[64] 
+
+{
+
+		28,21,15,10,6,3,1,0,
+
+		36,28,21,15,10,6,3,1,
+
+		43,36,28,21,15,10,6,3,
+
+		49,43,36,28,21,15,10,6,
+
+		54,49,43,36,28,21,15,10,
+
+		58,54,49,43,36,28,21,15,
+
+		61,58,54,49,43,36,28,21,
+
+		63,61,58,54,49,43,36,28
+
+		
+
+};
+
+
+
+static readonly byte[] diag_shiftsR45 = new byte[64]
+
+{
+
+		0,1,3,6,10,15,21,28,
+
+		1,3,6,10,15,21,28,36,
+
+		3,6,10,15,21,28,36,43,
+
+		6,10,15,21,28,36,43,49,
+
+		10,15,21,28,36,43,49,54,
+
+		15,21,28,36,43,49,54,58,
+
+		21,28,36,43,49,54,58,61,
+
+		28,36,43,49,54,58,61,63
+
+};
+
+
+
+static readonly byte[] diag_andsL45 = new byte[64]
+
+{
+
+	255,127, 63, 31,15,7,3,1,
+
+	127,255,127,63,31,15,7,3,
+
+	63,127,255,127,63,31,15,7,
+
+	31,63,127,255,127,63,31,15,
+
+	15,31,63,127,255,127,63,31,
+
+	7,15,31,63,127,255,127,63,
+
+	3,7,15,31,63,127,255,127,
+
+	1,3,7,15,31,63,127,255
+
+};
+
+static readonly byte[]diag_andsR45 = new byte[64]
+
+{
+
+	1,3,7,15,31,63,127,255,
+
+	3,7,15,31,63,127,255,127,
+
+	7,15,31,63,127,255,127,63,
+
+	15,31,63,127,255,127,63,31,
+
+	31,63,127,255,127,63,31,15,
+
+	63,127,255,127,63,31,15,7,
+
+	127,255,127,63,31,15,7,3,
+
+	255,127, 63, 31,15,7,3,1
+
+};
 
         static MoveGenerator()
         {
             InitKnightMoves();
             InitKingMoves();
             InitPawnMoves();
+            InitSliders();
         }
 
-        public static IList<Move> GeneratePawnMoves(Board b, int sideToMove){
+        public static IList<Move> GenerateQueenMoves(Board b, int sideToMove){
+            ulong queens = sideToMove == 1 ? b.BlackQueens : b.WhiteQueens;
+            var returnVal = new List<Move>();
+            GenerateRankAndFileMoves(b,queens,sideToMove,MoveBits.Queen,returnVal);
+            GenerateDiagonalMoves(b,queens,sideToMove,MoveBits.Queen,returnVal);
+            return returnVal;
+        }
+
+        public static IList<Move> GenerateRookMoves(Board b, int sideToMove){
+            ulong rooks = sideToMove == 1 ? b.BlackRooks : b.WhiteRooks;
+
+            var list = new List<Move>();
+            GenerateRankAndFileMoves(b,rooks,sideToMove, MoveBits.Rook,list);
+            return list;
+        }
+
+        static void GenerateRankAndFileMoves(Board b, ulong pieces, int sideToMove, MoveBits which, IList<Move> list){
+            ulong sidePieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            var returnVal = new List<Move>();
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+                ulong moves=0;
+
+                //ranks moves require no rotation
+                int index = (int)(b.AllPieces >> (8*sq.Rank())); 
+                moves  |= Sliders[sq,index];
+                moves &= ~sidePieces;
+                while(moves>0){
+                    int toSq = moves.BitScanForward();
+                    moves ^= BitMask.Mask[toSq];
+
+                    list.Add(new Move{
+                        From = (byte)sq,
+                        To = (byte)toSq,
+                        Bits = (byte)((byte)which | (byte)sideToMove)
+                    });
+                }
+
+                //files require 90degree rotation
+                index = (int)(b.AllPiecesR90 >> (8*sq.File()));
+                moves |= Sliders[sq,index];
+                moves &= ~sidePieces;
+                while(moves >0){
+                    int toSq =moves.BitScanForward();
+                    moves ^= BitMask.Mask[toSq];
+                    toSq = Board.Rotated90Map[toSq];
+
+                    list.Add(new Move{
+                        From = (byte)sq,
+                        To = (byte)toSq,
+                        Bits = (byte)((byte)which | (byte)sideToMove)
+                    });                    
+                }
+
+            }         
+        }
+
+        static void GenerateDiagonalMoves(Board b,ulong pieces, int sideToMove, MoveBits which, IList<Move> list){
+            ulong sidePieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+                
+                //start with Left rotated 45
+                var index = (b.AllPiecesL45 >> diag_shiftsL45[sq]) & diag_andsL45[sq];
+                var moves = Sliders[sq,index];
+                moves &= ~sidePieces;
+                while(moves >0){
+                    int toSq =moves.BitScanForward();
+                    moves ^= BitMask.Mask[toSq];
+                    toSq = Board.RotatedL45Map[toSq];
+
+                    list.Add(new Move{
+                        From = (byte)sq,
+                        To = (byte)toSq,
+                        Bits = (byte)((byte)which | (byte)sideToMove)
+                    });                    
+                }
+
+                index = (b.AllPiecesR45 >> diag_shiftsR45[sq]) & diag_andsR45[sq];
+                moves = Sliders[sq,index];
+                moves &= ~sidePieces;
+                while(moves >0){
+                    int toSq =moves.BitScanForward();
+                    moves ^= BitMask.Mask[toSq];
+                    toSq = Board.RotatedR45Map[toSq];
+
+                    list.Add(new Move{
+                        From = (byte)sq,
+                        To = (byte)toSq,
+                        Bits = (byte)((byte)which | (byte)sideToMove)
+                    });                    
+                }    
+            }
+        }
+
+        public static void GeneratePawnMoves(Board b, int sideToMove, IList<Move> list){
             ulong pawns = sideToMove == 1 ? b.BlackPawns : b.WhitePawns;
             ulong enemyPieces = sideToMove == 1? b.WhitePieces : b.BlackPieces;
             var returnList = new List<Move>();
@@ -48,23 +243,21 @@ namespace mmchess
                         {
                             var promoMove = new Move(m);
                             promoMove.Promotion=(byte)i;
-                            returnList.Add(promoMove);
+                            list.Add(promoMove);
                         }
                     }
                     else
                     {
-                        returnList.Add(m);
+                        list.Add(m);
                     }
                 }
             }
-
-            return returnList;
         }
 
-        public static IList<Move> GenerateKingMoves(Board b, int sideToMove){
+        public static void GenerateKingMoves(Board b, int sideToMove, IList<Move> list){
             ulong king = sideToMove == 1 ? b.BlackKing : b.WhiteKing;
             ulong sidepieces = sideToMove==1 ? b.BlackPieces : b.WhitePieces;
-            var returnList = new List<Move>();
+            
             //only one king
             int sq=king.BitScanForward();
             ulong moves = KingMoves[sq];
@@ -80,16 +273,14 @@ namespace mmchess
                     To = (byte)to,
                     Bits = (byte)((byte)MoveBits.King | (byte)sideToMove)
                 };
-                returnList.Add(m);
+                list.Add(m);
             }
-            return returnList;
-            
         }
-        public static IList<Move> GenerateKnightMoves(Board b, int sideToMove)
+        public static void GenerateKnightMoves(Board b, int sideToMove, IList<Move> list)
         {
             ulong knights = sideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
             ulong sidepieces = sideToMove == 1 ? b.BlackPieces : b.WhitePieces;
-            var returnList = new List<Move>();
+            
             while (knights > 0)
             {
                 int sq = knights.BitScanForward();
@@ -111,22 +302,38 @@ namespace mmchess
                         To = (byte)to,
                         Bits = (byte)((byte)MoveBits.Knight | sideToMove)
                     };
-                    returnList.Add(m);
+                    list.Add(m);
                 }
             }
-            return returnList;
         }
 
-        // static void InitDiagonals(){
-        //     for(int i=0;i<64;i++){
-        //         DiagonalsA8toH1[i] = BitMask.Mask[i];
-        //         for(int j=1;j<8;j++){
-        //             int sq = (j*7)+i;
-        //             if(sq.File()-i.File() == 1)
-        //                 DiagonalsA8toH1[sq]
-        //         }
-        //     }
-        // }
+        static void InitSliders(){
+            //for each square on the board (having a piece) 
+            for(int i=0;i<64;i++)
+            {
+                //and for each possible rank setup
+                for(int j=1;j<256;j++){
+                    if((j & (1 << (i%8))) == 0)
+                        continue; // if there is no piece on this square
+                    int val = 0;
+                    for(int x=(i%8) - 1; x >= 0; i--)
+                    {
+                        var check = (1<<x) & j;
+                        val |= (1<<x);
+                        if(check!=0)
+                            break; //found a piece, we'll "capture" it but stop sliding
+                    }
+                    for(int x=(i%8)+1; x< 8;x++)
+                    {
+                        var check = (1<<x) & j;
+                        val |= (1<<x);
+                        if(check!=0)
+                            break; //found a piece, we'll "capture" it but stop sliding
+                    }
+                    Sliders[i,j] = (ulong)((ulong)val << (8*(i>>3)));    
+                }
+            }
+        }
 
         static void InitPawnMoves(){
 
