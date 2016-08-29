@@ -349,7 +349,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
 
         static void InitPawnMoves(){
 
-            //white
+            //black
             for(int i=8;i<56;i++){
                 ulong moves=0;
                 ulong attacks=0;
@@ -361,11 +361,11 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     attacks|=BitMask.Mask[i+7] ;
                 if(i < 55 && (i+9).File() - i.File() == 1)
                     attacks|=BitMask.Mask[i+9];
-                PawnMoves[0,i]=moves;
-                PawnAttacks[0,i]=attacks;
+                PawnMoves[1,i]=moves;
+                PawnAttacks[1,i]=attacks;
             }
-            //black
-            
+
+            //white
              for(int i=55;i>7;i--){
                 ulong moves=0;
                 ulong attacks=0;
@@ -377,8 +377,8 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     attacks|=BitMask.Mask[i-9] ;
                 if(i > 7 && (i-7).File() - i.File() == 1)
                     attacks|=BitMask.Mask[i-7];
-                PawnMoves[1,i]=moves;
-                PawnAttacks[1,i]=attacks;
+                PawnMoves[0,i]=moves;
+                PawnAttacks[0,i]=attacks;
             } 
         }
 

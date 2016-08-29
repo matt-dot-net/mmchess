@@ -30,14 +30,14 @@ namespace mmchess
         public int SideToMove{get;set;}
 
 public static readonly string[] SquareNames = new string[64]{
-    "a1","b1","c1","d1","e1","f1","g1","h1",
-    "a2","b2","c2","d2","e2","f2","g2","h2",
-    "a3","b3","c3","d3","e3","f3","g3","h3",
-    "a4","b4","c4","d4","e4","f4","g4","h4",
-    "a5","b5","c5","d5","e5","f5","g5","h5",
-    "a6","b6","c6","d6","e6","f6","g6","h6",
-    "a7","b7","c7","d7","e7","f7","g7","h7",
-    "a8","b8","c8","d8","e8","f8","g8","h8"
+	"a8","b8","c8","d8","e8","f8","g8","h8",
+	"a7","b7","c7","d7","e7","f7","g7","h7",	
+	"a6","b6","c6","d6","e6","f6","g6","h6",
+	"a5","b5","c5","d5","e5","f5","g5","h5",
+	"a4","b4","c4","d4","e4","f4","g4","h4",
+	"a3","b3","c3","d3","e3","f3","g3","h3",
+	"a2","b2","c2","d2","e2","f2","g2","h2",
+	"a1","b1","c1","d1","e1","f1","g1","h1",
 };
         public static readonly byte [] RotatedR45Map= new byte[64] {
  0,1,3,6,10,15,21,28,
@@ -130,23 +130,23 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
         {
             History = new List<Move>();
 
-            WhitePawns = 0xff00;
-            BlackPawns = 0x00ff000000000000;
+            BlackPawns = 0xff00;
+            WhitePawns = 0x00ff000000000000;
 
-            WhiteRooks |= BitMask.Mask[0] | BitMask.Mask[7];
-            BlackRooks |= BitMask.Mask[63] | BitMask.Mask[56];
+            BlackRooks |= BitMask.Mask[0] | BitMask.Mask[7];
+            WhiteRooks |= BitMask.Mask[63] | BitMask.Mask[56];
 
-            WhiteKnights |= BitMask.Mask[1] | BitMask.Mask[6];
-            BlackKnights |= BitMask.Mask[62] | BitMask.Mask[57];
+            BlackKnights |= BitMask.Mask[1] | BitMask.Mask[6];
+            WhiteKnights |= BitMask.Mask[62] | BitMask.Mask[57];
 
-            WhiteBishops |= BitMask.Mask[2] | BitMask.Mask[5];
-            BlackBishops |= BitMask.Mask[61] | BitMask.Mask[58];
+            BlackBishops |= BitMask.Mask[2] | BitMask.Mask[5];
+            WhiteBishops |= BitMask.Mask[61] | BitMask.Mask[58];
 
-            WhiteQueens |= BitMask.Mask[3];
-            BlackQueens |= BitMask.Mask[60];
+            BlackQueens |= BitMask.Mask[3];
+            WhiteQueens |= BitMask.Mask[60];
 
-            WhiteKing = BitMask.Mask[4];
-            BlackKing = BitMask.Mask[59];
+            BlackKing = BitMask.Mask[4];
+            WhiteKing = BitMask.Mask[59];
 
             WhitePieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
             BlackPieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
