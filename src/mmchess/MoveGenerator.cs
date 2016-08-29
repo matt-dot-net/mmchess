@@ -130,17 +130,17 @@ static readonly byte[]diag_andsR45 = new byte[64]
             return list;
         }
 
-        public static void GenerateQueenMoves(Board b, IList<Move> list){
+        static void GenerateQueenMoves(Board b, IList<Move> list){
             ulong queens = b.SideToMove == 1 ? b.BlackQueens : b.WhiteQueens;
             GenerateRankAndFileMoves(b,queens,MoveBits.Queen,list);
             GenerateDiagonalMoves(b,queens,MoveBits.Queen,list);
             
         }
-        public static void GenerateBishopMoves(Board b, IList<Move>list){
+        static void GenerateBishopMoves(Board b, IList<Move>list){
             ulong bishops = b.SideToMove == 1 ? b.BlackBishops : b.WhiteBishops;
             GenerateDiagonalMoves(b,bishops,MoveBits.Bishop,list);
         }
-        public static void GenerateRookMoves(Board b, IList<Move> list){
+        static void GenerateRookMoves(Board b, IList<Move> list){
             ulong rooks = b.SideToMove == 1 ? b.BlackRooks : b.WhiteRooks;
 
             GenerateRankAndFileMoves(b,rooks, MoveBits.Rook,list);
@@ -155,7 +155,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 ulong moves=0;
 
                 //ranks moves require no rotation
-                int index = (int)(b.AllPieces >> (8*sq.Rank())); 
+                int index = 0xff & (int)(b.AllPieces >> (8*sq.Rank())); 
                 moves  |= Sliders[sq,index];
                 moves &= ~sidePieces;
                 while(moves>0){
@@ -170,7 +170,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 }
 
                 //files require 90degree rotation
-                index = (int)(b.AllPiecesR90 >> (8*sq.File()));
+                index = 0xff & (int)(b.AllPiecesR90 >> (8*sq.File()));
                 moves |= Sliders[sq,index];
                 moves &= ~sidePieces;
                 while(moves >0){
@@ -228,7 +228,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
             }
         }
 
-        public static void GeneratePawnMoves(Board b, IList<Move> list){
+        static void GeneratePawnMoves(Board b, IList<Move> list){
             ulong pawns = b.SideToMove == 1 ? b.BlackPawns : b.WhitePawns;
             ulong enemyPieces = b.SideToMove == 1? b.WhitePieces : b.BlackPieces;
             var returnList = new List<Move>();
@@ -268,7 +268,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
             }
         }
 
-        public static void GenerateKingMoves(Board b, IList<Move> list){
+        static void GenerateKingMoves(Board b, IList<Move> list){
             ulong king = b.SideToMove == 1 ? b.BlackKing : b.WhiteKing;
             ulong sidepieces = b.SideToMove==1 ? b.BlackPieces : b.WhitePieces;
             
@@ -279,8 +279,8 @@ static readonly byte[]diag_andsR45 = new byte[64]
             while(moves > 0){
                 int to = moves.BitScanForward();
                 moves ^= BitMask.Mask[to];
-
-                if ((sidepieces & BitMask.Mask[to]) > 0)
+                moves &= ~sidepieces;
+                
                 continue;
                 var m = new Move{
                     From = (byte)sq,
@@ -290,7 +290,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 list.Add(m);
             }
         }
-        public static void GenerateKnightMoves(Board b, IList<Move> list)
+        static void GenerateKnightMoves(Board b, IList<Move> list)
         {
             ulong knights = b.SideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
             ulong sidepieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
@@ -301,14 +301,12 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 knights ^= BitMask.Mask[sq];
 
                 ulong moves = KnightMoves[sq];
+                moves &= ~sidepieces;
 
                 while (moves > 0)
                 {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
-
-                    if ((sidepieces & BitMask.Mask[to]) > 0)
-                        continue;
 
                     var m = new Move
                     {
@@ -330,7 +328,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     if((j & (1 << (i%8))) == 0)
                         continue; // if there is no piece on this square
                     int val = 0;
-                    for(int x=(i%8) - 1; x >= 0; i--)
+                    for(int x=(i%8) - 1; x >= 0; x--)
                     {
                         var check = (1<<x) & j;
                         val |= (1<<x);
@@ -381,7 +379,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                     attacks|=BitMask.Mask[i-7];
                 PawnMoves[1,i]=moves;
                 PawnAttacks[1,i]=attacks;
-            }
+            } 
         }
 
         static void InitKingMoves()

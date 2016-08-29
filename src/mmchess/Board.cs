@@ -1,10 +1,13 @@
 
 using System;
+using System.Collections.Generic;
 
 namespace mmchess
 {
     public class Board
     {
+        public List<Move> History{get;set;}
+
         public ulong WhitePawns { get; set; }
         public ulong WhiteKnights { get; set; }
         public ulong WhiteBishops { get; set; }
@@ -115,6 +118,8 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
 
         public void Initialize()
         {
+            History = new List<Move>();
+
             WhitePawns = 0xff00;
             BlackPawns = 0x00ff000000000000;
 
@@ -153,6 +158,14 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
 
         public void MakeMove(Move m)
         {
+            UpdateBitBoards(m);
+
+            //finally push the move onto the list of moves
+            History.Add(m);
+        }
+
+        private void UpdateBitBoards(Move m)
+        {
             var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
 
             if ((m.Bits & (byte)MoveBits.Black) > 0)
@@ -165,11 +178,13 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
             AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[m.From]] | BitMask.Mask[RotatedR45Map[m.To]]);
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
 
-            SideToMove^=1;
+            SideToMove ^= 1;
         }
 
-        public void UnMakeMove(Move m){
-            throw new NotImplementedException();
+        public void UnMakeMove(){
+            var m = History[History.Count-1];
+
+            UpdateBitBoards(m);
         }
 
         private void UpdateBlackBoards(Move m, ulong moveMask)

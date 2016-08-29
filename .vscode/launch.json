@@ -9,7 +9,7 @@
             "program": "${workspaceRoot}\\src\\mmchess\\bin\\Debug\\netcoreapp1.0\\mmchess.dll",
             "args": [],
             "cwd": "${workspaceRoot}\\src\\mmchess",
-            "externalConsole": false,
+            "externalConsole": true,
             "stopAtEntry": false
         },
         {
