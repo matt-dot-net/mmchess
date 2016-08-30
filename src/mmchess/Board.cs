@@ -72,49 +72,6 @@ public static readonly byte[] Rotated90Map = new byte[64]{
 	7,15,23,31,39,47,55,63    
 };
 
-public static readonly byte[] DiagShiftsL45 = new byte[64]{
-    		28,21,15,10,6,3,1,0,
-		36,28,21,15,10,6,3,1,
-		43,36,28,21,15,10,6,3,
-		49,43,36,28,21,15,10,6,
-		54,49,43,36,28,21,15,10,
-		58,54,49,43,36,28,21,15,
-		61,58,54,49,43,36,28,21,
-		63,61,58,54,49,43,36,28
-};
-
-public static readonly byte[] DiagShiftsR45 = new byte[64]{
-    0,1,3,6,10,15,21,28,
-		1,3,6,10,15,21,28,36,
-		3,6,10,15,21,28,36,43,
-		6,10,15,21,28,36,43,49,
-		10,15,21,28,36,43,49,54,
-		15,21,28,36,43,49,54,58,
-		21,28,36,43,49,54,58,61,
-		28,36,43,49,54,58,61,63
-};
-
-public static readonly byte[] DiagAndsL45 = new byte[64]{
-	255,127, 63, 31,15,7,3,1,
-	127,255,127,63,31,15,7,3,
-	63,127,255,127,63,31,15,7,
-	31,63,127,255,127,63,31,15,
-	15,31,63,127,255,127,63,31,
-	7,15,31,63,127,255,127,63,
-	3,7,15,31,63,127,255,127,
-	1,3,7,15,31,63,127,255
-};
-
-public static readonly byte[] DiagAndsR45 = new byte[64]{
-    	1,3,7,15,31,63,127,255,
-	3,7,15,31,63,127,255,127,
-	7,15,31,63,127,255,127,63,
-	15,31,63,127,255,127,63,31,
-	31,63,127,255,127,63,31,15,
-	63,127,255,127,63,31,15,7,
-	127,255,127,63,31,15,7,3,
-	255,127, 63, 31,15,7,3,1
-};
 
         public Board(Board b)
         {
@@ -143,10 +100,10 @@ public static readonly byte[] DiagAndsR45 = new byte[64]{
             WhiteBishops |= BitMask.Mask[61] | BitMask.Mask[58];
 
             BlackQueens |= BitMask.Mask[3];
-            WhiteQueens |= BitMask.Mask[60];
+            WhiteQueens |= BitMask.Mask[59];
 
             BlackKing = BitMask.Mask[4];
-            WhiteKing = BitMask.Mask[59];
+            WhiteKing = BitMask.Mask[60];
 
             WhitePieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
             BlackPieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
