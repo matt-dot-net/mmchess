@@ -243,11 +243,25 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 ulong moves = PawnMoves[b.SideToMove,sq] ;
                 moves &= ~b.AllPieces; //remove any moves which are blocked
 
-                moves |= (PawnAttacks[b.SideToMove,sq] & enemyPieces & b.EnPassant); // add any captures
+                moves |= (PawnAttacks[b.SideToMove,sq] & enemyPieces); // add any captures
+                moves |= (PawnAttacks[b.SideToMove,sq] & b.EnPassant); //add enpassant capture
 
                 while(moves > 0){
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
+
+                    if(Math.Abs(to-sq) == 16){
+                        //make sure intermediate square isn't blocked
+                        if(b.SideToMove == 0)
+                        {
+                            if((b.AllPieces & BitMask.Mask[to+8])>0)
+                            continue;
+                        }
+                        else{
+                            if((b.AllPieces & BitMask.Mask[to-8])>0)
+                            continue;
+                        }
+                    }
 
                     var m = new Move {
                         From = (byte)sq,
