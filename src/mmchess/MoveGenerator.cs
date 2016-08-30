@@ -121,7 +121,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
             List<Move> list = new List<Move>();            
             
             GenerateQueenMoves(b,list);
-            GenerateRookMoves(b,list);
+            GenerateRookMoves(b,list); 
             GenerateBishopMoves(b,list);
             GenerateKnightMoves(b,list);
             GeneratePawnMoves(b,list);
@@ -171,12 +171,14 @@ static readonly byte[]diag_andsR45 = new byte[64]
 
                 //files require 90degree rotation
                 index = 0xff & (int)(b.AllPiecesR90 >> (8*sq.File()));
-                moves |= Sliders[sq,index];
-                moves &= ~sidePieces;
+                moves |= Sliders[Board.Rotated90Map[sq],index];
+            
                 while(moves >0){
                     int toSq =moves.BitScanForward();
                     moves ^= BitMask.Mask[toSq];
                     toSq = Board.Rotated90Map[toSq];
+                    if((sidePieces & BitMask.Mask[toSq]) > 0 )
+                        continue;
 
                     list.Add(new Move{
                         From = (byte)sq,
@@ -197,12 +199,14 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 
                 //start with Left rotated 45
                 var index = (b.AllPiecesL45 >> diag_shiftsL45[sq]) & diag_andsL45[sq];
-                var moves = Sliders[sq,index];
-                moves &= ~sidePieces;
+                var moves = Sliders[Board.RotatedL45Map[sq],index];
+                
                 while(moves >0){
                     int toSq =moves.BitScanForward();
                     moves ^= BitMask.Mask[toSq];
                     toSq = Board.RotatedL45Map[toSq];
+                    if((sidePieces & BitMask.Mask[toSq])>0)
+                        continue;
 
                     list.Add(new Move{
                         From = (byte)sq,
@@ -212,7 +216,7 @@ static readonly byte[]diag_andsR45 = new byte[64]
                 }
 
                 index = (b.AllPiecesR45 >> diag_shiftsR45[sq]) & diag_andsR45[sq];
-                moves = Sliders[sq,index];
+                moves = Sliders[Board.RotatedR45Map[sq],index];
                 moves &= ~sidePieces;
                 while(moves >0){
                     int toSq =moves.BitScanForward();
