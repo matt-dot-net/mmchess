@@ -6,36 +6,36 @@ namespace mmchess
 {
     public class Board
     {
-        public List<HistoryMove> History{get;set;}
+        public List<HistoryMove> History { get; set; }
 
-        public ulong [] Pawns;
-        public ulong [] Knights;
-        public ulong [] Bishops;
-        public ulong [] Rooks;
-        public ulong [] Queens;
-        public ulong [] King;
+        public ulong[] Pawns;
+        public ulong[] Knights;
+        public ulong[] Bishops;
+        public ulong[] Rooks;
+        public ulong[] Queens;
+        public ulong[] King;
         public ulong AllPieces { get; set; }
-        public ulong AllPiecesR90{get;set;}
-        public ulong AllPiecesR45{get;set;}
-        public ulong AllPiecesL45{get;set;}
-        public ulong [] Pieces {get;set;}
-        public ulong EnPassant {get;set;}
-        public int SideToMove{get;set;}
+        public ulong AllPiecesR90 { get; set; }
+        public ulong AllPiecesR45 { get; set; }
+        public ulong AllPiecesL45 { get; set; }
+        public ulong[] Pieces { get; set; }
+        public ulong EnPassant { get; set; }
+        public int SideToMove { get; set; }
 
-public static readonly ulong [] FileMask = new ulong[8];
-public static readonly ulong[] RankMask = new ulong[8];
+        public static readonly ulong[] FileMask = new ulong[8];
+        public static readonly ulong[] RankMask = new ulong[8];
 
-public static readonly string[] SquareNames = new string[64]{
-	"a8","b8","c8","d8","e8","f8","g8","h8",
-	"a7","b7","c7","d7","e7","f7","g7","h7",	
-	"a6","b6","c6","d6","e6","f6","g6","h6",
-	"a5","b5","c5","d5","e5","f5","g5","h5",
-	"a4","b4","c4","d4","e4","f4","g4","h4",
-	"a3","b3","c3","d3","e3","f3","g3","h3",
-	"a2","b2","c2","d2","e2","f2","g2","h2",
-	"a1","b1","c1","d1","e1","f1","g1","h1",
+        public static readonly string[] SquareNames = new string[64]{
+    "a8","b8","c8","d8","e8","f8","g8","h8",
+    "a7","b7","c7","d7","e7","f7","g7","h7",
+    "a6","b6","c6","d6","e6","f6","g6","h6",
+    "a5","b5","c5","d5","e5","f5","g5","h5",
+    "a4","b4","c4","d4","e4","f4","g4","h4",
+    "a3","b3","c3","d3","e3","f3","g3","h3",
+    "a2","b2","c2","d2","e2","f2","g2","h2",
+    "a1","b1","c1","d1","e1","f1","g1","h1",
 };
-        public static readonly byte [] RotatedR45Map= new byte[64] {
+        public static readonly byte[] RotatedR45Map = new byte[64] {
  0,1,3,6,10,15,21,28,
  2,4,7,11,16,22,29,36,
  5,8,12,17,23,30,37,43,
@@ -54,22 +54,24 @@ public static readonly string[] SquareNames = new string[64]{
  54,50,45,39,32,25,19,14,
  58,55,51,46,40,33,26,20,
  61,59,56,52,47,41,34,27,
- 63,62,60,57,53,48,42,35            
+ 63,62,60,57,53,48,42,35
         };
 
-public static readonly byte[] Rotated90Map = new byte[64]{
-	0,8,16,24,32,40,48,56,
-	1,9,17,25,33,41,49,57,
-	2,10,18,26,34,42,50,58,
-	3,11,19,27,35,43,51,59,
-	4,12,20,28,36,44,52,60,
-	5,13,21,29,37,45,53,61,
-	6,14,22,30,38,46,54,62,
-	7,15,23,31,39,47,55,63    
+        public static readonly byte[] Rotated90Map = new byte[64]{
+    0,8,16,24,32,40,48,56,
+    1,9,17,25,33,41,49,57,
+    2,10,18,26,34,42,50,58,
+    3,11,19,27,35,43,51,59,
+    4,12,20,28,36,44,52,60,
+    5,13,21,29,37,45,53,61,
+    6,14,22,30,38,46,54,62,
+    7,15,23,31,39,47,55,63
 };
 
-        static Board(){
-            for(int i=0;i<64;i++){
+        static Board()
+        {
+            for (int i = 0; i < 64; i++)
+            {
                 FileMask[i.File()] |= BitMask.Mask[i];
                 RankMask[i.Rank()] |= BitMask.Mask[i];
             }
@@ -107,10 +109,10 @@ public static readonly byte[] Rotated90Map = new byte[64]{
             Queens[1] |= BitMask.Mask[3];
             Queens[0] |= BitMask.Mask[59];
 
-            King= new ulong[2];
-            King[1]= BitMask.Mask[4];
+            King = new ulong[2];
+            King[1] = BitMask.Mask[4];
             King[0] = BitMask.Mask[60];
-            
+
             Pieces = new ulong[2];
             Pieces[0] = Pawns[0] | Rooks[0] | Knights[0] | Bishops[0] | Queens[0] | King[0];
             Pieces[1] = Pawns[1] | Rooks[1] | Knights[1] | Bishops[1] | Queens[1] | King[1];
@@ -120,9 +122,12 @@ public static readonly byte[] Rotated90Map = new byte[64]{
             BuildRotatedBoards(this);
         }
 
-        private static void BuildRotatedBoards(Board b){
-            for(int i=0;i<64;i++){
-                if(b.AllPieces.IsSet(i)){
+        private static void BuildRotatedBoards(Board b)
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                if (b.AllPieces.IsSet(i))
+                {
                     b.AllPiecesR90 |= BitMask.Mask[Rotated90Map[i]];
                     b.AllPiecesL45 |= BitMask.Mask[RotatedL45Map[i]];
                     b.AllPiecesR45 |= BitMask.Mask[RotatedR45Map[i]];
@@ -133,34 +138,43 @@ public static readonly byte[] Rotated90Map = new byte[64]{
         public Boolean InCheck()
         {
             int kingsq = King[SideToMove].BitScanForward();
-            int xside = SideToMove^1;
-            if( (MoveGenerator.BishopAttacks(this,kingsq) & (Bishops[xside] | Queens[xside])) > 0)
+            int xside = SideToMove ^ 1;
+            if ((MoveGenerator.BishopAttacks(this, kingsq) & (Bishops[xside] | Queens[xside])) > 0)
                 return true;
-            else if ( (MoveGenerator.RookAttacks(this,kingsq) & (Rooks[xside] | Queens[xside])) >0)
+            else if ((MoveGenerator.RookAttacks(this, kingsq) & (Rooks[xside] | Queens[xside])) > 0)
                 return true;
-            else if ( (MoveGenerator.PawnAttacks[xside,kingsq] & Pawns[xside]) > 0)
+            else if ((MoveGenerator.PawnAttacks[xside, kingsq] & Pawns[xside]) > 0)
                 return true;
-            else if ( (MoveGenerator.KnightMoves[kingsq] & Knights[xside]) > 0 )
+            else if ((MoveGenerator.KnightMoves[kingsq] & Knights[xside]) > 0)
                 return true;
 
             return false;
         }
 
-        public void MakeMove(Move m)
+        public bool MakeMove(Move m)
         {
             var hm = new HistoryMove(m);
             hm.EnPassant = EnPassant;
 
             UpdateBitBoards(m);
             SideToMove ^= 1;
-            //finally push the move onto the list of moves
+            // push the move onto the list of moves
             History.Add(hm);
+
+            //make sure we are legal
+            if (InCheck())
+            {
+                UnMakeMove();
+                return false;
+            }
+            return true;
+
         }
 
         private void UpdateBitBoards(Move m)
         {
             var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
-            UpdateBoards(m,SideToMove,moveMask);
+            UpdateBoards(m, SideToMove, moveMask);
 
             AllPieces ^= moveMask;
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[m.From]] | BitMask.Mask[RotatedL45Map[m.To]]);
@@ -168,11 +182,12 @@ public static readonly byte[] Rotated90Map = new byte[64]{
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
         }
 
-        public void UnMakeMove(){
-            var index = History.Count-1;
+        public void UnMakeMove()
+        {
+            var index = History.Count - 1;
             var m = History[index];
             SideToMove ^= 1;
-            EnPassant=m.EnPassant;
+            EnPassant = m.EnPassant;
             UpdateBitBoards(m);
             History.RemoveAt(index);
         }
@@ -188,11 +203,12 @@ public static readonly byte[] Rotated90Map = new byte[64]{
                 Bishops[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Knight) > 0)
                 Knights[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Pawn) > 0){
+            if ((m.Bits & (byte)MoveBits.Pawn) > 0)
+            {
                 Pawns[sideToMove] ^= moveMask;
-            
-            if(Math.Abs(m.To - m.From) == 16)
-                EnPassant = BitMask.Mask[m.From+ (sideToMove==1?8:-8)];
+
+                if (Math.Abs(m.To - m.From) == 16)
+                    EnPassant = BitMask.Mask[m.From + (sideToMove == 1 ? 8 : -8)];
             }
             else
                 EnPassant = 0;

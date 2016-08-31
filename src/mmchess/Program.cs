@@ -37,9 +37,10 @@ namespace mmchess{
             var moves = MoveGenerator.GenerateMoves(b);
             var nMoves = moves.Count;
             foreach(var m in moves){
-                b.MakeMove(m);
+                if(b.MakeMove(m)){
                 nodes += Perft(b,depth-1);
                 b.UnMakeMove();
+                }
             }
             return nodes;
         }
