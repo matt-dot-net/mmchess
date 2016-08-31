@@ -9,9 +9,6 @@ namespace mmchess{
             var limitStr = Console.ReadLine();
             int limit = int.Parse(limitStr);
             var start = DateTime.Now;
-            // for(int i=1;i<limit+1;i++){
-            //     Console.WriteLine(String.Format("Perft ({0}): {1}",i,Perft(b, i)));            
-            // }
             PerftDivide(b,limit);
             var end = DateTime.Now;
             Console.WriteLine(String.Format("Completed in {0}ms",(end-start).TotalMilliseconds));

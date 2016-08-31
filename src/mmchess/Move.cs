@@ -2,14 +2,14 @@ namespace mmchess
 {
     public enum MoveBits
     {
-        Black = 1,
-        Capture = 2,
-        King = 4,
-        Pawn = 8,
-        Knight = 16,
-        Bishop = 32,
-        Rook = 64,
-        Queen = 128
+
+        Capture = 1,
+        King = 2,
+        Pawn = 4,
+        Knight = 8,
+        Bishop = 16,
+        Rook = 32,
+        Queen = 64
     }
 
     public enum Piece

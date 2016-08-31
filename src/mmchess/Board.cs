@@ -6,26 +6,19 @@ namespace mmchess
 {
     public class Board
     {
-        public List<Move> History{get;set;}
+        public List<HistoryMove> History{get;set;}
 
-        public ulong WhitePawns { get; set; }
-        public ulong WhiteKnights { get; set; }
-        public ulong WhiteBishops { get; set; }
-        public ulong WhiteRooks { get; set; }
-        public ulong WhiteQueens { get; set; }
-        public ulong BlackPawns { get; set; }
-        public ulong BlackKnights { get; set; }
-        public ulong BlackBishops { get; set; }
-        public ulong BlackRooks { get; set; }
-        public ulong BlackQueens { get; set; }
-        public ulong BlackKing { get; set; }
-        public ulong WhiteKing { get; set; }
+        public ulong [] Pawns;
+        public ulong [] Knights;
+        public ulong [] Bishops;
+        public ulong [] Rooks;
+        public ulong [] Queens;
+        public ulong [] King;
         public ulong AllPieces { get; set; }
         public ulong AllPiecesR90{get;set;}
         public ulong AllPiecesR45{get;set;}
         public ulong AllPiecesL45{get;set;}
-        public ulong WhitePieces { get; set; }
-        public ulong BlackPieces { get; set; }
+        public ulong [] Pieces {get;set;}
         public ulong EnPassant {get;set;}
         public int SideToMove{get;set;}
 
@@ -85,30 +78,36 @@ public static readonly byte[] Rotated90Map = new byte[64]{
 
         public void Initialize()
         {
-            History = new List<Move>();
+            History = new List<HistoryMove>();
+            Pawns = new ulong[2];
+            Pawns[1] = 0xff00;
+            Pawns[0] = 0x00ff000000000000;
 
-            BlackPawns = 0xff00;
-            WhitePawns = 0x00ff000000000000;
+            Rooks = new ulong[2];
+            Rooks[1] |= BitMask.Mask[0] | BitMask.Mask[7];
+            Rooks[0] |= BitMask.Mask[63] | BitMask.Mask[56];
 
-            BlackRooks |= BitMask.Mask[0] | BitMask.Mask[7];
-            WhiteRooks |= BitMask.Mask[63] | BitMask.Mask[56];
+            Knights = new ulong[2];
+            Knights[1] |= BitMask.Mask[1] | BitMask.Mask[6];
+            Knights[0] |= BitMask.Mask[62] | BitMask.Mask[57];
 
-            BlackKnights |= BitMask.Mask[1] | BitMask.Mask[6];
-            WhiteKnights |= BitMask.Mask[62] | BitMask.Mask[57];
+            Bishops = new ulong[2];
+            Bishops[1] |= BitMask.Mask[2] | BitMask.Mask[5];
+            Bishops[0] |= BitMask.Mask[61] | BitMask.Mask[58];
 
-            BlackBishops |= BitMask.Mask[2] | BitMask.Mask[5];
-            WhiteBishops |= BitMask.Mask[61] | BitMask.Mask[58];
+            Queens = new ulong[2];
+            Queens[1] |= BitMask.Mask[3];
+            Queens[0] |= BitMask.Mask[59];
 
-            BlackQueens |= BitMask.Mask[3];
-            WhiteQueens |= BitMask.Mask[59];
+            King= new ulong[2];
+            King[1]= BitMask.Mask[4];
+            King[0] = BitMask.Mask[60];
+            
+            Pieces = new ulong[2];
+            Pieces[0] = Pawns[0] | Rooks[0] | Knights[0] | Bishops[0] | Queens[0] | King[0];
+            Pieces[1] = Pawns[1] | Rooks[1] | Knights[1] | Bishops[1] | Queens[1] | King[1];
 
-            BlackKing = BitMask.Mask[4];
-            WhiteKing = BitMask.Mask[60];
-
-            WhitePieces = WhitePawns | WhiteRooks | WhiteKnights | WhiteBishops | WhiteQueens | WhiteKing;
-            BlackPieces = BlackPawns | BlackRooks | BlackKnights | BlackBishops | BlackQueens | BlackKing;
-
-            AllPieces = WhitePieces | BlackPieces;
+            AllPieces = Pieces[0] | Pieces[1];
 
             BuildRotatedBoards(this);
         }
@@ -123,73 +122,72 @@ public static readonly byte[] Rotated90Map = new byte[64]{
             }
         }
 
+        public Boolean InCheck()
+        {
+            int kingsq = King[SideToMove].BitScanForward();
+            int xside = SideToMove^1;
+            if( (MoveGenerator.BishopAttacks(this,kingsq) & (Bishops[xside] | Queens[xside])) > 0)
+                return true;
+            else if ( (MoveGenerator.RookAttacks(this,kingsq) & (Rooks[xside] | Queens[xside])) >0)
+                return true;
+            else if ( (MoveGenerator.PawnAttacks[xside,kingsq] & Pawns[xside]) > 0)
+                return true;
+            else if ( (MoveGenerator.KnightMoves[kingsq] & Knights[xside]) > 0 )
+                return true;
+
+            return false;
+        }
+
         public void MakeMove(Move m)
         {
-            UpdateBitBoards(m);
+            var hm = new HistoryMove(m);
+            hm.EnPassant = EnPassant;
 
+            UpdateBitBoards(m);
+            SideToMove ^= 1;
             //finally push the move onto the list of moves
-            History.Add(m);
+            History.Add(hm);
         }
 
         private void UpdateBitBoards(Move m)
         {
             var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
-
-            if ((m.Bits & (byte)MoveBits.Black) > 0)
-                UpdateBlackBoards(m, moveMask);
-            else
-                UpdateWhiteBoards(m, moveMask);
+            UpdateBoards(m,SideToMove,moveMask);
 
             AllPieces ^= moveMask;
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[m.From]] | BitMask.Mask[RotatedL45Map[m.To]]);
             AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[m.From]] | BitMask.Mask[RotatedR45Map[m.To]]);
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
-
-            SideToMove ^= 1;
         }
 
         public void UnMakeMove(){
             var index = History.Count-1;
             var m = History[index];
+            SideToMove ^= 1;
+            EnPassant=m.EnPassant;
             UpdateBitBoards(m);
             History.RemoveAt(index);
         }
 
-        private void UpdateBlackBoards(Move m, ulong moveMask)
+        private void UpdateBoards(Move m, int sideToMove, ulong moveMask)
         {
-            BlackPieces ^= moveMask;
+            Pieces[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.King) > 0)
-                BlackKing ^= moveMask;
+                King[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Queen) > 0)
-                BlackQueens ^= moveMask;
+                Queens[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Bishop) > 0)
-                BlackBishops ^= moveMask;
+                Bishops[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Knight) > 0)
-                BlackKnights ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Pawn) > 0)
-            {
-                BlackPawns ^= moveMask;
-                if(m.From-m.To == 16)
-                    EnPassant = BitMask.Mask[m.From-8];
-            }
-        }
-
-        private void UpdateWhiteBoards(Move m, ulong moveMask)
-        {
-            WhitePieces ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.King) > 0)
-                WhiteKing ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Queen) > 0)
-                WhiteQueens ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Bishop) > 0)
-                WhiteBishops ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Knight) > 0)
-                WhiteKnights ^= moveMask;
+                Knights[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Pawn) > 0){
-                WhitePawns ^= moveMask;
-                if(m.To - m.From == 16)
-                    EnPassant = BitMask.Mask[m.From+8];
+                Pawns[sideToMove] ^= moveMask;
+            
+            if(Math.Abs(m.To - m.From) == 16)
+                EnPassant = BitMask.Mask[m.From+ (sideToMove==1?8:-8)];
             }
+            else
+                EnPassant = 0;
         }
     }
 }

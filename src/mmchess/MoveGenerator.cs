@@ -5,17 +5,14 @@ namespace mmchess
 {
     public class MoveGenerator
     {
-        static readonly ulong[] KnightMoves = new ulong[64];
+        public static readonly ulong[] KnightMoves = new ulong[64];
         static readonly ulong[] KingMoves = new ulong[64];
         static readonly ulong[,] PawnMoves = new ulong[2, 64];
-        static readonly ulong[,] PawnAttacks = new ulong[2, 64];
+        public static readonly ulong[,] PawnAttacks = new ulong[2, 64];
         static readonly ulong[,] RankMoves = new ulong[64, 256];
         static readonly ulong[,] FileMoves = new ulong[64, 256];
         static readonly ulong[,] DiagLMoves = new ulong[64, 256];
         static readonly ulong[,] DiagRMoves = new ulong[64, 256];
-
-
-
 
         static readonly byte[] DiagShiftsL45 = new byte[64]{
         28,21,15,10,6,3,1,0,
@@ -98,6 +95,32 @@ namespace mmchess
             InitDiagMoves();
         }
 
+        public static ulong BishopAttacks(Board b, int sq)
+        {
+            return DiagLMoves[sq, DiagAndsL45[sq] & (b.AllPiecesL45 >> DiagShiftsL45[sq])] |
+                   DiagRMoves[sq, DiagAndsR45[sq] & (b.AllPiecesR45 >> DiagShiftsR45[sq])];
+        }
+
+        public static ulong RookAttacks(Board b, int sq)
+        {
+            ulong moves=0;
+            int index = 0xff & (int)(b.AllPieces >> (8 * sq.Rank()));
+            moves |= RankMoves[sq, index];
+
+            index = 0xff & (int)(b.AllPiecesR90 >> (8 * sq.File()));
+            moves |= FileMoves[sq, index];
+            return moves;
+        }
+
+        public static ulong QueenAttacks(Board b, int sq)
+        {
+            return BishopAttacks(b, sq) | RookAttacks(b, sq);
+        }
+
+        public static IList<Move> GenerateEvasions(Board b){
+            throw new NotImplementedException();
+        }
+
         public static IList<Move> GenerateMoves(Board b)
         {
 
@@ -115,39 +138,32 @@ namespace mmchess
 
         static void GenerateQueenMoves(Board b, IList<Move> list)
         {
-            ulong queens = b.SideToMove == 1 ? b.BlackQueens : b.WhiteQueens;
+            ulong queens = b.Queens[b.SideToMove];
             GenerateRankAndFileMoves(b, queens, MoveBits.Queen, list);
             GenerateDiagonalMoves(b, queens, MoveBits.Queen, list);
 
         }
         static void GenerateBishopMoves(Board b, IList<Move> list)
         {
-            ulong bishops = b.SideToMove == 1 ? b.BlackBishops : b.WhiteBishops;
+            ulong bishops = b.Bishops[b.SideToMove];
             GenerateDiagonalMoves(b, bishops, MoveBits.Bishop, list);
         }
         static void GenerateRookMoves(Board b, IList<Move> list)
         {
-            ulong rooks = b.SideToMove == 1 ? b.BlackRooks : b.WhiteRooks;
-
+            ulong rooks = b.Rooks[b.SideToMove];
             GenerateRankAndFileMoves(b, rooks, MoveBits.Rook, list);
         }
 
         static void GenerateRankAndFileMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)
         {
-            ulong sidePieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            ulong sidePieces = b.Pieces[b.SideToMove];
             var returnVal = new List<Move>();
             while (pieces > 0)
             {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
-                ulong moves = 0;
 
-                //ranks moves require no rotation
-                int index = 0xff & (int)(b.AllPieces >> (8 * sq.Rank()));
-                moves |= RankMoves[sq, index];
-
-                index = 0xff & (int)(b.AllPiecesR90 >> (8 * sq.File()));
-                moves |= FileMoves[sq, index];
+                ulong moves = RookAttacks(b, sq);
                 moves &= ~sidePieces;
 
                 while (moves > 0)
@@ -168,16 +184,14 @@ namespace mmchess
 
         static void GenerateDiagonalMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)
         {
-            ulong sidePieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            ulong sidePieces = b.Pieces[b.SideToMove];
 
             while (pieces > 0)
             {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
-                var moves = DiagLMoves[sq, DiagAndsL45[sq] & (b.AllPiecesL45 >> DiagShiftsL45[sq])] |
-                            DiagRMoves[sq, DiagAndsR45[sq] & (b.AllPiecesR45 >> DiagShiftsR45[sq])];
-
+                var moves = BishopAttacks(b, sq);
                 moves &= ~sidePieces;
 
                 while (moves > 0)
@@ -197,8 +211,8 @@ namespace mmchess
 
         static void GeneratePawnMoves(Board b, IList<Move> list)
         {
-            ulong pawns = b.SideToMove == 1 ? b.BlackPawns : b.WhitePawns;
-            ulong enemyPieces = b.SideToMove == 1 ? b.WhitePieces : b.BlackPieces;
+            ulong pawns = b.Pawns[b.SideToMove];
+            ulong enemyPieces = b.Pieces[b.SideToMove^1];
             var returnList = new List<Move>();
             while (pawns > 0)
             {
@@ -234,7 +248,7 @@ namespace mmchess
                     {
                         From = (byte)sq,
                         To = (byte)to,
-                        Bits = (byte)((byte)MoveBits.Pawn | (byte)b.SideToMove)
+                        Bits = (byte)MoveBits.Pawn 
                     };
                     var rank = to.Rank();
                     if (rank == 7 || rank == 0) //promotion
@@ -256,8 +270,8 @@ namespace mmchess
 
         static void GenerateKingMoves(Board b, IList<Move> list)
         {
-            ulong king = b.SideToMove == 1 ? b.BlackKing : b.WhiteKing;
-            ulong sidepieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            ulong king = b.King[b.SideToMove];
+            ulong sidepieces = b.Pieces[b.SideToMove];
 
             //only one king
             int sq = king.BitScanForward();
@@ -281,8 +295,8 @@ namespace mmchess
         }
         static void GenerateKnightMoves(Board b, IList<Move> list)
         {
-            ulong knights = b.SideToMove == 1 ? b.BlackKnights : b.WhiteKnights;
-            ulong sidepieces = b.SideToMove == 1 ? b.BlackPieces : b.WhitePieces;
+            ulong knights = b.Knights[b.SideToMove];
+            ulong sidepieces = b.Pieces[b.SideToMove];
 
             while (knights > 0)
             {
