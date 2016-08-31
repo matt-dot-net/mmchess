@@ -22,6 +22,9 @@ namespace mmchess
         public ulong EnPassant {get;set;}
         public int SideToMove{get;set;}
 
+public static readonly ulong [] FileMask = new ulong[8];
+public static readonly ulong[] RankMask = new ulong[8];
+
 public static readonly string[] SquareNames = new string[64]{
 	"a8","b8","c8","d8","e8","f8","g8","h8",
 	"a7","b7","c7","d7","e7","f7","g7","h7",	
@@ -65,7 +68,12 @@ public static readonly byte[] Rotated90Map = new byte[64]{
 	7,15,23,31,39,47,55,63    
 };
 
-
+        static Board(){
+            for(int i=0;i<64;i++){
+                FileMask[i.File()] |= BitMask.Mask[i];
+                RankMask[i.Rank()] |= BitMask.Mask[i];
+            }
+        }
         public Board(Board b)
         {
             throw new NotImplementedException();
