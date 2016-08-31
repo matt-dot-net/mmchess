@@ -135,10 +135,10 @@ namespace mmchess
             }
         }
 
-        public Boolean InCheck()
+        public Boolean InCheck(int sideToMove)
         {
-            int kingsq = King[SideToMove].BitScanForward();
-            int xside = SideToMove ^ 1;
+            int kingsq = King[sideToMove].BitScanForward();
+            int xside = sideToMove ^ 1;
             if ((MoveGenerator.BishopAttacks(this, kingsq) & (Bishops[xside] | Queens[xside])) > 0)
                 return true;
             else if ((MoveGenerator.RookAttacks(this, kingsq) & (Rooks[xside] | Queens[xside])) > 0)
@@ -162,8 +162,9 @@ namespace mmchess
             History.Add(hm);
 
             //make sure we are legal
-            if (InCheck())
+            if (InCheck(SideToMove^1))
             {
+                InCheck(SideToMove^1);
                 UnMakeMove();
                 return false;
             }

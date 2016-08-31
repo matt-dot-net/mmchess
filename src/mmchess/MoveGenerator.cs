@@ -644,7 +644,7 @@ namespace mmchess
 
             List<Move> list = new List<Move>();
 
-            if (b.InCheck())
+            if (b.InCheck(b.SideToMove))
             {
                 GenerateEvasions(b, list);
                 return list;
@@ -955,19 +955,16 @@ namespace mmchess
                     if (0 == (j & DiagAndsL45[i])) //make sure we aren't beyond the length of this diag
                         continue;
 
-
                     for (int x = DiagPosL45[i] + 1; x < 8; x++)
                     {
                         if (1 << x >= DiagAndsL45[i])
                             break;
-                        DiagLMoves[i, j] |= (ulong)1 << (i + (9 * (DiagPosL45[i] + x)));
+                        DiagLMoves[i, j] |= (ulong)1 << (i + (9 * (x-DiagPosL45[i])));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
                     for (int x = DiagPosL45[i] - 1; x >= 0; x--)
                     {
-                        if (1 << x >= DiagAndsL45[i])
-                            break;
                         DiagLMoves[i, j] |= (ulong)1 << (i + (-9 * (DiagPosL45[i] - x)));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                        
@@ -984,14 +981,12 @@ namespace mmchess
                     {
                         if (1 << x >= DiagAndsR45[i])
                             break;
-                        DiagRMoves[i, j] |= (ulong)1 << (i + (7 * (DiagPosR45[i] + x)));
+                        DiagRMoves[i, j] |= (ulong)1 << (i + (7 * (x-DiagPosR45[i])));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                              
                     }
                     for (int x = DiagPosR45[i] - 1; x >= 0; x--)
                     {
-                        if (1 << x >= DiagAndsR45[i])
-                            break;
                         DiagRMoves[i, j] |= (ulong)1 << (i + (-7 * (DiagPosR45[i] - x)));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                              
