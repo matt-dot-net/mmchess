@@ -9,29 +9,42 @@ namespace mmchess{
             var limitStr = Console.ReadLine();
             int limit = int.Parse(limitStr);
             var start = DateTime.Now;
-            for(int i=0;i<limit;i++){
-                Console.WriteLine(String.Format("Perft ({0}): {1}",i+1,Perft(b, i)));            
-            }
+            // for(int i=1;i<limit+1;i++){
+            //     Console.WriteLine(String.Format("Perft ({0}): {1}",i,Perft(b, i)));            
+            // }
+            PerftDivide(b,limit);
             var end = DateTime.Now;
             Console.WriteLine(String.Format("Completed in {0}ms",(end-start).TotalMilliseconds));
                         
         }
 
-        static int Perft(Board b, int depth){
-            
+        static void PerftDivide(Board b, int depth){
             var moves = MoveGenerator.GenerateMoves(b);
-            if(depth == 0)
-                return moves.Count;
-
-            int depthTotal=0;
+            ulong total=0;
             foreach(var m in moves){
                 b.MakeMove(m);
-                depthTotal += Perft(b,depth-1);
+                var nodes=Perft(b,depth-1);
+                total+=nodes;
+                Console.WriteLine(String.Format("{0}: {1}",m,nodes));
                 b.UnMakeMove();
             }
+            Console.WriteLine("Total: {0}",total);
+        }
+
+        static ulong Perft(Board b, int depth){
+            ulong nodes=0;
             
-            return depthTotal;
-            
+            if(depth == 0)
+                return 1;
+
+            var moves = MoveGenerator.GenerateMoves(b);
+            var nMoves = moves.Count;
+            foreach(var m in moves){
+                b.MakeMove(m);
+                nodes += Perft(b,depth-1);
+                b.UnMakeMove();
+            }
+            return nodes;
         }
     }
 }

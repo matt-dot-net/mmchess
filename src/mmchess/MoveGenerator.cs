@@ -208,13 +208,28 @@ namespace mmchess
                 ulong moves = PawnMoves[b.SideToMove, sq];
                 moves &= ~b.AllPieces; //remove any moves which are blocked
 
-                moves |= (PawnAttacks[b.SideToMove, sq] & enemyPieces & b.EnPassant); // add any captures
+                moves |= (PawnAttacks[b.SideToMove, sq] & (enemyPieces | b.EnPassant)); // add any captures
 
                 while (moves > 0)
                 {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
+                    if (Math.Abs(to - sq) == 16)
+                    {
+                        //make sure intermediate square isn't blocked
+                        if (b.SideToMove == 0)
+                        {
+                            if ((b.AllPieces & BitMask.Mask[to + 8]) > 0)
+                                continue;
+                        }
+
+                        else
+                        {
+                            if ((b.AllPieces & BitMask.Mask[to - 8]) > 0)
+                                continue;
+                        }
+                    }
                     var m = new Move
                     {
                         From = (byte)sq,
@@ -323,19 +338,19 @@ namespace mmchess
                     if ((j & (1 << (i >> 3))) == 0)
                         continue; // if there is no piece on this square
                     //int val = 0;
-                    for (int x = (i>>3) - 1; x >= 0; x--)
+                    for (int x = (i >> 3) - 1; x >= 0; x--)
                     {
-                        FileMoves[i, j] |= (ulong)((ulong)1 << (i - (8 * (7-x))));
+                        FileMoves[i, j] |= (ulong)((ulong)1 << (i - (8 * (7 - x))));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                    for (int x = (i >>3) + 1; x < 8; x++)
+                    for (int x = (i >> 3) + 1; x < 8; x++)
                     {
                         FileMoves[i, j] |= (ulong)((ulong)1 << (i + (8 * x)));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                }                
+                }
             }
         }
 
@@ -345,7 +360,7 @@ namespace mmchess
             {
                 for (int j = 1; j < 256; j++)
                 {
-                    if (1<<j > DiagAndsL45[i]) //make sure we aren't beyond the length of this diag
+                    if (0 == (j & DiagAndsL45[i])) //make sure we aren't beyond the length of this diag
                         continue;
 
                     if ((j & (1 << DiagPosL45[i])) == 0)
@@ -353,7 +368,7 @@ namespace mmchess
 
                     for (int x = DiagPosL45[i] + 1; x < 8; x++)
                     {
-                        if (1<<x >= DiagAndsL45[i])
+                        if (1 << x >= DiagAndsL45[i])
                             break;
                         DiagLMoves[i, j] |= (ulong)1 << (i + (9 * (DiagPosL45[i] + x)));
                         if (((1 << x) & j) != 0)
@@ -361,9 +376,9 @@ namespace mmchess
                     }
                     for (int x = DiagPosL45[i] - 1; x >= 0; x--)
                     {
-                        if (1<<x >= DiagAndsL45[i])
+                        if (1 << x >= DiagAndsL45[i])
                             break;
-                        DiagLMoves[i, j] |= (ulong)1 << (i + (-9 * (DiagPosL45[i] + x)));
+                        DiagLMoves[i, j] |= (ulong)1 << (i + (-9 * (DiagPosL45[i] - x)));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                        
                     }
@@ -371,7 +386,7 @@ namespace mmchess
 
                 for (int j = 1; j < 256; j++)
                 {
-                    if (1<<j > DiagAndsR45[i])
+                    if (0 == (j & DiagAndsR45[i]))
                         continue;
 
                     if ((j & 1 << DiagPosR45[i]) == 0)
@@ -379,7 +394,7 @@ namespace mmchess
 
                     for (int x = DiagPosR45[i] + 1; x < 8; x++)
                     {
-                        if (1<<x >= DiagAndsR45[i])
+                        if (1 << x >= DiagAndsR45[i])
                             break;
                         DiagRMoves[i, j] |= (ulong)1 << (i + (7 * (DiagPosR45[i] + x)));
                         if (((1 << x) & j) != 0)
@@ -387,9 +402,9 @@ namespace mmchess
                     }
                     for (int x = DiagPosR45[i] - 1; x >= 0; x--)
                     {
-                        if (1<<x >= DiagAndsR45[i])
+                        if (1 << x >= DiagAndsR45[i])
                             break;
-                        DiagRMoves[i, j] |= (ulong)1 << (i + (-7 * (DiagPosR45[i] + x)));
+                        DiagRMoves[i, j] |= (ulong)1 << (i + (-7 * (DiagPosR45[i] - x)));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                              
                     }
@@ -409,7 +424,7 @@ namespace mmchess
                 if (i < 16)
                     moves |= BitMask.Mask[i + 16];
                 //captures
-                if (i < 57 && i.File() - (i + 7).File() == 1)
+                if (i < 56 && i.File() - (i + 7).File() == 1)
                     attacks |= BitMask.Mask[i + 7];
                 if (i < 55 && (i + 9).File() - i.File() == 1)
                     attacks |= BitMask.Mask[i + 9];
@@ -426,9 +441,9 @@ namespace mmchess
                 if (i > 47)
                     moves |= BitMask.Mask[i - 16];
                 //captures
-                if (i > 9 && i.File() - (i - 9).File() == 1)
+                if (i > 8 && i.File() - (i - 9).File() == 1)
                     attacks |= BitMask.Mask[i - 9];
-                if (i > 7 && (i - 7).File() - i.File() == 1)
+                if ((i - 7).File() - i.File() == 1)
                     attacks |= BitMask.Mask[i - 7];
                 PawnMoves[0, i] = moves;
                 PawnAttacks[0, i] = attacks;
