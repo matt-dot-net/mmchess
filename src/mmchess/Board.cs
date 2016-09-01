@@ -186,6 +186,8 @@ namespace mmchess
         public void UnMakeMove()
         {
             var index = History.Count - 1;
+            if(index<0)
+                return;
             var m = History[index];
             SideToMove ^= 1;
             EnPassant = m.EnPassant;
@@ -204,6 +206,8 @@ namespace mmchess
                 Bishops[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Knight) > 0)
                 Knights[sideToMove] ^= moveMask;
+            
+            EnPassant=0;
             if ((m.Bits & (byte)MoveBits.Pawn) > 0)
             {
                 Pawns[sideToMove] ^= moveMask;
@@ -211,8 +215,7 @@ namespace mmchess
                 if (Math.Abs(m.To - m.From) == 16)
                     EnPassant = BitMask.Mask[m.From + (sideToMove == 1 ? 8 : -8)];
             }
-            else
-                EnPassant = 0;
+
         }
     }
 }
