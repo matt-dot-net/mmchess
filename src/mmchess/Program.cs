@@ -37,13 +37,17 @@ namespace mmchess{
             var startTime = DateTime.Now;
             var moves = MoveGenerator.GenerateMoves(b);
             ulong total=0;
+            int i=0;
             foreach(var m in moves){
-                b.MakeMove(m);
+                if(!b.MakeMove(m))
+                    continue;
+                i++;
                 var nodes=Perft(b,depth-1);
                 total+=nodes;
                 Console.WriteLine(String.Format("{0}: {1}",m,nodes));
                 b.UnMakeMove();
             }
+            Console.WriteLine("Moves: {0}",i);
             Console.WriteLine("Total: {0}",total);
             var endTime = DateTime.Now;
             Console.WriteLine("Completed in {0}ms", (endTime-startTime).TotalMilliseconds);
