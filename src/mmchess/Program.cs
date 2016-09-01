@@ -34,6 +34,7 @@ namespace mmchess{
         }
 
         static void PerftDivide(Board b, int depth){
+            var startTime = DateTime.Now;
             var moves = MoveGenerator.GenerateMoves(b);
             ulong total=0;
             foreach(var m in moves){
@@ -44,6 +45,8 @@ namespace mmchess{
                 b.UnMakeMove();
             }
             Console.WriteLine("Total: {0}",total);
+            var endTime = DateTime.Now;
+            Console.WriteLine("Completed in {0}ms", (endTime-startTime).TotalMilliseconds);
         }
 
         static ulong Perft(Board b, int depth){

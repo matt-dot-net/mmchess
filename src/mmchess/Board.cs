@@ -6,8 +6,16 @@ namespace mmchess
 {
     public class Board
     {
+        enum CastleBits
+        {
+            WKingSide = 1,
+            WQueenSide = 2,
+            BKingSide = 4,
+            BQueenSide = 8
+        }
+
         public List<HistoryMove> History { get; set; }
-        public byte CastleStatus{get;set;}
+        public byte CastleStatus { get; set; }
         public ulong[] Pawns;
         public ulong[] Knights;
         public ulong[] Bishops;
@@ -88,7 +96,7 @@ namespace mmchess
 
         public void Initialize()
         {
-            CastleStatus= 0xF;
+            CastleStatus = 0xF;
 
             History = new List<HistoryMove>();
             Pawns = new ulong[2];
@@ -153,27 +161,77 @@ namespace mmchess
             return false;
         }
 
-        void UpdateCastleStatus(Move m){
+        void UpdateCastleStatus(Move m)
+        {
             //determine if we even care
-            int shift = SideToMove*2;
-            if((CastleStatus>>shift)==0)
+            int shift = SideToMove * 2;
+            if ((CastleStatus >> shift) == 0)
                 return;
 
-            if((m.Bits & (byte)(MoveBits.King | MoveBits.Rook))>0)
+            if ((m.Bits & (byte)(MoveBits.King | MoveBits.Rook)) > 0)
             {
                 //we've moved a king or a rook
-                if((BitMask.Mask[m.From] & King[SideToMove]) >0) //if we are moving the king        
+                if ((BitMask.Mask[m.From] & King[SideToMove]) > 0) //if we are moving the king        
                 {
                     //moved a king, wipe out castle status
-                    CastleStatus &= (byte)(SideToMove==0?3:6);
+                    CastleStatus &= (byte)(SideToMove == 0 ? 3 : 6);
                 }
-                else{
-                    if(SideToMove==1)
-                     CastleStatus &=(byte)(m.From.File()==7?7:11);
+                else
+                { //moving a rook
+                    if (SideToMove == 1)
+                        CastleStatus &= (byte)(m.From.File() == 7 ? 7 : 11);
                     else
-                     CastleStatus &=(byte)(m.From.File()==7?14:13);
+                        CastleStatus &= (byte)(m.From.File() == 7 ? 14 : 13);
                 }
             }
+        }
+
+        void MakeCastleMove(Move m)
+        {
+            //king from->to work will be handled by normal move 
+            //code.  We need to handle the rook movement here
+            int from = -1, to = -1;
+            if (SideToMove == 0)
+            {
+                //White
+                if (m.To == 62)
+                {
+                    from = 63;
+                    to = 61;
+                }
+                else
+                {
+                    from = 56;
+                    to = 59;
+                }
+            }
+            else
+            {
+                //Black
+                if (m.To == 06)
+                {
+                    to = 05;
+                    from = 07;
+                }
+                else
+                {
+                    to = 3;
+                    from = 0;
+                }
+            }
+            var moveMask = (BitMask.Mask[from] | BitMask.Mask[to]);
+            Rooks[SideToMove] ^= moveMask;
+            Pieces[SideToMove] ^= moveMask;
+            AllPieces ^= moveMask;
+            AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[from]] | BitMask.Mask[Rotated90Map[to]]);
+            AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]]);
+            AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]]);
+
+        }
+
+        void UnmakeCastleMove(Move m)
+        {
+            throw new NotImplementedException();
         }
 
         public bool MakeMove(Move m)
@@ -181,6 +239,11 @@ namespace mmchess
             var hm = new HistoryMove(m);
             hm.EnPassant = EnPassant;
             hm.CastleStatus = CastleStatus;
+
+            if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.To.Rank() - m.From.Rank()) == 2)
+            {
+                MakeCastleMove(m);
+            }
 
             UpdateCastleStatus(m);
             UpdateCapture(m, hm);
@@ -278,37 +341,46 @@ namespace mmchess
             SideToMove ^= 1;
 
             //restore captured piece
-            if(m.CapturedPiece > 0)
-            {
-                var xside = SideToMove^1;
-                int sq= m.To;
-                if(m.CapturedPiece == MoveBits.Pawn){
-                    if(BitMask.Mask[m.To] == m.EnPassant){
-                        sq = SideToMove==0?m.To+8:m.To-8;
-                        Pawns[xside] |= BitMask.Mask[sq];
-                    }
-                    else
-                        Pawns[xside] |= BitMask.Mask[m.To];
-                }
-                if(m.CapturedPiece == MoveBits.Knight)
-                    Knights[xside] |= BitMask.Mask[m.To];
-                else if (m.CapturedPiece == MoveBits.Bishop)
-                    Bishops[xside] |= BitMask.Mask[m.To];
-                else if (m.CapturedPiece == MoveBits.Rook)
-                    Rooks[xside] |= BitMask.Mask[m.To];
-                else if (m.CapturedPiece == MoveBits.Queen)
-                    Queens[xside] |= BitMask.Mask[m.To];
-                AllPieces ^= BitMask.Mask[sq];
-                Pieces[xside] ^= BitMask.Mask[sq];
-                AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[sq]]; 
-                AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
-                AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];               
+            if (m.CapturedPiece > 0)
+                UnmakeCapture(m);
+
+            if ((m.Bits &(byte)MoveBits.King)>0 && Math.Abs(m.From.Rank()-m.To.Rank())==2){
+                UnmakeCastleMove(m);
             }
 
             EnPassant = m.EnPassant;
-            CastleStatus= m.CastleStatus;
+            CastleStatus = m.CastleStatus;
             UpdateBitBoards(m);
             History.RemoveAt(index);
+        }
+
+        private void UnmakeCapture(HistoryMove m)
+        {
+            var xside = SideToMove ^ 1;
+            int sq = m.To;
+            if (m.CapturedPiece == MoveBits.Pawn)
+            {
+                if (BitMask.Mask[m.To] == m.EnPassant)
+                {
+                    sq = SideToMove == 0 ? m.To + 8 : m.To - 8;
+                    Pawns[xside] |= BitMask.Mask[sq];
+                }
+                else
+                    Pawns[xside] |= BitMask.Mask[m.To];
+            }
+            if (m.CapturedPiece == MoveBits.Knight)
+                Knights[xside] |= BitMask.Mask[m.To];
+            else if (m.CapturedPiece == MoveBits.Bishop)
+                Bishops[xside] |= BitMask.Mask[m.To];
+            else if (m.CapturedPiece == MoveBits.Rook)
+                Rooks[xside] |= BitMask.Mask[m.To];
+            else if (m.CapturedPiece == MoveBits.Queen)
+                Queens[xside] |= BitMask.Mask[m.To];
+            AllPieces ^= BitMask.Mask[sq];
+            Pieces[xside] ^= BitMask.Mask[sq];
+            AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[sq]];
+            AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
+            AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
         }
 
         private void UpdateBoards(Move m, int sideToMove, ulong moveMask)
@@ -322,6 +394,8 @@ namespace mmchess
                 Bishops[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Knight) > 0)
                 Knights[sideToMove] ^= moveMask;
+            if ((m.Bits & (byte)MoveBits.Rook)>0)
+                Rooks[sideToMove] ^= moveMask;
 
             EnPassant = 0;
             if ((m.Bits & (byte)MoveBits.Pawn) > 0)

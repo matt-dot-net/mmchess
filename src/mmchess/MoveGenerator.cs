@@ -316,7 +316,7 @@ namespace mmchess
                 var toi = moves.BitScanForward();
                 moves ^= BitMask.Mask[toi];
                 var capture = BitMask.Mask[toi] & b.Pieces[xSideToMove];
-                if ((Attacks(b, toi) & b.Pieces[xSideToMove])==0 && (Directions[fromi, toi] != check_direction1) && (Directions[fromi, toi] != check_direction2))
+                if ((Attacks(b, toi) & b.Pieces[xSideToMove]) == 0 && (Directions[fromi, toi] != check_direction1) && (Directions[fromi, toi] != check_direction2))
                 {
                     list.Add(new Move()
                     {
@@ -466,7 +466,7 @@ namespace mmchess
 
                     list.Add(new Move()
                     {
-                        From = (byte)(toi+16),
+                        From = (byte)(toi + 16),
                         To = (byte)toi,
                         Bits = (byte)MoveBits.Pawn
                     });
@@ -482,9 +482,9 @@ namespace mmchess
                         continue;
                     var newMove = new Move()
                     {
-                        From = (byte)(toi+8),
+                        From = (byte)(toi + 8),
                         To = (byte)toi,
-                        Bits = (byte)MoveBits.Pawn 
+                        Bits = (byte)MoveBits.Pawn
                     };
                     if (toi < 8)
                         GeneratePromotions(list, newMove);
@@ -526,7 +526,7 @@ namespace mmchess
 
                         else
                         {
-                            
+
                             list.Add(new Move
                             {
                                 From = (byte)(toi + 9),
@@ -565,7 +565,7 @@ namespace mmchess
 
                     list.Add(new Move()
                     {
-                        From = (byte)(toi-16),
+                        From = (byte)(toi - 16),
                         To = (byte)toi,
                         Bits = (byte)MoveBits.Pawn
                     });
@@ -579,7 +579,7 @@ namespace mmchess
                         continue;
                     var newMove = new Move()
                     {
-                        From = (byte)(toi-8),
+                        From = (byte)(toi - 8),
                         To = (byte)toi,
                         Bits = (byte)MoveBits.Pawn
                     };
@@ -592,9 +592,9 @@ namespace mmchess
                 {
                     var toi = pvictims.BitScanForward();
                     pvictims ^= BitMask.Mask[toi];
-                    
+
                     var capture = BitMask.Mask[toi] & (b.Pieces[xSideToMove] | b.EnPassant);
-                    
+
                     if ((BitMask.Mask[toi - 7] & b.Pawns[1]) > 0 &&
                         !PinnedOnKing(b, toi - 7) && SquareExtensions.FileDistance(toi, toi - 7) == 1)
                     {
@@ -819,12 +819,12 @@ namespace mmchess
                                 continue;
                         }
                     }
-                    var capture = (BitMask.Mask[to] & (b.AllPieces|b.EnPassant)) > 0;
+                    var capture = (BitMask.Mask[to] & (b.AllPieces | b.EnPassant)) > 0;
                     var m = new Move
                     {
                         From = (byte)sq,
                         To = (byte)to,
-                        Bits = (byte)((byte)MoveBits.Pawn |(byte)(capture?(byte)MoveBits.Capture:(byte)0))
+                        Bits = (byte)((byte)MoveBits.Pawn | (byte)(capture ? (byte)MoveBits.Capture : (byte)0))
                     };
                     var rank = to.Rank();
                     if (rank == 7 || rank == 0) //promotion
@@ -876,65 +876,81 @@ namespace mmchess
             }
 
             //generate castling moves
-            var bits =(b.CastleStatus & (b.SideToMove*2)); 
-            if(bits>0){
-                if((bits & 1)>0) {
-                    //kingside
-                    //see if intermediate squares are blocked
-                    if(b.SideToMove == 0){
-                        if(!((((BitMask.Mask[61]|BitMask.Mask[62]) & b.AllPieces) >0) ||
-                            ((Attacks(b,61) | Attacks(b,62)) & b.Pieces[b.SideToMove^1])>0))
-                        {
-                            list.Add(new Move{
-                                From=(byte)sq,
-                                To=(byte)62,
-                                Bits=(byte)MoveBits.King
-                            });
-                        }
-                    }
-                    else{
-                            if(!((((BitMask.Mask[05]|BitMask.Mask[06]) & b.AllPieces) >0) ||
-                            ((Attacks(b,05) | Attacks(b,06)) & b.Pieces[b.SideToMove^1])>0))
-                        {
-                            list.Add(new Move{
-                                From=(byte)sq,
-                                To=(byte)06,
-                                Bits=(byte)MoveBits.King
-                            });
-                        }
-                    }
+            var bits = (b.CastleStatus & (b.SideToMove * 2));
+            if(bits > 0)
+                GenerateCastleMoves(b, list, sq, bits);
+        }
 
-
+        private static void GenerateCastleMoves(Board b, IList<Move> list, int sq, int bits)
+        {
+            if ((bits & 1) > 0)
+            {
+                //kingside
+                //see if intermediate squares are blocked
+                if (b.SideToMove == 0)
+                {
+                    if (!((((BitMask.Mask[61] | BitMask.Mask[62]) & b.AllPieces) > 0) ||
+                        ((Attacks(b, 61) | Attacks(b, 62)) & b.Pieces[b.SideToMove ^ 1]) > 0))
+                    {
+                        list.Add(new Move
+                        {
+                            From = (byte)sq,
+                            To = (byte)62,
+                            Bits = (byte)MoveBits.King
+                        });
+                    }
                 }
-                else if ((bits & 2)>0){
-                    //see if intermediate squares are blocked
-                    if(b.SideToMove == 0){
-                        if(!((((BitMask.Mask[59]|BitMask.Mask[58]|BitMask.Mask[57]) & b.AllPieces) >0) ||
-                            ((Attacks(b,59) | Attacks(b,58) |  Attacks(b,57)) & b.Pieces[b.SideToMove^1])>0))
+                else
+                {
+                    if (!((((BitMask.Mask[05] | BitMask.Mask[06]) & b.AllPieces) > 0) ||
+                    ((Attacks(b, 05) | Attacks(b, 06)) & b.Pieces[b.SideToMove ^ 1]) > 0))
+                    {
+                        list.Add(new Move
                         {
-                            list.Add(new Move{
-                                From=(byte)sq,
-                                To=(byte)58,
-                                Bits=(byte)MoveBits.King
-                            });
-                        }
+                            From = (byte)sq,
+                            To = (byte)06,
+                            Bits = (byte)MoveBits.King
+                        });
                     }
-                    else{
-                            if(!((((BitMask.Mask[05]|BitMask.Mask[06]) & b.AllPieces) >0) ||
-                            ((Attacks(b,05) | Attacks(b,06) & b.Pieces[b.SideToMove^1])>0)))
-                        {
-                            list.Add(new Move{
-                                From=(byte)sq,
-                                To=(byte)02,
-                                Bits=(byte)MoveBits.King
-                            });
-                        }
-                    }
-
-                    
                 }
+
+
+            }
+            else if ((bits & 2) > 0)
+            {
+                //see if intermediate squares are blocked
+                if (b.SideToMove == 0)
+                {
+                    if (!((((BitMask.Mask[59] | BitMask.Mask[58] | BitMask.Mask[57]) & b.AllPieces) > 0) ||
+                        ((Attacks(b, 59) | Attacks(b, 58) | Attacks(b, 57)) & b.Pieces[b.SideToMove ^ 1]) > 0))
+                    {
+                        list.Add(new Move
+                        {
+                            From = (byte)sq,
+                            To = (byte)58,
+                            Bits = (byte)MoveBits.King
+                        });
+                    }
+                }
+                else
+                {
+                    if (!((((BitMask.Mask[05] | BitMask.Mask[06]) & b.AllPieces) > 0) ||
+                    ((Attacks(b, 05) | Attacks(b, 06) & b.Pieces[b.SideToMove ^ 1]) > 0)))
+                    {
+                        list.Add(new Move
+                        {
+                            From = (byte)sq,
+                            To = (byte)02,
+                            Bits = (byte)MoveBits.King
+                        });
+                    }
+                }
+
+
+
             }
         }
+
         static void GenerateKnightMoves(Board b, IList<Move> list)
         {
             ulong knights = b.Knights[b.SideToMove];
@@ -970,35 +986,38 @@ namespace mmchess
             for (int i = 0; i < 64; i++)
             {
                 //and for each possible rank setup
-                for (int j = 1; j < 256; j++)
+                for (int j = 0; j < 256; j++)
                 {
-
-                    for (int x = (i % 8) - 1; x >= 0; x--)
+                    int diff=1;
+                    for (int x = (i % 8) - 1; x >= 0; x--,diff++)
                     {
-                        RankMoves[i, j] |= (ulong)((ulong)1 << (8 * i.Rank() + x));
+                        RankMoves[i, j] |= BitMask.Mask[i - diff];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                    for (int x = (i % 8) + 1; x < 8; x++)
+                    diff=1;
+                    for (int x = (i % 8) + 1; x < 8; x++,diff++)
                     {
-                        RankMoves[i, j] |= (ulong)((ulong)1 << (8 * i.Rank() + x));
+                        RankMoves[i, j] |= BitMask.Mask[i + diff];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
                 }
                 //foreach possible file setup
-                for (int j = 1; j < 256; j++)
+                for (int j = 0; j < 256; j++)
                 {
 
-                    for (int x = (i >> 3) - 1; x >= 0; x--)
+                    int diff=1;
+                    for (int x = (i >> 3) - 1; x >= 0; x--,diff++)
                     {
-                        FileMoves[i, j] |= (ulong)((ulong)1 << (i - (8 * (7 - x))));
+                        FileMoves[i, j] |= BitMask.Mask[i-(8*diff)];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                    for (int x = (i >> 3) + 1; x < 8; x++)
+                    diff=1;
+                    for (int x = (i >> 3) + 1; x < 8; x++,diff++)
                     {
-                        FileMoves[i, j] |= (ulong)((ulong)1 << (i + (8 * x)));
+                        FileMoves[i, j] |= BitMask.Mask[i+(8*diff)];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
@@ -1010,7 +1029,7 @@ namespace mmchess
         {
             for (int i = 0; i < 64; i++)
             {
-                for (int j = 1; j < 256; j++)
+                for (int j = 0; j < 256; j++)
                 {
                     if (0 == (j & DiagAndsL45[i])) //make sure we aren't beyond the length of this diag
                         continue;
@@ -1019,7 +1038,7 @@ namespace mmchess
                     {
                         if (1 << x >= DiagAndsL45[i])
                             break;
-                        DiagLMoves[i, j] |= (ulong)1 << (i + (9 * (x-DiagPosL45[i])));
+                        DiagLMoves[i, j] |= (ulong)1 << (i + (9 * (x - DiagPosL45[i])));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
@@ -1031,7 +1050,7 @@ namespace mmchess
                     }
                 }
 
-                for (int j = 1; j < 256; j++)
+                for (int j = 0; j < 256; j++)
                 {
                     if (0 == (j & DiagAndsR45[i]))
                         continue;
@@ -1040,7 +1059,7 @@ namespace mmchess
                     {
                         if (1 << x >= DiagAndsR45[i])
                             break;
-                        DiagRMoves[i, j] |= (ulong)1 << (i + (7 * (x-DiagPosR45[i])));
+                        DiagRMoves[i, j] |= (ulong)1 << (i + (7 * (x - DiagPosR45[i])));
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding                              
                     }
