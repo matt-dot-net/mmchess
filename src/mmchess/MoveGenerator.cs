@@ -874,6 +874,66 @@ namespace mmchess
                 };
                 list.Add(m);
             }
+
+            //generate castling moves
+            var bits =(b.CastleStatus & (b.SideToMove*2)); 
+            if(bits>0){
+                if((bits & 1)>0) {
+                    //kingside
+                    //see if intermediate squares are blocked
+                    if(b.SideToMove == 0){
+                        if(!((((BitMask.Mask[61]|BitMask.Mask[62]) & b.AllPieces) >0) ||
+                            ((Attacks(b,61) | Attacks(b,62)) & b.Pieces[b.SideToMove^1])>0))
+                        {
+                            list.Add(new Move{
+                                From=(byte)sq,
+                                To=(byte)62,
+                                Bits=(byte)MoveBits.King
+                            });
+                        }
+                    }
+                    else{
+                            if(!((((BitMask.Mask[05]|BitMask.Mask[06]) & b.AllPieces) >0) ||
+                            ((Attacks(b,05) | Attacks(b,06)) & b.Pieces[b.SideToMove^1])>0))
+                        {
+                            list.Add(new Move{
+                                From=(byte)sq,
+                                To=(byte)06,
+                                Bits=(byte)MoveBits.King
+                            });
+                        }
+                    }
+
+
+                }
+                else if ((bits & 2)>0){
+                    //see if intermediate squares are blocked
+                    if(b.SideToMove == 0){
+                        if(!((((BitMask.Mask[59]|BitMask.Mask[58]|BitMask.Mask[57]) & b.AllPieces) >0) ||
+                            ((Attacks(b,59) | Attacks(b,58) |  Attacks(b,57)) & b.Pieces[b.SideToMove^1])>0))
+                        {
+                            list.Add(new Move{
+                                From=(byte)sq,
+                                To=(byte)58,
+                                Bits=(byte)MoveBits.King
+                            });
+                        }
+                    }
+                    else{
+                            if(!((((BitMask.Mask[05]|BitMask.Mask[06]) & b.AllPieces) >0) ||
+                            ((Attacks(b,05) | Attacks(b,06) & b.Pieces[b.SideToMove^1])>0)))
+                        {
+                            list.Add(new Move{
+                                From=(byte)sq,
+                                To=(byte)02,
+                                Bits=(byte)MoveBits.King
+                            });
+                        }
+                    }
+
+                    
+                }
+            }
         }
         static void GenerateKnightMoves(Board b, IList<Move> list)
         {
