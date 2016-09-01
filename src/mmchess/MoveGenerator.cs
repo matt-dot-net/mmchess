@@ -976,7 +976,6 @@ namespace mmchess
                     if (0 == (j & DiagAndsR45[i]))
                         continue;
 
-
                     for (int x = DiagPosR45[i] + 1; x < 8; x++)
                     {
                         if (1 << x >= DiagAndsR45[i])

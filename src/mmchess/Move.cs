@@ -1,5 +1,10 @@
+using System;
+
 namespace mmchess
 {
+    public class InvalidMoveStringException : Exception{    
+        public InvalidMoveStringException(String moveString) : base(moveString){}        
+    }
     public enum MoveBits
     {
 
@@ -39,6 +44,63 @@ namespace mmchess
         public override string ToString()
         {
             return Board.SquareNames[From] + Board.SquareNames[To];
+        }
+
+        public static Boolean TryParseMove(Board b, string moveString, out Move m){
+            try{
+                m = ParseMove(b,moveString);
+            }catch(InvalidMoveStringException){
+                m=null;
+                return false;
+            }
+            return true;
+        }
+        public static Move ParseMove(Board b, string moveString){
+            var from = moveString.Substring(0,2);
+            var to = moveString.Substring(2,2);
+            if(moveString.Length != 4)
+                throw new InvalidMoveStringException(moveString);
+            int fromIndex =-1, toIndex=-1;
+            for(int i=0;i<64;i++)
+            {   
+                if(Board.SquareNames[i]==from)
+                    fromIndex=i;
+                if(Board.SquareNames[i]==to)
+                    toIndex=i;
+            }
+
+            if(fromIndex==-1 || toIndex==-1)
+                throw new InvalidMoveStringException(moveString);
+            
+            MoveBits bits=0;
+            if((b.Knights[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.Knight;
+            else if ((b.Bishops[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.Bishop;
+            else if ((b.Rooks[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.Rook;
+            else if ((b.Queens[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.Queen;
+            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.Pawn;
+            else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+                bits |= MoveBits.King;
+            else 
+                throw new InvalidMoveStringException(moveString);
+
+            if((b.AllPieces & BitMask.Mask[toIndex]) > 0){
+                //let's make sure we are capturing the right Piece
+                if((b.Pieces[b.SideToMove] & BitMask.Mask[toIndex])>0)
+                    throw new InvalidMoveStringException(moveString);
+
+                bits |= MoveBits.Capture;
+            }
+
+            return new Move{
+                From=(byte)fromIndex,
+                To=(byte)toIndex,
+                Bits = (byte)bits
+            };
         }
     }
 

@@ -5,14 +5,32 @@ namespace mmchess{
         public static void Main(string [] args)
         {
             var b = new Board();
-            Console.WriteLine("Enter depth");
-            var limitStr = Console.ReadLine();
-            int limit = int.Parse(limitStr);
-            var start = DateTime.Now;
-            PerftDivide(b,limit);
-            var end = DateTime.Now;
-            Console.WriteLine(String.Format("Completed in {0}ms",(end-start).TotalMilliseconds));
-                        
+
+            Command cmd = null;
+
+            while(cmd == null || cmd.Value != CommandVal.Quit){
+                Console.Write("> ");
+                var input = Console.ReadLine();
+                cmd = CommandParser.ParseCommand(input);
+
+                if(cmd.Value == CommandVal.PERFT){
+                    int depth = int.Parse(cmd.Arguments[1]);
+                    PerftDivide(b, depth);
+                }
+
+                if(cmd.Value == CommandVal.MoveInput){
+                    var m = Move.ParseMove(b,cmd.Arguments[0]);
+                    if(m == null || !b.MakeMove(m))
+                    {
+                        Console.WriteLine("Invalid Move");
+                        continue;
+                    }   
+                }
+
+                if(cmd.Value == CommandVal.Undo){
+                    b.UnMakeMove();
+                }
+            }
         }
 
         static void PerftDivide(Board b, int depth){
