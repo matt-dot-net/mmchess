@@ -12,8 +12,6 @@ namespace mmchess
         Queen = 900
     }
 
-    
-
     public static class Evaluator
     {
         public static readonly Int16 NOT_CASTLED_PENALTY = -30;
@@ -31,13 +29,13 @@ namespace mmchess
             },
             {
              0 ,0 ,0 ,0 ,0 ,0 ,0 , 0,
-            -2 ,-2,-2,-2,-2,-2,-2,-2,    
-             2 , 4, 4, 4, 4, 4, 4, 2,     
-             2 , 4, 4, 8, 8, 4, 4, 2,   
-             8 ,10,12,16,16,12,10, 8,  
+            -2 ,-2,-2,-2,-2,-2,-2,-2,
+             2 , 4, 4, 4, 4, 4, 4, 2,
+             2 , 4, 4, 8, 8, 4, 4, 2,
+             8 ,10,12,16,16,12,10, 8,
              16,16,16,16,16,16,16,16,
-             24,24,24,24,24,24,24,24, 
-             0 ,0 ,0 ,0 ,0 ,0 ,0 , 0,                                                                           
+             24,24,24,24,24,24,24,24,
+             0 ,0 ,0 ,0 ,0 ,0 ,0 , 0,
             },
 
         };
@@ -75,7 +73,7 @@ namespace mmchess
              00, 16, 16, 16, 16, 16, 16, 00,
              00, 08, 16, 16, 16, 16, 08, 00,
              00, 04, 08, 08, 08, 08, 04, 00,
-             04, 16, 04, 04, 04, 04, 16, 04, 
+             04, 16, 04, 04, 04, 04, 16, 04,
              00, 00,-10, 00 ,00,-10, 00, 00
             },
             {
@@ -95,44 +93,48 @@ namespace mmchess
             int eval = 0;
             eval += EvaluateMaterial(b);
 
+            eval += EvaluateDevelopment(b);
+
             return eval;
         }
 
         static int EvaluateDevelopment(Board b)
         {
-            int eval = 0;
-            int side = b.SideToMove;
-            int xside = side ^ 1;
-            ulong pieces;
-
-            pieces = b.Knights[side];
-            while (pieces > 0)
+            int [] eval = new int[2];
+            for (int side = 0; side < 2; side++)
             {
-                var sq = pieces.BitScanForward();
-                pieces ^= BitMask.Mask[sq];
+                ulong pieces;
 
-                eval += KnightDevelopment[side, sq];
+                pieces = b.Knights[side];
+                while (pieces > 0)
+                {
+                    var sq = pieces.BitScanForward();
+                    pieces ^= BitMask.Mask[sq];
+
+                    eval[side] += KnightDevelopment[side, sq];
+                }
+
+                pieces = b.Bishops[side];
+                while (pieces > 0)
+                {
+                    var sq = pieces.BitScanForward();
+                    pieces ^= BitMask.Mask[sq];
+
+                    eval[side] += BishopDevelopment[side, sq];
+                }
+
+                pieces = b.Pawns[side];
+                while (pieces > 0)
+                {
+                    var sq = pieces.BitScanForward();
+                    pieces ^= BitMask.Mask[sq];
+                    eval[side] += PawnDevelopment[side, sq];
+                }
+
+                if (((b.CastleStatus >> (2 * side)) & 3) > 0)
+                    eval[side] += NOT_CASTLED_PENALTY;
             }
-
-            pieces = b.Bishops[side];
-            while(pieces>0){
-                var sq = pieces.BitScanForward();
-                pieces ^= BitMask.Mask[sq];
-
-                eval += BishopDevelopment[side, sq];                
-            }
-
-            pieces = b.Pawns[side];
-            while (pieces >0){
-                var sq= pieces.BitScanForward();
-                pieces ^= BitMask.Mask[sq];
-                eval += PawnDevelopment[side,sq];
-            }
-
-            if(((b.CastleStatus >> (2*b.SideToMove)) & 3)>0)
-                eval+= NOT_CASTLED_PENALTY;
-
-            return eval;
+            return eval[b.SideToMove]-eval[b.SideToMove^1];
         }
 
         static int EvaluateMaterial(Board b)
