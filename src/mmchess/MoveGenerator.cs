@@ -476,8 +476,6 @@ namespace mmchess
                     var toi = padvances1.BitScanForward();
                     padvances1 ^= BitMask.Mask[toi];
 
-                    if (toi.Rank() < 4)
-                        continue;
                     if (PinnedOnKing(b, toi + 8))
                         continue;
                     var newMove = new Move()
