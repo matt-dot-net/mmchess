@@ -495,7 +495,7 @@ namespace mmchess
                 {
                     var toi = pvictims.BitScanForward();
                     pvictims ^= BitMask.Mask[toi];
-                    var capture = BitMask.Mask[toi] & (b.Pieces[xSideToMove] | b.EnPassant);
+                    var capture = true;
                     if ((BitMask.Mask[toi + 7] & b.Pawns[0]) > 0 &&
                         !PinnedOnKing(b, toi + 7) && SquareExtensions.FileDistance(toi, toi + 7) == 1)
                     {
@@ -508,12 +508,12 @@ namespace mmchess
                             {
                                 From = (byte)(toi + 7),
                                 To = (byte)toi,
-                                Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
+                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
                             });
 
                         }
                     }
-                    if ((BitMask.Mask[toi + 9] & b.Pawns[1]) > 0 &&
+                    if ((BitMask.Mask[toi + 9] & b.Pawns[0]) > 0 &&
                         !PinnedOnKing(b, toi + 9) && SquareExtensions.FileDistance(toi, toi + 9) == 1)
                     {
                         if (toi < 8)
@@ -531,7 +531,7 @@ namespace mmchess
                             {
                                 From = (byte)(toi + 9),
                                 To = (byte)toi,
-                                Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
+                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
                             });
                         }
                     }
