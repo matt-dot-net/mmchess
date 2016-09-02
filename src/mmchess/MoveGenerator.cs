@@ -245,8 +245,8 @@ namespace mmchess
             if ((b.Queens[0] | b.Queens[1]) > 0)
                 returnVal |= (QueenAttacks(b, sq) & (b.Queens[0] | b.Queens[1]));
             returnVal |= (KingMoves[sq] & (b.King[0] | b.King[1]));
-            return BishopAttacks(b, sq) | RankAttacks(b, sq) | FileAttacks(b, sq) |
-                (PawnAttacks[b.SideToMove ^ 1, sq] & b.Pawns[b.SideToMove ^ 1]);
+
+            return returnVal;
         }
 
         public static ulong BishopAttacks(Board b, int sq)
