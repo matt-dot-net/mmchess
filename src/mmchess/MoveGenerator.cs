@@ -873,8 +873,8 @@ namespace mmchess
             }
 
             //generate castling moves
-            var bits = (b.CastleStatus & (3 << b.SideToMove * 2));
-            if(bits > 0)
+            var bits = b.CastleStatus >>  (b.SideToMove * 2);
+            if((bits&3) > 0)
                 GenerateCastleMoves(b, list, sq, bits);
         }
 
