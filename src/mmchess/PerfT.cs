@@ -23,7 +23,7 @@ namespace mmchess
             foreach (var m in moves)
             {
                 if (!b.MakeMove(m))
-                    return;
+                    continue;
                 i++;
                 var nodes = Perft(b, depth - 1);
 

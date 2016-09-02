@@ -411,10 +411,10 @@ namespace mmchess
             if(SideToMove==0){
                 if(m.To==62) //kingside
                 {
-                    moveMask = BitMask.Mask[60]|BitMask.Mask[63];
-                    l45Mask = BitMask.Mask[RotatedL45Map[60]] | BitMask.Mask[RotatedL45Map[63]];
-                    r45Mask = BitMask.Mask[RotatedR45Map[60]] | BitMask.Mask[RotatedR45Map[63]];
-                    r90Mask = BitMask.Mask[Rotated90Map[60]]|BitMask.Mask[Rotated90Map[63]];
+                    moveMask = BitMask.Mask[61]|BitMask.Mask[63];
+                    l45Mask = BitMask.Mask[RotatedL45Map[61]] | BitMask.Mask[RotatedL45Map[63]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[61]] | BitMask.Mask[RotatedR45Map[63]];
+                    r90Mask = BitMask.Mask[Rotated90Map[61]]|BitMask.Mask[Rotated90Map[63]];
                 }
                 else
                 {
@@ -426,7 +426,7 @@ namespace mmchess
 
             }
             else{
-                if(m.To==07)
+                if(m.To==06)
                 {
                     moveMask = BitMask.Mask[07]|BitMask.Mask[05];
                     l45Mask = BitMask.Mask[RotatedL45Map[7]] | BitMask.Mask[RotatedL45Map[5]];
