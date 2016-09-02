@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace mmchess
 {
@@ -198,7 +197,7 @@ namespace mmchess
                 if ((BitMask.Mask[m.From] & King[SideToMove]) > 0) //if we are moving the king        
                 {
                     //moved a king, wipe out castle status
-                    CastleStatus &= (byte)(SideToMove == 0 ? 3 : 6);
+                    CastleStatus &= (byte)(SideToMove == 1 ? 3 : 6);
                 }
                 else
                 { //moving a rook
