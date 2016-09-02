@@ -11,7 +11,9 @@ namespace mmchess
             WKingSide = 1,
             WQueenSide = 2,
             BKingSide = 4,
-            BQueenSide = 8
+            BQueenSide = 8,
+            WhiteCastled = 16,
+            BlackCastled = 32
         }
 
         public List<HistoryMove> History { get; set; }

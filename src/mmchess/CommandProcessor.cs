@@ -6,6 +6,7 @@ namespace mmchess{
         PERFT,
         Quit,
         Undo,
+        Eval,
         MoveInput
     }
     public class Command{

@@ -42,6 +42,10 @@ namespace mmchess
                     }
                 }
 
+                if(cmd.Value==CommandVal.Eval){
+                    Console.WriteLine("Eval Score: {0}",Evaluator.Evaluate(b));
+                }
+
                 if (cmd.Value == CommandVal.Undo)
                 {
                     b.UnMakeMove();

@@ -7,14 +7,16 @@ namespace mmchess
     {
         Rook = 500,
         Knight = 300,
-        Bishop = 300,
+        Bishop = 310,
         Pawn = 100,
         Queen = 900
     }
 
+    
+
     public static class Evaluator
     {
-
+        public static readonly Int16 NOT_CASTLED_PENALTY = -30;
         public static readonly Int16[,] PawnDevelopment = new Int16[2, 64]
         {
             {
@@ -64,7 +66,31 @@ namespace mmchess
             }
         };
 
-        static int Evaluate(Board b)
+        public static readonly Int16[,] BishopDevelopment = new Int16[2, 64]
+        {
+            {
+             00, 16, 16, 16, 16, 16, 16, 00,
+             00, 16, 16, 16, 16, 16, 16, 00,
+             00, 16, 16, 16, 16, 16, 16, 00,
+             00, 16, 16, 16, 16, 16, 16, 00,
+             00, 08, 16, 16, 16, 16, 08, 00,
+             00, 04, 08, 08, 08, 08, 04, 00,
+             04, 16, 04, 04, 04, 04, 16, 04, 
+             00, 00,-10, 00 ,00,-10, 00, 00
+            },
+            {
+            00, 00,-10, 00 ,00,-10, 00, 00,
+            04, 16, 04, 04, 04, 04, 16, 04,
+            00, 04, 08, 08, 08, 08, 04, 00,
+            00, 08, 16, 16, 16, 16, 08, 00,
+            00, 16, 16, 16, 16, 16, 16, 00,
+            00, 16, 16, 16, 16, 16, 16, 00,
+            00, 16, 16, 16, 16, 16, 16, 00,
+            00, 16, 16, 16, 16, 16, 16, 00,
+            }
+        };
+
+        public static int Evaluate(Board b)
         {
             int eval = 0;
             eval += EvaluateMaterial(b);
@@ -88,12 +114,23 @@ namespace mmchess
                 eval += KnightDevelopment[side, sq];
             }
 
+            pieces = b.Bishops[side];
+            while(pieces>0){
+                var sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                eval += BishopDevelopment[side, sq];                
+            }
+
             pieces = b.Pawns[side];
             while (pieces >0){
                 var sq= pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
                 eval += PawnDevelopment[side,sq];
             }
+
+            if(((b.CastleStatus >> (2*b.SideToMove)) & 3)>0)
+                eval+= NOT_CASTLED_PENALTY;
 
             return eval;
         }
