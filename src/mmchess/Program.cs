@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 
 namespace mmchess
 {
@@ -19,8 +18,18 @@ namespace mmchess
 
                 if (cmd.Value == CommandVal.PERFT)
                 {
-                    int depth = int.Parse(cmd.Arguments[1]);
-                    PerftDivide(b, depth);
+                    int depth=0;
+                    bool parallel=false;
+                    for(int i=1;i<cmd.Arguments.Length ;i++){
+                        if(depth==0)
+                            int.TryParse(cmd.Arguments[i],out depth);
+                        if(cmd.Arguments[i].ToLower()=="parallel")
+                            parallel=true;
+                    }
+                    if(parallel)
+                        PerfT.PerftDivideParallel(b,depth);
+                    else
+                        PerfT.PerftDivide(b, depth);
                 }
 
                 if (cmd.Value == CommandVal.MoveInput)
@@ -39,52 +48,6 @@ namespace mmchess
                 }
             }
         }
-
-        static void PerftDivide(Board b, int depth)
-        {
-            var startTime = DateTime.Now;
-            var moves = MoveGenerator.GenerateMoves(b);
-            ulong total = 0;
-            int i = 0;
-            int moveCount = 0;
-            foreach (var m in moves)
-            {
-                if (!b.MakeMove(m))
-                    return;
-                i++;
-                var nodes = Perft(b, depth - 1);
-
-                moveCount++;
-                total += nodes;
-
-
-                Console.WriteLine(String.Format("{0}: {1}", m, nodes));
-                b.UnMakeMove();
-            }
-            Console.WriteLine("Moves: {0}", moveCount);
-            Console.WriteLine("Total: {0}", total);
-            var endTime = DateTime.Now;
-            Console.WriteLine("Completed in {0}ms", (endTime - startTime).TotalMilliseconds);
-        }
-
-        static ulong Perft(Board b, int depth)
-        {
-            ulong nodes = 0;
-
-            if (depth == 0)
-                return 1;
-
-            var moves = MoveGenerator.GenerateMoves(b);
-            var nMoves = moves.Count;
-            foreach (var m in moves)
-            {
-                if (b.MakeMove(m))
-                {
-                    nodes += Perft(b, depth - 1);
-                    b.UnMakeMove();
-                }
-            }
-            return nodes;
-        }
+      
     }
 }
