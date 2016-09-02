@@ -153,7 +153,7 @@ namespace mmchess
                 return true;
             else if ((MoveGenerator.RookAttacks(this, kingsq) & (Rooks[xside] | Queens[xside])) > 0)
                 return true;
-            else if ((MoveGenerator.PawnAttacks[xside, kingsq] & Pawns[xside]) > 0)
+            else if ((MoveGenerator.PawnAttacks[sideToMove, kingsq] & Pawns[xside]) > 0)
                 return true;
             else if ((MoveGenerator.KnightMoves[kingsq] & Knights[xside]) > 0)
                 return true;
