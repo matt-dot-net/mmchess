@@ -252,11 +252,6 @@ namespace mmchess
 
         }
 
-        void UnmakeCastleMove(Move m)
-        {
-            throw new NotImplementedException();
-        }
-
         public bool MakeMove(Move m)
         {
             var hm = new HistoryMove(m);
@@ -264,7 +259,7 @@ namespace mmchess
             hm.CastleStatus = CastleStatus;
 
             //castle
-            if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.To.Rank() - m.From.Rank()) == 2)           
+            if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.To.File() - m.From.File()) == 2)           
                 MakeCastleMove(m);
 
             UpdateCastleStatus(m);
@@ -397,7 +392,7 @@ namespace mmchess
             if (m.CapturedPiece > 0)
                 UnmakeCapture(m);
 
-            if ((m.Bits &(byte)MoveBits.King)>0 && Math.Abs(m.From.Rank()-m.To.Rank())==2){
+            if ((m.Bits &(byte)MoveBits.King)>0 && Math.Abs(m.From.File()-m.To.File())==2){
                 UnmakeCastleMove(m);
             }
 
@@ -409,7 +404,55 @@ namespace mmchess
             History.RemoveAt(index);
         }
 
-        private void UnmakeCapture(HistoryMove m)
+        void UnmakeCastleMove(Move m)
+        {
+            ulong moveMask, l45Mask, r45Mask, r90Mask;
+            //we just need to undo the rook shenanigans
+            if(SideToMove==0){
+                if(m.To==62) //kingside
+                {
+                    moveMask = BitMask.Mask[60]|BitMask.Mask[63];
+                    l45Mask = BitMask.Mask[RotatedL45Map[60]] | BitMask.Mask[RotatedL45Map[63]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[60]] | BitMask.Mask[RotatedR45Map[63]];
+                    r90Mask = BitMask.Mask[Rotated90Map[60]]|BitMask.Mask[Rotated90Map[63]];
+                }
+                else
+                {
+                    moveMask = BitMask.Mask[56]|BitMask.Mask[59];
+                    l45Mask = BitMask.Mask[RotatedL45Map[56]] | BitMask.Mask[RotatedL45Map[59]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[56]] | BitMask.Mask[RotatedR45Map[59]];
+                    r90Mask = BitMask.Mask[Rotated90Map[56]]|BitMask.Mask[Rotated90Map[59]];
+                }
+
+            }
+            else{
+                if(m.To==07)
+                {
+                    moveMask = BitMask.Mask[07]|BitMask.Mask[05];
+                    l45Mask = BitMask.Mask[RotatedL45Map[7]] | BitMask.Mask[RotatedL45Map[5]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[7]] | BitMask.Mask[RotatedR45Map[5]];
+                    r90Mask = BitMask.Mask[Rotated90Map[7]]|BitMask.Mask[Rotated90Map[5]];
+                }
+                    
+                else
+                {
+                    moveMask = BitMask.Mask[0]|BitMask.Mask[3];
+                    l45Mask = BitMask.Mask[RotatedL45Map[0]] | BitMask.Mask[RotatedL45Map[3]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[0]] | BitMask.Mask[RotatedR45Map[3]];
+                    r90Mask = BitMask.Mask[Rotated90Map[0]]|BitMask.Mask[Rotated90Map[3]];
+                }
+                    
+            }
+            Rooks[SideToMove] ^= moveMask;
+            Pieces[SideToMove] ^= moveMask;
+            AllPieces ^= moveMask;
+            AllPiecesL45 ^= l45Mask;
+            AllPiecesR45 ^= r45Mask;
+            AllPiecesR90 ^= r90Mask;
+            
+        }
+
+        void UnmakeCapture(HistoryMove m)
         {
             var xside = SideToMove ^ 1;
             int sq = m.To;
