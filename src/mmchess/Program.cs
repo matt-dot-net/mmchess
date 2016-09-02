@@ -51,13 +51,14 @@ namespace mmchess
             {
                 if (!b.MakeMove(m))
                     return;
-
+                i++;
                 var nodes = Perft(b, depth - 1);
 
                 moveCount++;
                 total += nodes;
 
-                Console.WriteLine(String.Format("{0}: {1}", moves[i], nodes));
+
+                Console.WriteLine(String.Format("{0}: {1}", m, nodes));
                 b.UnMakeMove();
             }
             Console.WriteLine("Moves: {0}", moveCount);
