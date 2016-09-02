@@ -495,7 +495,6 @@ namespace mmchess
                 {
                     var toi = pvictims.BitScanForward();
                     pvictims ^= BitMask.Mask[toi];
-                    var capture = true;
                     if ((BitMask.Mask[toi + 7] & b.Pawns[0]) > 0 &&
                         !PinnedOnKing(b, toi + 7) && SquareExtensions.FileDistance(toi, toi + 7) == 1)
                     {

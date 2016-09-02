@@ -1,6 +1,5 @@
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -94,14 +93,25 @@ namespace mmchess
             this.AllPiecesR90 = b.AllPiecesR90;
             this.CastleStatus= b.CastleStatus;
             this.EnPassant = b.EnPassant;
-            this.History= b.History.ToList();
-            b.King.CopyTo(this.King,0);
-            b.Knights.CopyTo(this.Knights,0);
-            b.Rooks.CopyTo(this.Rooks,0);
-            b.Bishops.CopyTo(this.Bishops,0);
-            b.Queens.CopyTo(this.Queens,0);
-            b.Pawns.CopyTo(this.Pawns,0);
-            b.Pieces.CopyTo(this.Pieces,0);
+            this.History = new List<HistoryMove>(b.History.Count);
+            foreach(var hm in b.History)
+                this.History.Add(new HistoryMove(hm));
+            this.King = new ulong[2];
+            this.Knights = new ulong[2];
+            this.Rooks = new ulong[2];
+            this.Bishops = new ulong[2];
+            this.Queens = new ulong [2];
+            this.Pawns = new ulong[2];
+            this.Pieces = new ulong [2];
+            for(int i=0;i<2;i++){
+                this.King[i]= b.King[i];
+                this.Knights[i] = b.Knights[i];
+                this.Rooks[i] = b.Rooks[i];
+                this.Bishops[i] = b.Bishops[i];
+                this.Queens[i] = b.Queens[i];
+                this.Pawns[i] = b.Pawns[i];
+                this.Pieces[i] = b.Pieces[i];
+            }
         }
 
         public Board()
