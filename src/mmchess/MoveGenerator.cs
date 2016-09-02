@@ -605,15 +605,15 @@ namespace mmchess
 
                             list.Add(new Move
                             {
-                                From = (byte)(toi + 7),
+                                From = (byte)(toi - 7),
                                 To = (byte)toi,
-                                Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
+                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
                             });
 
                         }
                     }
                     if ((BitMask.Mask[toi - 9] & b.Pawns[1]) > 0 &&
-                        !PinnedOnKing(b, toi + 9) && SquareExtensions.FileDistance(toi, toi - 9) == 1)
+                        !PinnedOnKing(b, toi - 9) && SquareExtensions.FileDistance(toi, toi - 9) == 1)
                     {
                         if (toi < 8)
                             GeneratePromotions(list, new Move

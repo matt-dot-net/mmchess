@@ -40,31 +40,27 @@ namespace mmchess
             }
         }
 
-        static object _perftLock = new object();
         static void PerftDivide(Board b, int depth)
         {
             var startTime = DateTime.Now;
             var moves = MoveGenerator.GenerateMoves(b);
             ulong total = 0;
             int i = 0;
-            Parallel.ForEach(moves, (m)=>
+            int moveCount = 0;
+            foreach (var m in moves)
             {
-                Board newBoard= new Board();
-                foreach(var hm in b.History){
-                    newBoard.MakeMove(hm);
-                }
-                if (!newBoard.MakeMove(m))
+                if (!b.MakeMove(m))
                     return;
-                
-                var nodes = Perft(newBoard, depth - 1);
-                lock(_perftLock){
-                    i++;
-                    total += nodes;
-                }
-                Console.WriteLine(String.Format("{0}: {1}", m, nodes));
+
+                var nodes = Perft(b, depth - 1);
+
+                moveCount++;
+                total += nodes;
+
+                Console.WriteLine(String.Format("{0}: {1}", moves[i], nodes));
                 b.UnMakeMove();
-            });
-            Console.WriteLine("Moves: {0}", i);
+            }
+            Console.WriteLine("Moves: {0}", moveCount);
             Console.WriteLine("Total: {0}", total);
             var endTime = DateTime.Now;
             Console.WriteLine("Completed in {0}ms", (endTime - startTime).TotalMilliseconds);

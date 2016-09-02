@@ -87,15 +87,14 @@ namespace mmchess
         }
         public Board(Board b)
         {
+            this.SideToMove=b.SideToMove;
             this.AllPieces= b.AllPieces;
             this.AllPiecesL45= b.AllPiecesL45;
             this.AllPiecesR45 = b.AllPiecesR45;
             this.AllPiecesR90 = b.AllPiecesR90;
             this.CastleStatus= b.CastleStatus;
             this.EnPassant = b.EnPassant;
-            this.History = new List<HistoryMove>(b.History.Count);
-            foreach(var hm in b.History)
-                this.History.Add(new HistoryMove(hm));
+            this.History = new List<HistoryMove>(b.History);
             this.King = new ulong[2];
             this.Knights = new ulong[2];
             this.Rooks = new ulong[2];
@@ -273,6 +272,9 @@ namespace mmchess
             UpdateCapture(m, hm);
             UpdateBitBoards(m);
 
+            if(m.Promotion >0)
+                UpdatePromotion(m);
+
             //set enpassant sq
             if (((m.Bits & (byte)MoveBits.Pawn) > 0) && 
                 Math.Abs(m.To - m.From) == 16)
@@ -295,7 +297,27 @@ namespace mmchess
 
         }
 
-        private void UpdateCapture(Move m, HistoryMove hm)
+        void UpdatePromotion(Move m){
+            Pawns[SideToMove] ^= BitMask.Mask[m.To]; 
+            var piece = (MoveBits)m.Promotion;
+            switch(piece){
+                case MoveBits.Knight:
+                    Knights[SideToMove]^= BitMask.Mask[m.To];
+                    break;
+                case MoveBits.Bishop:
+                    Bishops[SideToMove]^= BitMask.Mask[m.To];
+                    break;
+                case MoveBits.Rook:
+                    Rooks[SideToMove]^= BitMask.Mask[m.To];
+                    break;
+                case MoveBits.Queen:
+                    Queens[SideToMove]^=BitMask.Mask[m.To];
+                    break;
+                
+            }
+        }
+
+        void UpdateCapture(Move m, HistoryMove hm)
         {
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
@@ -380,6 +402,8 @@ namespace mmchess
                 UnmakeCastleMove(m);
             }
 
+            if(m.Promotion>0)
+                UpdatePromotion(m);
             EnPassant = m.EnPassant;
             CastleStatus = m.CastleStatus;
             UpdateBitBoards(m);
