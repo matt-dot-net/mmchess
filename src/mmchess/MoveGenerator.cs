@@ -919,7 +919,7 @@ namespace mmchess
                 if (b.SideToMove == 0)
                 {
                     if (!((((BitMask.Mask[59] | BitMask.Mask[58] | BitMask.Mask[57]) & b.AllPieces) > 0) ||
-                        ((Attacks(b, 59) | Attacks(b, 58) | Attacks(b, 57)) & b.Pieces[b.SideToMove ^ 1]) > 0))
+                        ((Attacks(b, 59) | Attacks(b, 58)) & b.Pieces[b.SideToMove ^ 1]) > 0))
                     {
                         list.Add(new Move
                         {
@@ -931,8 +931,8 @@ namespace mmchess
                 }
                 else
                 {
-                    if (!((((BitMask.Mask[05] | BitMask.Mask[06]) & b.AllPieces) > 0) ||
-                    ((Attacks(b, 05) | Attacks(b, 06) & b.Pieces[b.SideToMove ^ 1]) > 0)))
+                    if (!((((BitMask.Mask[03] | BitMask.Mask[02] | BitMask.Mask[01]) & b.AllPieces) > 0) ||
+                        ((Attacks(b, 59) | Attacks(b, 58)) & b.Pieces[b.SideToMove ^ 1]) > 0))
                     {
                         list.Add(new Move
                         {
