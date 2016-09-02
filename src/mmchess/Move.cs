@@ -69,8 +69,15 @@ namespace mmchess
                 bits |= MoveBits.Rook;
             else if ((b.Queens[b.SideToMove] & BitMask.Mask[fromIndex])>0)
                 bits |= MoveBits.Queen;
-            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[fromIndex])>0){
+                //make sure we are making a legal pawn move
+                if(Math.Abs(toIndex.File()-fromIndex.File()) > 0){
+                    if((b.Pieces[b.SideToMove^1] & BitMask.Mask[toIndex]) == 0 ||
+                        BitMask.Mask[toIndex] != b.EnPassant)
+                    return null;
+                }
                 bits |= MoveBits.Pawn;
+            }
             else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex])>0)
                 bits |= MoveBits.King;
             else 

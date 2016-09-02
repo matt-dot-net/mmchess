@@ -240,15 +240,21 @@ namespace mmchess
             hm.EnPassant = EnPassant;
             hm.CastleStatus = CastleStatus;
 
-            if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.To.Rank() - m.From.Rank()) == 2)
-            {
+            //castle
+            if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.To.Rank() - m.From.Rank()) == 2)           
                 MakeCastleMove(m);
-            }
 
             UpdateCastleStatus(m);
             UpdateCapture(m, hm);
-
             UpdateBitBoards(m);
+
+            //set enpassant sq
+            if (((m.Bits & (byte)MoveBits.Pawn) > 0) && 
+                Math.Abs(m.To - m.From) == 16)
+                    EnPassant = BitMask.Mask[m.From + (SideToMove == 1 ? 8 : -8)];
+            else
+                EnPassant=0;
+
             SideToMove ^= 1;
             // push the move onto the list of moves
             History.Add(hm);
@@ -298,14 +304,15 @@ namespace mmchess
                 }
                 else if ((BitMask.Mask[m.To] & EnPassant) > 0)
                 {
-                    sq = xside == 1 ? m.To + 8 : m.To - 8;
-                    Pawns[xside] ^= BitMask.Mask[sq];
+                    var epSq = xside == 1 ? m.To + 8 : m.To - 8;
+                    Pawns[xside] ^= BitMask.Mask[epSq];
                     hm.CapturedPiece = MoveBits.Pawn;
-                    AllPieces ^= BitMask.Mask[sq];
-                    Pieces[xside] ^= BitMask.Mask[sq];
-                    AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[sq]];
-                    AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
-                    AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
+                    AllPieces ^= BitMask.Mask[epSq];
+                    Pieces[xside] ^= BitMask.Mask[epSq];
+                    AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[epSq]];
+                    AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[epSq]];
+                    AllPiecesR90 ^= BitMask.Mask[Rotated90Map[epSq]];
+                    return;
                 }
                 else if ((King[xside] & BitMask.Mask[m.To]) > 0)
                     throw new InvalidOperationException("Cannot capture the king");
@@ -396,15 +403,8 @@ namespace mmchess
                 Knights[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Rook)>0)
                 Rooks[sideToMove] ^= moveMask;
-
-            EnPassant = 0;
             if ((m.Bits & (byte)MoveBits.Pawn) > 0)
-            {
                 Pawns[sideToMove] ^= moveMask;
-
-                if (Math.Abs(m.To - m.From) == 16)
-                    EnPassant = BitMask.Mask[m.From + (sideToMove == 1 ? 8 : -8)];
-            }
 
         }
     }
