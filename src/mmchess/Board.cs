@@ -1,6 +1,8 @@
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace mmchess
 {
@@ -86,7 +88,20 @@ namespace mmchess
         }
         public Board(Board b)
         {
-            throw new NotImplementedException();
+            this.AllPieces= b.AllPieces;
+            this.AllPiecesL45= b.AllPiecesL45;
+            this.AllPiecesR45 = b.AllPiecesR45;
+            this.AllPiecesR90 = b.AllPiecesR90;
+            this.CastleStatus= b.CastleStatus;
+            this.EnPassant = b.EnPassant;
+            this.History= b.History.ToList();
+            b.King.CopyTo(this.King,0);
+            b.Knights.CopyTo(this.Knights,0);
+            b.Rooks.CopyTo(this.Rooks,0);
+            b.Bishops.CopyTo(this.Bishops,0);
+            b.Queens.CopyTo(this.Queens,0);
+            b.Pawns.CopyTo(this.Pawns,0);
+            b.Pieces.CopyTo(this.Pieces,0);
         }
 
         public Board()
