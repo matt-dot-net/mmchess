@@ -181,8 +181,7 @@ namespace mmchess
         void UpdateCastleStatus(Move m)
         {
             //determine if we even care
-            int shift = SideToMove * 2;
-            if ((CastleStatus >> shift) == 0)
+            if (((3 << (SideToMove*2)) & CastleStatus) == 0)
                 return;
 
             if ((m.Bits & (byte)(MoveBits.King | MoveBits.Rook)) > 0)
@@ -191,14 +190,14 @@ namespace mmchess
                 if ((BitMask.Mask[m.From] & King[SideToMove]) > 0) //if we are moving the king        
                 {
                     //moved a king, wipe out castle status
-                    CastleStatus &= (byte)(SideToMove == 1 ? 3 : 6);
+                    CastleStatus &= (byte)(SideToMove == 1 ? 3 : 12);
                 }
                 else
                 { //moving a rook
                     if (SideToMove == 1)
-                        CastleStatus &= (byte)(m.From.File() == 7 ? 7 : 11);
+                        CastleStatus &= (byte)(m.From.File() == 7 ? 11:7);
                     else
-                        CastleStatus &= (byte)(m.From.File() == 7 ? 14 : 13);
+                        CastleStatus &= (byte)(m.From.File() == 7 ? 14:13);
                 }
             }
         }
