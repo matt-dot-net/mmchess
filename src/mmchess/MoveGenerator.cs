@@ -636,14 +636,14 @@ namespace mmchess
             }
         }
 
-        public static void GenerateCapturesAndChecks(Board b){
+        public static IList<Move> GenerateCapturesAndChecks(Board b){
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
             ulong moves;
-            ulong rooks = b.Rooks[b.SideToMove];
-            while(rooks > 0){
-                int sq = rooks.BitScanForward();
-                rooks ^= BitMask.Mask[sq];
+            ulong pieces = b.Rooks[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
 
                 moves = RookAttacks(b,sq);
                 moves &= b.Pieces[xside];
@@ -660,6 +660,109 @@ namespace mmchess
                     });                    
                 }
             }
+
+            pieces = b.Knights[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                moves = KnightMoves[sq];
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.Knight | MoveBits.Capture)
+                    });                    
+                }
+            }
+            pieces = b.Bishops[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                moves = BishopAttacks(b,sq);
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.Bishop | MoveBits.Capture)
+                    });                    
+                }
+            }            
+            pieces = b.Queens[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                moves = QueenAttacks(b, sq);
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.Queen | MoveBits.Capture)
+                    });                    
+                }
+            }              
+
+            pieces = b.Pawns[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                moves = PawnAttacks[b.SideToMove,sq];
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
+                    });                    
+                }
+            }                        
+            pieces = b.King[b.SideToMove];
+            while(pieces > 0){
+                int sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                moves = KingMoves[sq];
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.King | MoveBits.Capture)
+                    });                    
+                }
+            }                        
+            return list;             
             
         }
 

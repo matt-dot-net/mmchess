@@ -171,7 +171,7 @@ namespace mmchess
 
                 //if the opponent has a queen on the board, evaluate castle status
                 var kingSq = b.King[side].BitScanForward();
-                if ((b.Queens[xside] > 0) && (2 < kingSq.File() && kingSq.File() < 6) &&
+                if ((b.Queens[xside] > 0) && (b.Rooks[xside] > 0) && (2 < kingSq.File() && kingSq.File() < 6) &&
                     ((b.CastleStatus >> (2 * side)) & 3) > 0)
                     eval[side] += NOT_CASTLED_PENALTY;
             }
