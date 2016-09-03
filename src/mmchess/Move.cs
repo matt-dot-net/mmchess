@@ -103,9 +103,16 @@ namespace mmchess
             }
             else if (bits == MoveBits.Rook){
                 output += 'R';
+                var sqs = MoveGenerator.RookAttacks(b,To) & b.Rooks[b.SideToMove];
+                if(sqs.Count() > 1){
+                    output += Board.SquareNames[From];
+                }
             }
             else if (bits == MoveBits.Queen)
             {
+                var sqs = MoveGenerator.QueenAttacks(b,To) & b.Queens[b.SideToMove];
+                if(sqs.Count() > 1)
+                    output+=Board.SquareNames[From];        
                 output += 'Q';
             }
             else if (bits == MoveBits.King){
@@ -148,8 +155,6 @@ namespace mmchess
                 return null;
             var from = moveString.Substring(0, 2);
             var to = moveString.Substring(2, 2);
-            if (moveString.Length != 4)
-                return null;
             int fromIndex = -1, toIndex = -1;
             for (int i = 0; i < 64; i++)
             {
@@ -163,6 +168,7 @@ namespace mmchess
                 return null;
 
             MoveBits bits = 0;
+            Piece promotion=0;
             if ((b.Knights[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Knight;
             else if ((b.Bishops[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
@@ -181,6 +187,26 @@ namespace mmchess
                         return null;
                 }
                 bits |= MoveBits.Pawn;
+
+                if(moveString.Length==6){
+                    //Promotion
+                    if(moveString[4]=='='){
+                        switch(moveString[5]){
+                            case 'Q':
+                                promotion=Piece.Queen;
+                                break;
+                            case 'R':
+                                promotion=Piece.Rook;
+                                break;
+                            case 'B':
+                                promotion=Piece.Bishop;
+                                break;
+                            case 'N':
+                                promotion=Piece.Knight;
+                                break;
+                        }
+                    }
+                }
             }
             else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.King;
@@ -200,7 +226,8 @@ namespace mmchess
             {
                 From = (byte)fromIndex,
                 To = (byte)toIndex,
-                Bits = (byte)bits
+                Bits = (byte)bits,
+                Promotion=(byte)promotion
             };
         }
     }

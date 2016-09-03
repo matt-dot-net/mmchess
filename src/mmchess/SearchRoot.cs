@@ -55,6 +55,9 @@ namespace mmchess
 
                 }
                 Console.WriteLine();
+
+                if(Math.Abs(score) > 9900)
+                    break;
             }
             b.MakeMove(ab.PrincipalVariation[0][0]);
         }

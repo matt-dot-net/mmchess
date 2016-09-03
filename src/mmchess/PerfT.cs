@@ -29,10 +29,8 @@ namespace mmchess
 
                 moveCount++;
                 total += nodes;
-
-
-                Console.WriteLine(String.Format("{0}: {1}", m.ToAlegbraicNotation(b), nodes));
                 b.UnMakeMove();
+                Console.WriteLine(String.Format("{0}: {1}", m.ToAlegbraicNotation(b), nodes));
             }
             Console.WriteLine("Moves: {0}", moveCount);
             Console.WriteLine("Total: {0}", total);

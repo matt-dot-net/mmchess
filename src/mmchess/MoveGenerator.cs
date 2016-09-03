@@ -1101,12 +1101,13 @@ namespace mmchess
         {
 
             //black
-            for (int i = 8; i < 56; i++)
+            for (int i = 0; i < 64; i++)
             {
                 ulong moves = 0;
                 ulong attacks = 0;
-                moves |= BitMask.Mask[i + 8];
-                if (i < 16)
+                if(i<56)
+                    moves |= BitMask.Mask[i + 8];
+                if (i>7 && i < 16)
                     moves |= BitMask.Mask[i + 16];
                 //captures
                 if (i < 56 && i.File() - (i + 7).File() == 1)
@@ -1118,17 +1119,18 @@ namespace mmchess
             }
 
             //white
-            for (int i = 55; i > 7; i--)
+            for (int i =63; i >= 0; i--)
             {
                 ulong moves = 0;
                 ulong attacks = 0;
-                moves |= BitMask.Mask[i - 8];
-                if (i > 47)
+                if(i>7)
+                    moves |= BitMask.Mask[i - 8];
+                if (i > 47 && i < 56)
                     moves |= BitMask.Mask[i - 16];
                 //captures
                 if (i > 8 && i.File() - (i - 9).File() == 1)
                     attacks |= BitMask.Mask[i - 9];
-                if ((i - 7).File() - i.File() == 1)
+                if (i > 7 && (i - 7).File() - i.File() == 1)
                     attacks |= BitMask.Mask[i - 7];
                 PawnMoves[0, i] = moves;
                 PawnAttacks[0, i] = attacks;

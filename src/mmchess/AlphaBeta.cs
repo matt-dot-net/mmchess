@@ -82,6 +82,8 @@ namespace mmchess
             if (lastMove == null)
             {
                 //we can't make a move. check for mate or stalemate.
+                //first truncate the PV
+                PrincipalVariation[Ply]=null;
                 if (MyBoard.InCheck(MyBoard.SideToMove))
                 {
                     return -10000 + Ply;
@@ -92,7 +94,6 @@ namespace mmchess
             //update the PV
             if (bestMove != null)
             {
-
                 if(PrincipalVariation[Ply]== null)
                     PrincipalVariation[Ply]= new List<Move>();
                 else

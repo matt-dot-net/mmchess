@@ -14,7 +14,7 @@ namespace mmchess
 
     public static class Evaluator
     {
-        public static readonly Int16 NOT_CASTLED_PENALTY = -30;
+        public static readonly Int16 NOT_CASTLED_PENALTY = -50;
         public static readonly Int16[,] PawnDevelopment = new Int16[2, 64]
         {
             {
@@ -44,10 +44,10 @@ namespace mmchess
         {
             {
             -5,  15, 20, 20, 20, 20, 15, -5,
-            -10, 20, 25, 25, 25, 25, 25, -10,
-            -15, 20, 25, 25, 25, 25, 25, -15,
-            -18, 20, 20, 30, 30, 20, 20, -18,
-            -20, 20, 10, 30, 30, 20, 20, -20,
+            -10, 20, 25, 25, 25, 25, 25,-10,
+            -15, 20, 25, 25, 25, 25, 25,-15,
+            -18, 20, 20, 30, 30, 20, 20,-18,
+            -20, 20, 10, 30, 30, 20, 20,-20,
             -20, 05, 05, 05 ,05, 05, 05,-20,
             -20, 00, 00, 00 ,00, 00, 00,-20,
             -33,-33,-33,-33,-33,-33,-33,-33
@@ -103,6 +103,7 @@ namespace mmchess
             int [] eval = new int[2];
             for (int side = 0; side < 2; side++)
             {
+                int xside=side^1;
                 ulong pieces;
 
                 pieces = b.Knights[side];
@@ -131,7 +132,10 @@ namespace mmchess
                     eval[side] += PawnDevelopment[side, sq];
                 }
 
-                if (((b.CastleStatus >> (2 * side)) & 3) > 0)
+                //if the opponent has a queen on the board, evaluate castle status
+                var kingSq = b.King[side].BitScanForward();
+                if ((b.Queens[xside]>0) && (2 < kingSq.File() && kingSq.File() < 6) &&  
+                    ((b.CastleStatus >> (2 * side)) & 3) > 0)
                     eval[side] += NOT_CASTLED_PENALTY;
             }
             return eval[b.SideToMove]-eval[b.SideToMove^1];
