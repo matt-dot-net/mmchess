@@ -45,8 +45,9 @@ namespace mmchess
             if((m.Bits & (byte)MoveBits.Capture) >0 )
             {
                 //sort by LVA/MVV
-                return Evaluator.MovingPieceValue((MoveBits)m.Bits)-
-                    Evaluator.PieceValueOnSquare(MyBoard, m.To);
+                return Evaluator.PieceValueOnSquare(MyBoard, m.To)-
+                    Evaluator.MovingPieceValue((MoveBits)m.Bits);
+                    
             }
 
             return 0;
@@ -54,7 +55,7 @@ namespace mmchess
 
         public int Search(int alpha, int beta, int depth)
         {
-            if ((Nodes & 16384) > 0)
+            if ((Nodes & 65536) > 0)
             {
                 CheckTime();
                 if (TimeUp)
