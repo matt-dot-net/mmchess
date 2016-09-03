@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace mmchess
 {
@@ -23,14 +24,21 @@ namespace mmchess
         Rook = 2,
         Queen = 3
     }
+    [StructLayout(LayoutKind.Explicit,Size=4)]
     public class Move
     {
         static readonly char[] outputRanks = new char[] { '8', '7', '6', '5', '4', '3', '2', '1' };
         static readonly char[] outputFiles = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
-        public byte From { get; set; }
-        public byte To { get; set; }
-        public byte Bits { get; set; }
-        public byte Promotion { get; set; }
+        [FieldOffset(0)]
+        public byte From;
+        [FieldOffset(1)]
+        public byte To;
+        [FieldOffset(2)]
+        public byte Bits ;
+        [FieldOffset(3)]
+        public byte Promotion;
+        [FieldOffset(0)]
+        public UInt32 Value;
 
         public Move() { }
 

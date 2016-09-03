@@ -12,6 +12,8 @@ namespace mmchess
         Queen = 900
     }
 
+
+
     public static class Evaluator
     {
         public static readonly Int16 NOT_CASTLED_PENALTY = -50;
@@ -88,6 +90,41 @@ namespace mmchess
             }
         };
 
+        public static int MovingPieceValue(MoveBits bits)
+        {
+            if ((bits & MoveBits.Bishop) > 0)
+                return (int)PieceValues.Bishop;
+            if ((bits & MoveBits.Knight) > 0)
+                return (int)PieceValues.Knight;
+            if ((bits & MoveBits.Rook) > 0)
+                return (int)PieceValues.Rook;
+            if ((bits & MoveBits.Queen) > 0)
+                return (int)PieceValues.Queen;
+            if ((bits & MoveBits.Pawn) > 0)
+                return (int)PieceValues.Pawn;
+            return int.MaxValue; // king
+        }
+
+        public static int PieceValueOnSquare(Board b, int sq)
+        {
+
+            if (((b.Rooks[0] | b.Rooks[1]) & BitMask.Mask[sq]) > 0)
+                return (int)PieceValues.Rook;
+            if (((b.Queens[0] | b.Queens[1]) & BitMask.Mask[sq]) > 0)
+                return (int)PieceValues.Rook;
+            if (((b.Bishops[0] | b.Bishops[1]) & BitMask.Mask[sq]) > 0)
+                return (int)PieceValues.Bishop;
+            if (((b.Knights[0] | b.Knights[1]) & BitMask.Mask[sq]) > 0)
+                return (int)PieceValues.Knight;
+            if (((b.Pawns[0] | b.Pawns[1]) & BitMask.Mask[sq]) > 0)
+                return (int)PieceValues.Pawn;
+            if (((b.King[0] | b.King[1]) & BitMask.Mask[sq]) > 0)
+                return int.MaxValue;
+
+            return 0;
+
+        }
+
         public static int Evaluate(Board b)
         {
             int eval = 0;
@@ -100,10 +137,10 @@ namespace mmchess
 
         static int EvaluateDevelopment(Board b)
         {
-            int [] eval = new int[2];
+            int[] eval = new int[2];
             for (int side = 0; side < 2; side++)
             {
-                int xside=side^1;
+                int xside = side ^ 1;
                 ulong pieces;
 
                 pieces = b.Knights[side];
@@ -134,11 +171,11 @@ namespace mmchess
 
                 //if the opponent has a queen on the board, evaluate castle status
                 var kingSq = b.King[side].BitScanForward();
-                if ((b.Queens[xside]>0) && (2 < kingSq.File() && kingSq.File() < 6) &&  
+                if ((b.Queens[xside] > 0) && (2 < kingSq.File() && kingSq.File() < 6) &&
                     ((b.CastleStatus >> (2 * side)) & 3) > 0)
                     eval[side] += NOT_CASTLED_PENALTY;
             }
-            return eval[b.SideToMove]-eval[b.SideToMove^1];
+            return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
 
         static int EvaluateMaterial(Board b)

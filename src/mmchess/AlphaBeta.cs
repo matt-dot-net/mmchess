@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace mmchess
 {
@@ -35,6 +36,22 @@ namespace mmchess
                 TimeUp = true;
         }
 
+        int OrderMove(Move m){
+            if(PrincipalVariation[Ply] !=null){
+                if(PrincipalVariation[Ply][0].Value == m.Value)
+                    return int.MaxValue; // search this move first
+            }
+
+            if((m.Bits & (byte)MoveBits.Capture) >0 )
+            {
+                //sort by LVA/MVV
+                return Evaluator.MovingPieceValue((MoveBits)m.Bits)-
+                    Evaluator.PieceValueOnSquare(MyBoard, m.To);
+            }
+
+            return 0;
+        }
+
         public int Search(int alpha, int beta, int depth)
         {
             if ((Nodes & 16384) > 0)
@@ -50,7 +67,7 @@ namespace mmchess
 
             var moves = MoveGenerator.GenerateMoves(MyBoard);
             Move lastMove = null;
-            foreach (var m in moves)
+            foreach (var m in moves.OrderBy((m)=>OrderMove(m)))
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
