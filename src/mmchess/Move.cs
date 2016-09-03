@@ -44,7 +44,24 @@ namespace mmchess
 
         public override string ToString()
         {
-            return Board.SquareNames[From] + Board.SquareNames[To];
+            var output= Board.SquareNames[From] + Board.SquareNames[To];
+            if(Promotion>0){
+                output += "=";
+                switch((Piece)Promotion){
+                    case Piece.Knight:
+                        output+="N";
+                        break;
+                    case Piece.Bishop:
+                        output +="B";
+                        break;
+                    case Piece.Rook:
+                        output += "R";
+                        break;
+                    case Piece.Queen:
+                        output += "Q";
+                        break;
+                }
+            }
         }
 
         public string ToAlegbraicNotation(Board b)
@@ -100,6 +117,24 @@ namespace mmchess
                 output += 'x';
 
             output += Board.SquareNames[To];
+
+            if(Promotion>0){
+                output += "=";
+                switch((Piece)Promotion){
+                    case Piece.Knight:
+                        output+="N";
+                        break;
+                    case Piece.Bishop:
+                        output +="B";
+                        break;
+                    case Piece.Rook:
+                        output += "R";
+                        break;
+                    case Piece.Queen:
+                        output += "Q";
+                        break;
+                }
+            }
 
             return output;
 

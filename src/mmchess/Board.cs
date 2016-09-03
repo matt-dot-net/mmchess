@@ -6,16 +6,6 @@ namespace mmchess
 {
     public class Board
     {
-        enum CastleBits
-        {
-            WKingSide = 1,
-            WQueenSide = 2,
-            BKingSide = 4,
-            BQueenSide = 8,
-            WhiteCastled = 16,
-            BlackCastled = 32
-        }
-
         public List<HistoryMove> History { get; set; }
         public byte CastleStatus { get; set; }
         public ulong[] Pawns;
@@ -295,18 +285,18 @@ namespace mmchess
 
         void UpdatePromotion(Move m){
             Pawns[SideToMove] ^= BitMask.Mask[m.To]; 
-            var piece = (MoveBits)m.Promotion;
+            var piece = (Piece)m.Promotion;
             switch(piece){
-                case MoveBits.Knight:
+                case Piece.Knight:
                     Knights[SideToMove]^= BitMask.Mask[m.To];
                     break;
-                case MoveBits.Bishop:
+                case Piece.Bishop:
                     Bishops[SideToMove]^= BitMask.Mask[m.To];
                     break;
-                case MoveBits.Rook:
+                case Piece.Rook:
                     Rooks[SideToMove]^= BitMask.Mask[m.To];
                     break;
-                case MoveBits.Queen:
+                case Piece.Queen:
                     Queens[SideToMove]^=BitMask.Mask[m.To];
                     break;
                 
