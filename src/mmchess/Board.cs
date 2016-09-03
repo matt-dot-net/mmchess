@@ -172,6 +172,8 @@ namespace mmchess
                 return true;
             else if ((MoveGenerator.KnightMoves[kingsq] & Knights[xside]) > 0)
                 return true;
+            else if ((MoveGenerator.KingMoves[kingsq] & King[xside])>0)
+                return true;
 
             return false;
         }

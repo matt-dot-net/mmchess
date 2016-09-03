@@ -62,6 +62,7 @@ namespace mmchess
                         break;
                 }
             }
+            return output;
         }
 
         public string ToAlegbraicNotation(Board b)
@@ -143,6 +144,8 @@ namespace mmchess
 
         public static Move ParseMove(Board b, string moveString)
         {
+            if(moveString.Length < 4)
+                return null;
             var from = moveString.Substring(0, 2);
             var to = moveString.Substring(2, 2);
             if (moveString.Length != 4)
@@ -173,7 +176,7 @@ namespace mmchess
                 //make sure we are making a legal pawn move
                 if (Math.Abs(toIndex.File() - fromIndex.File()) > 0)
                 {
-                    if ((b.Pieces[b.SideToMove ^ 1] & BitMask.Mask[toIndex]) == 0 ||
+                    if ((b.Pieces[b.SideToMove ^ 1] & BitMask.Mask[toIndex]) == 0 &&
                         BitMask.Mask[toIndex] != b.EnPassant)
                         return null;
                 }

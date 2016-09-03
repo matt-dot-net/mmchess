@@ -6,7 +6,7 @@ namespace mmchess
     public class MoveGenerator
     {
         public static readonly ulong[] KnightMoves = new ulong[64];
-        static readonly ulong[] KingMoves = new ulong[64];
+        public static readonly ulong[] KingMoves = new ulong[64];
         static readonly ulong[,] PawnMoves = new ulong[2, 64];
         public static readonly ulong[,] PawnAttacks = new ulong[2, 64];
         static readonly ulong[,] RankMoves = new ulong[64, 256];
