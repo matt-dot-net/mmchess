@@ -65,9 +65,11 @@ namespace mmchess
             if (depth == 0)
                 return Evaluator.Evaluate(MyBoard);
 
-            var moves = MoveGenerator.GenerateMoves(MyBoard);
+            var moves = MoveGenerator
+                .GenerateMoves(MyBoard)
+                .OrderBy((m)=>OrderMove(m));
             Move lastMove = null;
-            foreach (var m in moves.OrderBy((m)=>OrderMove(m)))
+            foreach (var m in moves)
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
