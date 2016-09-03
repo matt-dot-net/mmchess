@@ -636,6 +636,33 @@ namespace mmchess
             }
         }
 
+        public static void GenerateCapturesAndChecks(Board b){
+            int xside = b.SideToMove ^ 1;
+            List<Move> list = new List<Move>();
+            ulong moves;
+            ulong rooks = b.Rooks[b.SideToMove];
+            while(rooks > 0){
+                int sq = rooks.BitScanForward();
+                rooks ^= BitMask.Mask[sq];
+
+                moves = RookAttacks(b,sq);
+                moves &= b.Pieces[xside];
+
+                while(moves > 0){
+                    int to = moves.BitScanForward();
+                    moves ^= BitMask.Mask[to];
+
+                    list.Add(new Move
+                    {
+                        From = (byte)sq,
+                        To = (byte)to,
+                        Bits = (byte)(MoveBits.Rook | MoveBits.Capture)
+                    });                    
+                }
+            }
+            
+        }
+
         public static IList<Move> GenerateMoves(Board b)
         {
 
