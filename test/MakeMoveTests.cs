@@ -21,22 +21,9 @@ namespace  mmchess.Test
             var testBoard = new Board();
 
             testBoard.MakeMove(new Move{
-                From = 8,
-                To = 24,
-                Bits = (byte)MoveBits.Pawn
-            });
-
-            Assert.Equal(BitMask.Mask[16], BitMask.Mask[16] & testBoard.EnPassant );
-        }
-
-        [Fact]
-        public void BlackPawnMoveEnPassant(){
-            var testBoard = new Board();
-
-            testBoard.MakeMove(new Move{
                 From = 48,
                 To = 32,
-                Bits = (byte)MoveBits.Pawn | (byte)MoveBits.Black
+                Bits = (byte)MoveBits.Pawn
             });
 
             Assert.Equal(BitMask.Mask[40],BitMask.Mask[40] & testBoard.EnPassant);

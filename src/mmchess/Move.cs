@@ -2,6 +2,8 @@ using System;
 
 namespace mmchess
 {
+
+
     public enum MoveBits
     {
 
@@ -23,6 +25,8 @@ namespace mmchess
     }
     public class Move
     {
+        static readonly char[] outputRanks = new char[] { '8', '7', '6', '5', '4', '3', '2', '1' };
+        static readonly char[] outputFiles = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
         public byte From { get; set; }
         public byte To { get; set; }
         public byte Bits { get; set; }
@@ -43,57 +47,118 @@ namespace mmchess
             return Board.SquareNames[From] + Board.SquareNames[To];
         }
 
-        public static Move ParseMove(Board b, string moveString){
-            var from = moveString.Substring(0,2);
-            var to = moveString.Substring(2,2);
-            if(moveString.Length != 4)
+        public string ToAlegbraicNotation(Board b)
+        {
+            //find Piece
+            String output = String.Empty;
+            MoveBits bits = 0;
+            if ((b.Knights[b.SideToMove] & BitMask.Mask[From]) > 0)
+                bits = MoveBits.Knight;
+            else if ((b.Bishops[b.SideToMove] & BitMask.Mask[From]) > 0)
+                bits = MoveBits.Bishop;
+            else if ((b.Rooks[b.SideToMove] & BitMask.Mask[From]) > 0)
+                bits = MoveBits.Rook;
+            else if ((b.Queens[b.SideToMove] & BitMask.Mask[From]) > 0)
+                bits = MoveBits.Queen;
+            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[From]) > 0)
+                bits = MoveBits.Pawn;
+            else if ((b.King[b.SideToMove] & BitMask.Mask[From])>0)
+                bits = MoveBits.King;
+
+            if (bits == MoveBits.Pawn)
+            {
+                output += outputFiles[From.File()];
+                if ((Bits & (byte)MoveBits.Capture) > 0)
+                    output += 'x';
+
+                 output += outputRanks[To.Rank()];
+            }
+            else if (bits == MoveBits.Knight)
+            {
+                output += 'N';
+                var sqs = MoveGenerator.KnightMoves[To];
+
+                if ((Bits & (byte)MoveBits.Capture) > 0)
+                    output += 'x';
+
+                if ((sqs &b.Pieces[b.SideToMove] & b.Knights[b.SideToMove]).Count() > 1)
+                    output = Board.SquareNames[From] + Board.SquareNames[To];
+                else
+                    output += Board.SquareNames[To];
+
+            }
+            else if (bits == MoveBits.Bishop)
+            {
+                output += 'B';
+                if ((Bits & (byte)MoveBits.Capture) > 0)
+                    output += 'x';
+
+                output += Board.SquareNames[To];
+            }
+            else
+                output = Board.SquareNames[From] + Board.SquareNames[To];
+
+            return output;
+
+        }
+
+
+        public static Move ParseMove(Board b, string moveString)
+        {
+            var from = moveString.Substring(0, 2);
+            var to = moveString.Substring(2, 2);
+            if (moveString.Length != 4)
                 return null;
-            int fromIndex =-1, toIndex=-1;
-            for(int i=0;i<64;i++)
-            {   
-                if(Board.SquareNames[i]==from)
-                    fromIndex=i;
-                if(Board.SquareNames[i]==to)
-                    toIndex=i;
+            int fromIndex = -1, toIndex = -1;
+            for (int i = 0; i < 64; i++)
+            {
+                if (Board.SquareNames[i] == from)
+                    fromIndex = i;
+                if (Board.SquareNames[i] == to)
+                    toIndex = i;
             }
 
-            if(fromIndex==-1 || toIndex==-1)
+            if (fromIndex == -1 || toIndex == -1)
                 return null;
-            
-            MoveBits bits=0;
-            if((b.Knights[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+
+            MoveBits bits = 0;
+            if ((b.Knights[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Knight;
-            else if ((b.Bishops[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+            else if ((b.Bishops[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Bishop;
-            else if ((b.Rooks[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+            else if ((b.Rooks[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Rook;
-            else if ((b.Queens[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+            else if ((b.Queens[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Queen;
-            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[fromIndex])>0){
+            else if ((b.Pawns[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
+            {
                 //make sure we are making a legal pawn move
-                if(Math.Abs(toIndex.File()-fromIndex.File()) > 0){
-                    if((b.Pieces[b.SideToMove^1] & BitMask.Mask[toIndex]) == 0 ||
+                if (Math.Abs(toIndex.File() - fromIndex.File()) > 0)
+                {
+                    if ((b.Pieces[b.SideToMove ^ 1] & BitMask.Mask[toIndex]) == 0 ||
                         BitMask.Mask[toIndex] != b.EnPassant)
-                    return null;
+                        return null;
                 }
                 bits |= MoveBits.Pawn;
             }
-            else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex])>0)
+            else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.King;
-            else 
+            else
                 return null;
 
-            if((b.AllPieces & BitMask.Mask[toIndex]) > 0){
+            if ((b.AllPieces & BitMask.Mask[toIndex]) > 0)
+            {
                 //let's make sure we are capturing the right Piece
-                if((b.Pieces[b.SideToMove] & BitMask.Mask[toIndex])>0)
+                if ((b.Pieces[b.SideToMove] & BitMask.Mask[toIndex]) > 0)
                     return null;
 
                 bits |= MoveBits.Capture;
             }
 
-            return new Move{
-                From=(byte)fromIndex,
-                To=(byte)toIndex,
+            return new Move
+            {
+                From = (byte)fromIndex,
+                To = (byte)toIndex,
                 Bits = (byte)bits
             };
         }

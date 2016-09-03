@@ -31,7 +31,7 @@ namespace mmchess
                 total += nodes;
 
 
-                Console.WriteLine(String.Format("{0}: {1}", m, nodes));
+                Console.WriteLine(String.Format("{0}: {1}", m.ToAlegbraicNotation(b), nodes));
                 b.UnMakeMove();
             }
             Console.WriteLine("Moves: {0}", moveCount);
@@ -64,7 +64,7 @@ namespace mmchess
 
                  m.Nodes += nodes;
 
-                 Console.WriteLine(String.Format("{0}: {1}", m.Move, nodes));
+                 Console.WriteLine(String.Format("{0}: {1}", m.Move.ToAlegbraicNotation(newBoard), nodes));
                  newBoard.UnMakeMove();
              });
             Console.WriteLine("Moves: {0}", legalMoves.Count);

@@ -868,7 +868,7 @@ namespace mmchess
             for (int i = 0; i < 4; i++)
             {
                 var promoMove = new Move(m);
-                promoMove.Promotion = (byte)i;
+                promoMove.Promotion = (byte)(1<<i);
                 list.Add(promoMove);
             }
         }
