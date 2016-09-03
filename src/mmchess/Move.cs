@@ -67,36 +67,39 @@ namespace mmchess
 
             if (bits == MoveBits.Pawn)
             {
-                output += outputFiles[From.File()];
-                if ((Bits & (byte)MoveBits.Capture) > 0)
-                    output += 'x';
-
-                 output += outputRanks[To.Rank()];
+                if ((Bits & (byte)MoveBits.Capture) > 0){
+                    output += outputFiles[From.File()];
+                }
             }
             else if (bits == MoveBits.Knight)
             {
                 output += 'N';
-                var sqs = MoveGenerator.KnightMoves[To];
-
-                if ((Bits & (byte)MoveBits.Capture) > 0)
-                    output += 'x';
-
-                if ((sqs &b.Pieces[b.SideToMove] & b.Knights[b.SideToMove]).Count() > 1)
-                    output = Board.SquareNames[From] + Board.SquareNames[To];
-                else
-                    output += Board.SquareNames[To];
-
+                var sqs = MoveGenerator.KnightMoves[To] & b.Knights[b.SideToMove];
+                if ((sqs).Count() > 1){
+                    output += Board.SquareNames[From] ;
+                }
             }
             else if (bits == MoveBits.Bishop)
             {
                 output += 'B';
-                if ((Bits & (byte)MoveBits.Capture) > 0)
-                    output += 'x';
-
-                output += Board.SquareNames[To];
+            }
+            else if (bits == MoveBits.Rook){
+                output += 'R';
+            }
+            else if (bits == MoveBits.Queen)
+            {
+                output += 'Q';
+            }
+            else if (bits == MoveBits.King){
+                output += 'K';
             }
             else
-                output = Board.SquareNames[From] + Board.SquareNames[To];
+                output = Board.SquareNames[From] ;
+
+            if ((Bits & (byte)MoveBits.Capture) > 0)
+                output += 'x';
+
+            output += Board.SquareNames[To];
 
             return output;
 
