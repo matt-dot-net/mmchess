@@ -152,7 +152,7 @@ namespace mmchess
             }
 
             //next try a Null Move
-            if(Ply>0 && depth > R &&
+            if(Ply>0 && depth > R+1 &&
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
                 !MyBoard.History[Ply-1].IsNullMove)
             {
@@ -162,7 +162,7 @@ namespace mmchess
                 var oldEnPassant = MyBoard.EnPassant;
                 MyBoard.EnPassant=0;
                 MyBoard.History.Add(new HistoryMove(null));//store a null move in history
-                var nmScore = Search(beta,beta+1,depth-R-1);
+                var nmScore = Search(-beta,1-beta,depth-R-1);
                 MyBoard.History.RemoveAt(MyBoard.History.Count-1);//remove the null move
                 MyBoard.EnPassant= oldEnPassant;
                 Ply--;
@@ -170,6 +170,8 @@ namespace mmchess
                 MyBoard.SideToMove^=1;
                 if(nmScore>=beta){
                     Metrics.NullMoveFailHigh++;
+                    Metrics.FailHigh++;
+                    Metrics.FirstMoveFailHigh++;
                     return beta;
                 }
             }
