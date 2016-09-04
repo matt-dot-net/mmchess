@@ -148,7 +148,7 @@ namespace mmchess
             AllPieces = Pieces[0] | Pieces[1];
 
             BuildRotatedBoards(this);
-            HashKey = TranspositionTable.GetHashKey(this);
+            HashKey = TranspositionTable.GetHashKeyForPosition(this);
         }
 
         private static void BuildRotatedBoards(Board b)
@@ -195,6 +195,7 @@ namespace mmchess
                 {
                     //moved a king, wipe out castle status
                     CastleStatus &= (byte)(SideToMove == 1 ? 3 : 12);
+                    HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
                 }
                 else
                 { //moving a rook
@@ -202,8 +203,10 @@ namespace mmchess
                         CastleStatus &= (byte)(m.From.File() == 7 ? 11:7);
                     else
                         CastleStatus &= (byte)(m.From.File() == 7 ? 14:13);
+                    HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
                 }
             }
+            
         }
 
         void MakeCastleMove(Move m)
@@ -272,13 +275,13 @@ namespace mmchess
             if (((m.Bits & (byte)MoveBits.Pawn) > 0) && 
                 Math.Abs(m.To - m.From) == 16){
                     EnPassant = BitMask.Mask[m.From + (SideToMove == 1 ? 8 : -8)];
-                    HashKey^=EnPassant;
+                    HashKey^=TranspositionTable.EnPassantFileKey[m.To.File()];
                 }
             else
                 EnPassant=0;
 
             SideToMove ^= 1;
-            HashKey ^= (ulong)SideToMove;
+            HashKey ^= TranspositionTable.SideToMoveKey[SideToMove];
             // push the move onto the list of moves
             History.Add(hm);
 
@@ -381,7 +384,7 @@ namespace mmchess
             var p = Move.GetPieceFromMoveBits((MoveBits)m.Bits);
             var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
 
-            UpdateBoards(m, SideToMove, moveMask);
+            UpdateBoards(p,m, SideToMove, moveMask);
 
             AllPieces ^= moveMask;
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[m.From]] | BitMask.Mask[RotatedL45Map[m.To]]);
@@ -398,7 +401,9 @@ namespace mmchess
             if (index < 0)
                 return;
             var m = History[index];
+            HashKey ^= TranspositionTable.SideToMoveKey[SideToMove];
             SideToMove ^= 1;
+
 
             //restore captured piece
             if (m.CapturedPiece > 0)
@@ -411,10 +416,10 @@ namespace mmchess
             if(m.Promotion>0)
                 UpdatePromotion(m);
             if(EnPassant>0)
-                HashKey^=EnPassant;
+                HashKey^=TranspositionTable.EnPassantFileKey[m.To.File()];
             EnPassant = m.EnPassant;
-            if(EnPassant >0)
-                HashKey^=EnPassant;
+            if(CastleStatus != m.CastleStatus)
+                HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
             CastleStatus = m.CastleStatus;
             UpdateBitBoards(m);
             History.RemoveAt(index);
@@ -519,21 +524,20 @@ namespace mmchess
             HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)p,sq];
         }
 
-        private void UpdateBoards(Move m, int sideToMove, ulong moveMask)
+        private void UpdateBoards(Piece p, Move m, int sideToMove, ulong moveMask)
         {
-            Piece p = Move.GetPieceFromMoveBits((MoveBits)m.Bits);
             Pieces[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.King) > 0)
+            if (p==Piece.King)
                 King[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Queen) > 0)
+            if (p==Piece.Bishop)
                 Queens[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Bishop) > 0)
+            if (p==Piece.Bishop)
                 Bishops[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Knight) > 0)
+            if (p==Piece.Knight)
                 Knights[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Rook)>0)
+            if (p==Piece.Rook)
                 Rooks[sideToMove] ^= moveMask;
-            if ((m.Bits & (byte)MoveBits.Pawn) > 0)
+            if (p==Piece.Pawn)
                 Pawns[sideToMove] ^= moveMask;
 
             HashKey ^= TranspositionTable.HashKeys[sideToMove,(int)p,m.From];

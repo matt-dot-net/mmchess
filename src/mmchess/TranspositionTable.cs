@@ -3,13 +3,31 @@ using System.Collections.Generic;
 
 namespace mmchess
 {
-    public class TranspositionTable : Dictionary<uint, TranspositionTableEntry>
+    public class TranspositionTable
     {
+        public const int AGE_MAX=2;
 
+        int SizeInBytes{
+            get{
+                    return 67108864; // 64MB
+            }
+        }
+        TranspositionTableEntry[] TTable;
+        ulong KeyMask;
+        public TranspositionTable(){
+
+            ulong itemCount = (ulong)SizeInBytes/(ulong)TranspositionTableEntry.SizeOf;
+            TTable=new TranspositionTableEntry[itemCount];
+
+            for(int i=0;KeyMask < itemCount;i++)
+                KeyMask |= (ulong)1<<i;
+            
+        }
+#region HashKey Random Values
         public static readonly ulong[,,] HashKeys = new ulong[2,6, 64]
         {
             { //white
-#region pieces
+
                 {
                 0xd19da6440dc85ebb,0x8c8446d842369c8d,0x46103af2eee5d8e0,0x4a183436e67c60e1,
                 0x5e8a4435957c48d3,0x4ef2f3a9d6c9ebb0,0x834eca42a71c4440,0x3cbc421d0d8e0cc2,
@@ -118,10 +136,10 @@ namespace mmchess
                 0x89528d4c4b142f22,0x144ccaf6ee874ea2,0x81421f2983939c78,0xf2184c7e71a34ab6,
                 0x5fa14aa1864854cc,0x74ac5ca9425cf577,0x373a1bffa94156a6,0xb4402a9411464cbf,
                 }
-#endregion
+
             },
             {   //black
-#region black pieces
+
                 {
                 0x9dea904305f5e099,0x6f5d8a400bece6ed,0xa52490d1b34ccbae,0xfbcf81c88f4187da,
                 0x954e4b68ecd8d761,0x809a48655cbfad83,0x87f9f1cfa0904d7d,0x813983482c44f6d2,
@@ -230,9 +248,29 @@ namespace mmchess
                 0x8d2385208e48d5b9,0xafbb46988f7bec11,0x5f21b546282772f1,0x1895c9ac402b773f,
                 0x57bf496734c808c9,0x40836393eba0230d,0x934bc5c6237b123c,0x1a41cfe13ab4020,
                 }     
-#endregion  
+ 
             }
         };
+
+        public static readonly ulong [] EnPassantFileKey= new ulong[8]{
+            0x4e3c453a85cf1c28,0xd2b3a74837aa1b24,0x9d0efb01be69a74f,0x649941f3f6b99925,
+            0x8464d0b1a1c7a840,0xd29147a7c448b209,0x547c914dae8833d2,0x4ea326614b526181,
+        };
+
+        public static readonly ulong [] SideToMoveKey = new ulong[2]{
+            0x1c9e7aff5f9e45ef,0x4c45362999b2481e,
+        };
+
+        public static readonly ulong [] CastleStatusKey = new ulong [16]{
+            0xc7531492d2deac48,0x29bfb6b94690e79d,0x7064484865528a46,0x4098158749f2c173,
+            0xb5c5fd8a4c62c9ef,0x221c256f338d4b35,0xc8d4d39e20decbc,0x7680414afc2845f5,
+            0xfb824249eb0365ff,0xbf6df355b04168b7,0x947e6b5b569d944c,0x4b9c2efab42fcae,
+            0x4f14b3e323ea6422,0x9b438b6680100598,0x18ed5d58ae43cf1b,0x7918396af069a141            
+        };
+
+#endregion
+
+        //this code was only used to generated the static numbers
         public static void GenerateHashKeys()
         {
             var rand = new Random(DateTime.Now.Millisecond);
@@ -260,7 +298,7 @@ namespace mmchess
             }
         }
 
-        public static ulong GetHashKey(Board b){
+        public static ulong GetHashKeyForPosition(Board b){
             ulong hashKey=0;
             hashKey^=(ulong)b.SideToMove;
             hashKey^=b.EnPassant;
@@ -286,16 +324,16 @@ namespace mmchess
                 }                
 
                 subpieces = b.Rooks[side];
-                while(subpieces >0 )
+                 while(subpieces >0 )
                 {
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.Rook,sq];
-                }                
-                subpieces = b.Queens[side];
-                while(subpieces >0 )
-                {
+                     hashKey ^= HashKeys[side,(int)Piece.Rook,sq];
+                 }                
+                    subpieces = b.Queens[side];
+                 while(subpieces >0 )
+                 {
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
@@ -319,6 +357,43 @@ namespace mmchess
                 }                
             }
             return hashKey;
+        }
+
+        public ulong HashFunction(ulong key){
+            return key & KeyMask;
+        }
+        public void Store(ulong hashKey, TranspositionTableEntry e){
+            
+            var index = HashFunction(hashKey);
+            var existing = TTable[index];
+
+            if(existing != null){
+                //verify lock
+                if((uint)(existing.Value ^ hashKey) != existing.Lock)
+                {
+                    //we have a collision
+                    //decide to replace
+                    //replacement strategy
+                    //everytime we hit, we age                    
+                    existing.Age++;
+                    if(existing.Depth >= e.Depth && existing.Age < AGE_MAX)
+                        return; //do not replace
+                }
+            }
+
+            //calculate lock
+            e.Lock = (uint)(e.Value ^ hashKey);
+
+            TTable[index]=e;
+        }
+
+        public TranspositionTableEntry Read(ulong hashKey){
+            var e = TTable[HashFunction(hashKey)];
+            //verify lock
+            if((uint)(e.Value ^ hashKey) != e.Lock)
+                return null;
+            
+            return e;
         }
     }
 }
