@@ -7,7 +7,9 @@ namespace mmchess
     {
         public const int AGE_MAX=2;
 
-        public int Collisions{get;set;}
+        public ulong Collisions{get;set;}
+        public ulong Hits{get;set;}
+        public ulong Stores{get;set;}
         int SizeInBytes{
             get{
                     return 67108864; // 64MB
@@ -401,7 +403,7 @@ namespace mmchess
 
             //calculate lock
             e.Lock = (uint)(e.Value ^ hashKey);
-
+            Stores++;
             TTable[index]=e;
         }
 
@@ -410,7 +412,7 @@ namespace mmchess
             //verify lock
             if((uint)(e.Value ^ hashKey) != e.Lock)
                 return null;
-            
+            Hits++;
             return e;
         }
     }

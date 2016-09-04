@@ -10,6 +10,10 @@ namespace mmchess
             Console.WriteLine("FH%={0}, Killers%={1}",
                 100*(float)metrics.FirstMoveFailHigh/((float)metrics.FailHigh+1),
                 100*(float)metrics.KillerFailHigh/((float)metrics.FailHigh+1));
+            Console.WriteLine("----Transposition Table----");
+            Console.WriteLine("Collisions={0}, Collide%={1:0.0}, Hits={2}",TranspositionTable.Instance.Collisions,
+                (double)TranspositionTable.Instance.Collisions/
+                (double)TranspositionTable.Instance.Stores+1, TranspositionTable.Instance.Hits);
         }
         public static void Iterate(Board b)
         {
