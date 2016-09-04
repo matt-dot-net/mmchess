@@ -4,6 +4,13 @@ namespace mmchess
 {
     public static class SearchRoot
     {
+        static void PrintMetrics(AlphaBetaMetrics metrics){
+            Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}",metrics.Nodes,metrics.QNodes,
+                100*(float)metrics.QNodes/((float)metrics.Nodes+1));
+            Console.WriteLine("FH%={0}, Killers%={1}",
+                100*(float)metrics.FirstMoveFailHigh/((float)metrics.FailHigh+1),
+                100*(float)metrics.KillerFailHigh/((float)metrics.FailHigh+1));
+        }
         public static void Iterate(Board b)
         {
             AlphaBeta ab = new AlphaBeta(b, TimeSpan.FromSeconds(5));
@@ -41,7 +48,7 @@ namespace mmchess
                 } while (!ab.TimeUp);
                 if (!ab.TimeUp)
                 {
-                    Console.Write("{0}\t{1}\t{2}\t", i, score, ab.Nodes);
+                    Console.Write("{0}\t{1}\t{2}\t", i, score, ab.Metrics.Nodes);
                     if (ab.PrincipalVariation[0] != null)
                     {
                         foreach (var m in ab.PrincipalVariation[0])
@@ -59,6 +66,7 @@ namespace mmchess
                 if(Math.Abs(score) > 9900)
                     break;
             }
+            PrintMetrics(ab.Metrics);
             b.MakeMove(ab.PrincipalVariation[0][0]);
         }
     }

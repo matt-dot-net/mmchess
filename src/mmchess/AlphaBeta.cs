@@ -9,7 +9,7 @@ namespace mmchess
         const int MAX_DEPTH = 64;
 
         int Ply { get; set; }
-        public int Nodes { get; set; }
+        public AlphaBetaMetrics Metrics {get;set;}
         public List<Move> [] PrincipalVariation {get;set;}
         public bool TimeUp { get; set; }
         DateTime StartTime { get; set; }
@@ -21,7 +21,7 @@ namespace mmchess
         public int CurrentDrawScore { get; set; }
         public AlphaBeta()
         {
-
+            Metrics = new AlphaBetaMetrics();
         }
         public AlphaBeta(Board b, TimeSpan timeLimit)
         {
@@ -30,6 +30,7 @@ namespace mmchess
             MyBoard = b;
             StartTime = DateTime.Now;
             TimeLimit = timeLimit;
+            Metrics = new AlphaBetaMetrics();
         }
 
         void CheckTime()
@@ -72,8 +73,9 @@ namespace mmchess
         }
 
         public int Quiesce(int alpha,int beta){
-            Nodes++;
-            if ((Nodes & 65536) > 0)
+            Metrics.Nodes++;
+            Metrics.QNodes++;
+            if ((Metrics.Nodes & 65536) > 0)
             {
                 CheckTime();
                 if (TimeUp)
@@ -87,7 +89,7 @@ namespace mmchess
                 alpha = standPat;
 
             var moves = MoveGenerator
-                .GenerateCapturesAndChecks(MyBoard)
+                .GenerateCaptures(MyBoard)
                 .OrderBy((m)=>OrderQuiesceMove(m));
 
             foreach(var m in moves){
@@ -107,8 +109,8 @@ namespace mmchess
 
         public int Search(int alpha, int beta, int depth)
         {
-            Nodes++;
-            if ((Nodes & 65536) > 0)
+            Metrics.Nodes++;
+            if ((Metrics.Nodes & 65536) > 0)
             {
                 CheckTime();
                 if (TimeUp)
@@ -127,7 +129,7 @@ namespace mmchess
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
-                lastMove = m;
+                
                 Ply++;
                 int score = -Search(-beta, -alpha, depth - 1);
                 MyBoard.UnMakeMove();
@@ -139,7 +141,12 @@ namespace mmchess
                 if (score >= beta)
                 {
                     UpdateKillers(m);
-
+                    Metrics.FailHigh++;
+                    if(lastMove==null)
+                        Metrics.FirstMoveFailHigh++;
+                    if((Killers[Ply,0]!= null && m.Value == Killers[Ply,0].Value) ||
+                        (Killers[Ply,1] !=null &&  m.Value==Killers[Ply,1].Value))
+                        Metrics.KillerFailHigh++;
                     return score;
                 }
                 if (score > best)
@@ -152,6 +159,7 @@ namespace mmchess
                         bestMove = m;
                     }
                 }
+                lastMove = m;
             }
 
             //check for mate
