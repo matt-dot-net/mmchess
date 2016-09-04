@@ -5,10 +5,10 @@ namespace mmchess{
     [StructLayout(LayoutKind.Explicit,Size=8)]
     public class TranspositionTableEntry{
 
-        public enum EntType{
-            EXACT=1,
-            LOWER=2,
-            UPPER=4
+        public enum EntryType{
+            PV=1,
+            ALL=2,
+            CUT=4
         }  ;
 
   
@@ -18,14 +18,13 @@ namespace mmchess{
         public UInt32 MoveValue;
 
         [FieldOffset(4)]
-        public Byte Depth;
-        [FieldOffset(5)]
         public Byte Type;
-        [FieldOffset(6)]
-        public Byte Score;
-        [FieldOffset(7)]
+        [FieldOffset(5)]
         public Byte Age;
+        [FieldOffset(6)]
+        public UInt16 Score;
         [FieldOffset(0)]
+
         public uint Value;
 
         [FieldOffset(8)]
