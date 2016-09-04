@@ -19,13 +19,13 @@ namespace mmchess
 
     public enum Piece
     {
-        Knight = 0,
-        Bishop = 1,
-        Rook = 2,
-        Queen = 3,
-        Pawn = 4,
-        King = 5,
-        Empty
+        Empty=0,
+        Knight = 1,
+        Bishop = 2,
+        Rook = 3,
+        Queen = 4,
+        Pawn = 5,
+        King = 6
     }
     [StructLayout(LayoutKind.Explicit, Size = 4)]
     public class Move

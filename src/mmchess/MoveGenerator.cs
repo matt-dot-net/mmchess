@@ -496,40 +496,37 @@ namespace mmchess
                     if ((BitMask.Mask[toi + 7] & b.Pawns[0]) > 0 &&
                         !PinnedOnKing(b, toi + 7) && SquareExtensions.FileDistance(toi, toi + 7) == 1)
                     {
+                        var newMove = new Move
+                        {
+                            From = (byte)(toi + 7),
+                            To = (byte)toi,
+                            Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
+                        };
                         if (toi < 8)
 
-                            GeneratePromotions(list, new Move { From = (byte)(toi + 7), To = (byte)toi });
+                            GeneratePromotions(list, newMove);
                         else
                         {
-                            list.Add(new Move
-                            {
-                                From = (byte)(toi + 7),
-                                To = (byte)toi,
-                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
-                            });
+                            list.Add(newMove);
 
                         }
                     }
                     if ((BitMask.Mask[toi + 9] & b.Pawns[0]) > 0 &&
                         !PinnedOnKing(b, toi + 9) && SquareExtensions.FileDistance(toi, toi + 9) == 1)
                     {
+                        var newMove = new Move
+                        {
+                            From = (byte)(toi + 9),
+                            To = (byte)toi,
+                            Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
+                        };
                         if (toi < 8)
-                            GeneratePromotions(list, new Move
-                            {
-                                From = (byte)(toi + 9),
-                                To = (byte)toi,
-
-                            });
+                            GeneratePromotions(list, newMove);
 
                         else
                         {
 
-                            list.Add(new Move
-                            {
-                                From = (byte)(toi + 9),
-                                To = (byte)toi,
-                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
-                            });
+                            list.Add(newMove);
                         }
                     }
 
@@ -595,60 +592,53 @@ namespace mmchess
                     if ((BitMask.Mask[toi - 7] & b.Pawns[1]) > 0 &&
                         !PinnedOnKing(b, toi - 7) && SquareExtensions.FileDistance(toi, toi - 7) == 1)
                     {
-                        if (toi > 55)
-
-                            GeneratePromotions(list, new Move { From = (byte)(toi - 7), To = (byte)toi });
-                        else
+                        var newMove = new Move
                         {
-
-                            list.Add(new Move
-                            {
-                                From = (byte)(toi - 7),
-                                To = (byte)toi,
-                                Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
-                            });
-
-                        }
+                            From = (byte)(toi - 7),
+                            To = (byte)toi,
+                            Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
+                        };
+                        if (toi > 55)
+                            GeneratePromotions(list, newMove);
+                        else
+                            list.Add(newMove);
                     }
                     if ((BitMask.Mask[toi - 9] & b.Pawns[1]) > 0 &&
                         !PinnedOnKing(b, toi - 9) && SquareExtensions.FileDistance(toi, toi - 9) == 1)
                     {
+                        var newMove = new Move
+                        {
+                            From = (byte)(toi - 9),
+                            To = (byte)toi,
+                            Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
+                        };
                         if (toi < 8)
-                            GeneratePromotions(list, new Move
-                            {
-                                From = (byte)(toi - 9),
-                                To = (byte)toi,
-
-                            });
+                            GeneratePromotions(list, newMove);
 
                         else
-                        {
-                            list.Add(new Move
-                            {
-                                From = (byte)(toi - 9),
-                                To = (byte)toi,
-                                Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
-                            });
-                        }
+                            list.Add(newMove);
                     }
 
                 }
             }
         }
 
-        public static IList<Move> GenerateCaptures(Board b){
+        public static IList<Move> GenerateCaptures(Board b)
+        {
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
             ulong moves;
             ulong pieces = b.Rooks[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
-                moves = RookAttacks(b,sq);
+                moves = RookAttacks(b, sq);
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -657,19 +647,21 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.Rook | MoveBits.Capture)
-                    });                    
+                    });
                 }
             }
 
             pieces = b.Knights[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
                 moves = KnightMoves[sq];
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -678,18 +670,20 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.Knight | MoveBits.Capture)
-                    });                    
+                    });
                 }
             }
             pieces = b.Bishops[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
-                moves = BishopAttacks(b,sq);
+                moves = BishopAttacks(b, sq);
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -698,18 +692,20 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.Bishop | MoveBits.Capture)
-                    });                    
+                    });
                 }
-            }            
+            }
             pieces = b.Queens[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
                 moves = QueenAttacks(b, sq);
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -718,19 +714,21 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.Queen | MoveBits.Capture)
-                    });                    
+                    });
                 }
-            }              
+            }
 
             pieces = b.Pawns[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
-                moves = PawnAttacks[b.SideToMove,sq];
+                moves = PawnAttacks[b.SideToMove, sq];
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -739,18 +737,20 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
-                    });                    
+                    });
                 }
-            }                        
+            }
             pieces = b.King[b.SideToMove];
-            while(pieces > 0){
+            while (pieces > 0)
+            {
                 int sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
 
                 moves = KingMoves[sq];
                 moves &= b.Pieces[xside];
 
-                while(moves > 0){
+                while (moves > 0)
+                {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
 
@@ -759,11 +759,11 @@ namespace mmchess
                         From = (byte)sq,
                         To = (byte)to,
                         Bits = (byte)(MoveBits.King | MoveBits.Capture)
-                    });                    
+                    });
                 }
-            }                        
-            return list;             
-            
+            }
+            return list;
+
         }
 
         public static IList<Move> GenerateMoves(Board b)
@@ -1003,8 +1003,8 @@ namespace mmchess
             }
 
             //generate castling moves
-            var bits = b.CastleStatus >>  (b.SideToMove * 2);
-            if((bits&3) > 0)
+            var bits = b.CastleStatus >> (b.SideToMove * 2);
+            if ((bits & 3) > 0)
                 GenerateCastleMoves(b, list, sq, bits);
         }
 
@@ -1115,15 +1115,15 @@ namespace mmchess
                 //and for each possible rank setup
                 for (int j = 0; j < 256; j++)
                 {
-                    int diff=1;
-                    for (int x = (i % 8) - 1; x >= 0; x--,diff++)
+                    int diff = 1;
+                    for (int x = (i % 8) - 1; x >= 0; x--, diff++)
                     {
                         RankMoves[i, j] |= BitMask.Mask[i - diff];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                    diff=1;
-                    for (int x = (i % 8) + 1; x < 8; x++,diff++)
+                    diff = 1;
+                    for (int x = (i % 8) + 1; x < 8; x++, diff++)
                     {
                         RankMoves[i, j] |= BitMask.Mask[i + diff];
                         if (((1 << x) & j) != 0)
@@ -1134,17 +1134,17 @@ namespace mmchess
                 for (int j = 0; j < 256; j++)
                 {
 
-                    int diff=1;
-                    for (int x = (i >> 3) - 1; x >= 0; x--,diff++)
+                    int diff = 1;
+                    for (int x = (i >> 3) - 1; x >= 0; x--, diff++)
                     {
-                        FileMoves[i, j] |= BitMask.Mask[i-(8*diff)];
+                        FileMoves[i, j] |= BitMask.Mask[i - (8 * diff)];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
-                    diff=1;
-                    for (int x = (i >> 3) + 1; x < 8; x++,diff++)
+                    diff = 1;
+                    for (int x = (i >> 3) + 1; x < 8; x++, diff++)
                     {
-                        FileMoves[i, j] |= BitMask.Mask[i+(8*diff)];
+                        FileMoves[i, j] |= BitMask.Mask[i + (8 * diff)];
                         if (((1 << x) & j) != 0)
                             break; //found a piece, we'll "capture" it but stop sliding
                     }
@@ -1208,9 +1208,9 @@ namespace mmchess
             {
                 ulong moves = 0;
                 ulong attacks = 0;
-                if(i<56)
+                if (i < 56)
                     moves |= BitMask.Mask[i + 8];
-                if (i>7 && i < 16)
+                if (i > 7 && i < 16)
                     moves |= BitMask.Mask[i + 16];
                 //captures
                 if (i < 56 && i.File() - (i + 7).File() == 1)
@@ -1222,11 +1222,11 @@ namespace mmchess
             }
 
             //white
-            for (int i =63; i >= 0; i--)
+            for (int i = 63; i >= 0; i--)
             {
                 ulong moves = 0;
                 ulong attacks = 0;
-                if(i>7)
+                if (i > 7)
                     moves |= BitMask.Mask[i - 8];
                 if (i > 47 && i < 56)
                     moves |= BitMask.Mask[i - 16];

@@ -331,7 +331,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.Knight,sq];
+                    hashKey ^= HashKeys[side,(int)Piece.Knight-1,sq];
                 }
 
                 subpieces = b.Bishops[side];
@@ -340,7 +340,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.Bishop,sq];
+                    hashKey ^= HashKeys[side,(int)Piece.Bishop-1,sq];
                 }                
 
                 subpieces = b.Rooks[side];
@@ -349,7 +349,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                     hashKey ^= HashKeys[side,(int)Piece.Rook,sq];
+                     hashKey ^= HashKeys[side,(int)Piece.Rook-1,sq];
                  }                
                     subpieces = b.Queens[side];
                  while(subpieces >0 )
@@ -357,7 +357,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.Queen,sq];
+                    hashKey ^= HashKeys[side,(int)Piece.Queen-1,sq];
                 }                
                 subpieces = b.King[side];
                 while(subpieces >0 )
@@ -365,7 +365,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.King,sq];
+                    hashKey ^= HashKeys[side,(int)Piece.King-1 ,sq];
                 }                
                 subpieces = b.Pawns[side];
                 while(subpieces >0 )
@@ -373,7 +373,7 @@ namespace mmchess
                     int sq = subpieces.BitScanForward();
                     subpieces ^= BitMask.Mask[sq];
 
-                    hashKey ^= HashKeys[side,(int)Piece.Pawn,sq];
+                    hashKey ^= HashKeys[side,(int)Piece.Pawn-1,sq];
                 }                
             }
             return hashKey;

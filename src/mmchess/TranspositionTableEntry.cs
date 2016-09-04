@@ -31,8 +31,7 @@ namespace mmchess{
         public uint Lock;
 
         public int Depth{get{
-
-            return (DepthAge >> 6) & 63;
+            return DepthAge & 63;
         }}
 
         public int Age {
