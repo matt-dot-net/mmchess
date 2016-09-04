@@ -140,13 +140,9 @@ namespace mmchess
                 }
                 if (score >= beta)
                 {
-                    UpdateKillers(m);
-                    Metrics.FailHigh++;
-                    if(lastMove==null)
+                    SearchFailHigh(m, score,depth);
+                    if (lastMove == null)
                         Metrics.FirstMoveFailHigh++;
-                    if((Killers[Ply,0]!= null && m.Value == Killers[Ply,0].Value) ||
-                        (Killers[Ply,1] !=null &&  m.Value==Killers[Ply,1].Value))
-                        Metrics.KillerFailHigh++;
                     return score;
                 }
                 if (score > best)
@@ -157,6 +153,7 @@ namespace mmchess
                     {
                         alpha = score;
                         bestMove = m;
+                        //potential PV Node
                     }
                 }
                 lastMove = m;
@@ -189,9 +186,57 @@ namespace mmchess
                         PrincipalVariation[Ply].Add(m);
                 }    
                 PrincipalVariation[Ply].Insert(0,bestMove);
+                //Add to PV
+                AddExactToPv(bestMove,alpha,depth);
             }
 
+            //ALL NODE
+            AddUpperNodeToTTable(bestMove,best);
             return best;
+        }
+
+        void AddExactToPv(Move m, int alpha, int depth){
+            TranspositionTable.Instance.Store(
+                MyBoard.HashKey,
+                new TranspositionTableEntry{
+                    Type = (byte) TranspositionTableEntry.EntryType.PV,
+                    Score = (UInt16)alpha,
+                    Age = (byte)MyBoard.History.Count,
+                    MoveValue = m.Value
+                }
+            );
+        }
+
+        void AddUpperNodeToTTable(Move m, int score){
+            TranspositionTable.Instance.Store(
+                MyBoard.HashKey,
+                new TranspositionTableEntry{
+                    Type = (byte) TranspositionTableEntry.EntryType.ALL,
+                    Score = (UInt16) score,
+                    Age = (byte)MyBoard.History.Count,
+                    MoveValue = m.Value
+                }
+            );
+        }
+
+        void SearchFailHigh( Move m, int score, int depth)
+        {
+            UpdateKillers(m);
+            Metrics.FailHigh++;
+
+            if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
+                (Killers[Ply, 1] != null && m.Value == Killers[Ply, 1].Value))
+                Metrics.KillerFailHigh++;
+
+            //update the transposition table
+            TranspositionTable.Instance.Store(
+                MyBoard.HashKey,
+                new TranspositionTableEntry{
+                    Type = (byte) TranspositionTableEntry.EntryType.CUT,
+                    Score = (byte)score,
+                    Age = (byte) MyBoard.History.Count,
+                    MoveValue = m.Value
+                });
         }
 
         private void UpdateKillers(Move m)

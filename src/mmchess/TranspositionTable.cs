@@ -392,7 +392,7 @@ namespace mmchess
                     //decide to replace
                     //replacement strategy
                     //everytime we hit, we age                    
-                    if(existing.Depth >= e.Depth && e.Age - existing.Age < AGE_MAX)
+                    if(e.Age - existing.Age < AGE_MAX)
                         return; //do not replace
                 }
             }
