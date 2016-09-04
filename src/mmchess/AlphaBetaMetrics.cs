@@ -7,5 +7,6 @@ namespace mmchess{
         public ulong FirstMoveFailHigh{get;set;}
         public ulong KillerFailHigh{get;set;}
         public ulong TTFailHigh{get;set;}
+        public ulong NullMoveFailHigh{get;set;}
     }
 }

@@ -8,7 +8,7 @@ namespace mmchess
     public class AlphaBeta
     {
         const int MAX_DEPTH = 64;
-
+        const int R = 3;
         int Ply { get; set; }
         public AlphaBetaMetrics Metrics {get;set;}
         public List<Move> [] PrincipalVariation {get;set;}
@@ -125,6 +125,11 @@ namespace mmchess
                     return alpha;
             }
 
+            int best = -10000;
+            Move bestMove=null;
+            if (depth <= 0)
+                return Quiesce(alpha,beta);            
+
             //first let's look for a transposition
             var entry = TranspositionTable.Instance.Read(MyBoard.HashKey);
             if(entry != null){
@@ -146,10 +151,29 @@ namespace mmchess
                 }
             }
 
-            int best = -10000;
-            Move bestMove=null;
-            if (depth == 0)
-                return Quiesce(alpha,beta);
+            //next try a Null Move
+            if(Ply>0 && depth > R &&
+                !MyBoard.InCheck(MyBoard.SideToMove) &&
+                !MyBoard.History[Ply-1].IsNullMove)
+            {
+                MyBoard.SideToMove^=1;
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                Ply++;
+                var oldEnPassant = MyBoard.EnPassant;
+                MyBoard.EnPassant=0;
+                MyBoard.History.Add(new HistoryMove(null));//store a null move in history
+                var nmScore = Search(beta,beta+1,depth-R-1);
+                MyBoard.History.RemoveAt(MyBoard.History.Count-1);//remove the null move
+                MyBoard.EnPassant= oldEnPassant;
+                Ply--;
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                MyBoard.SideToMove^=1;
+                if(nmScore>=beta){
+                    Metrics.NullMoveFailHigh++;
+                    return beta;
+                }
+            }
+
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
