@@ -6,14 +6,13 @@ namespace mmchess
     {
         static void PrintMetrics(AlphaBetaMetrics metrics){
             Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}",metrics.Nodes,metrics.QNodes,
-                100*(float)metrics.QNodes/((float)metrics.Nodes+1));
-            Console.WriteLine("FH%={0}, Killers%={1}",
-                100*(float)metrics.FirstMoveFailHigh/((float)metrics.FailHigh+1),
-                100*(float)metrics.KillerFailHigh/((float)metrics.FailHigh+1));
-            Console.WriteLine("----Transposition Table----");
-            Console.WriteLine("Collisions={0}, Collide%={1:0.0}, Hits={2}",TranspositionTable.Instance.Collisions,
-                (double)TranspositionTable.Instance.Collisions/
-                (double)TranspositionTable.Instance.Stores+1, TranspositionTable.Instance.Hits);
+                100*(double)metrics.QNodes/((double)metrics.Nodes+1));
+            Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0}",
+                100*(double)metrics.FirstMoveFailHigh/((double)metrics.FailHigh+1),
+                100*(double)metrics.KillerFailHigh/((double)metrics.FailHigh+1));
+            Console.WriteLine("HashTable: Collisions={0}, Hits={1}",
+                TranspositionTable.Instance.Collisions,
+                TranspositionTable.Instance.Hits);
         }
         public static void Iterate(Board b)
         {

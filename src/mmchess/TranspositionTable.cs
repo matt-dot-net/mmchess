@@ -382,33 +382,49 @@ namespace mmchess
         public ulong HashFunction(ulong key){
             return key & KeyMask;
         }
-        public void Store(ulong hashKey, TranspositionTableEntry e){
+        public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type){
             
             var index = HashFunction(hashKey);
             var existing = TTable[index];
+            var newEntry = new TranspositionTableEntry{
+                Type = (byte)type,
+                Score = (UInt16)score,
+                DepthAge = (byte)depth,
+
+            };
+            if(m != null)
+                newEntry.MoveValue =m.Value;
 
             if(existing != null){
                 //verify lock
                 if((uint)(existing.Value ^ hashKey) != existing.Lock)
                 {
-                    Collisions++;
+
                     //we have a collision
                     //decide to replace
                     //replacement strategy
-                    //everytime we hit, we age                    
-                    if(Math.Abs(e.Age - existing.Age) < AGE_MAX) //absolute val in case of overflow
+                    //everytime we hit, we age        
+                    var age = existing.Age; 
+                    //we always increment age on collision
+                    existing.DepthAge = (byte)(++age & 3 << 6);
+                    var draft = existing.Depth;       
+                    if(age < 4 && depth < draft)
+                    {
+                        Collisions++;
                         return; //do not replace
+                    }
                 }
             }
 
-            //calculate lock
-            e.Lock = (uint)(e.Value ^ hashKey);
+            newEntry.Lock = (uint)(newEntry.Value ^ hashKey);
             Stores++;
-            TTable[index]=e;
+            TTable[index]=newEntry;
         }
 
         public TranspositionTableEntry Read(ulong hashKey){
             var e = TTable[HashFunction(hashKey)];
+            if(e == null)
+                return null;
             //verify lock
             if((uint)(e.Value ^ hashKey) != e.Lock)
                 return null;

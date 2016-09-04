@@ -20,7 +20,7 @@ namespace mmchess{
         [FieldOffset(4)]
         public Byte Type;
         [FieldOffset(5)]
-        public Byte Age;
+        public Byte DepthAge; //This field will use 2-bits for age and 6-bits for depth
         [FieldOffset(6)]
         public UInt16 Score;
         [FieldOffset(0)]
@@ -29,5 +29,14 @@ namespace mmchess{
 
         [FieldOffset(8)]
         public uint Lock;
+
+        public int Depth{get{
+
+            return (DepthAge >> 6) & 63;
+        }}
+
+        public int Age {
+            get{ return DepthAge>>6;}
+        }
     }
 }

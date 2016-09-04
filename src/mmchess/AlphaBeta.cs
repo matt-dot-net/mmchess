@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static mmchess.TranspositionTableEntry;
 
 namespace mmchess
 {
@@ -49,10 +50,17 @@ namespace mmchess
             return int.MaxValue; // checks first
         }
 
-        int OrderMove(Move m){
+        int OrderMove(Move m, TranspositionTableEntry entry){           
+
+            if(entry != null ) {
+                if(m.Value == entry.MoveValue )
+                    return int.MaxValue;// search this move first
+            }
+
             if(PrincipalVariation[Ply] !=null){
                 if(PrincipalVariation[Ply][0].Value == m.Value)
-                    return int.MaxValue; // search this move first
+                    return int.MaxValue; // search this move first 
+                                         // should always be found in hash table
             }
 
             if((m.Bits & (byte)MoveBits.Capture) >0 )
@@ -90,7 +98,7 @@ namespace mmchess
 
             var moves = MoveGenerator
                 .GenerateCaptures(MyBoard)
-                .OrderBy((m)=>OrderQuiesceMove(m));
+                .OrderByDescending((m)=>OrderQuiesceMove(m));
 
             foreach(var m in moves){
                 if(!MyBoard.MakeMove(m))
@@ -116,6 +124,28 @@ namespace mmchess
                 if (TimeUp)
                     return alpha;
             }
+
+            //first let's look for a transposition
+            var entry = TranspositionTable.Instance.Read(MyBoard.HashKey);
+            if(entry != null){
+                //we have a hit from the TTable
+                if(entry.Depth > depth)
+                {   
+
+                    switch((EntryType) entry.Type)
+                    {
+                        case EntryType.PV:
+                            if(entry.Value < beta)
+                                UpdatePv(new Move(entry.Value));
+                            return entry.Score;
+                        case EntryType.ALL:
+                        case EntryType.CUT:{
+                            return entry.Score;
+                        }
+                    }
+                }
+            }
+
             int best = -10000;
             Move bestMove=null;
             if (depth == 0)
@@ -123,7 +153,7 @@ namespace mmchess
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
-                .OrderBy((m)=>OrderMove(m));
+                .OrderByDescending((m)=>OrderMove(m,entry));
             Move lastMove = null;
             foreach (var m in moves)
             {
@@ -172,52 +202,42 @@ namespace mmchess
                 else return CurrentDrawScore;
             }
 
-            //update the PV
+            
             if (bestMove != null)
             {
-                if(PrincipalVariation[Ply]== null)
-                    PrincipalVariation[Ply]= new List<Move>();
-                else
-                    PrincipalVariation[Ply].Clear();
+                //update the PV
+                UpdatePv(bestMove);
+                //Add to hashtable
+                TranspositionTable.Instance.Store(
+                    MyBoard.HashKey,bestMove,depth,alpha,TranspositionTableEntry.EntryType.PV);
 
-                if(PrincipalVariation[Ply+1] != null)
-                {
-                    foreach(var m in PrincipalVariation[Ply+1])
-                        PrincipalVariation[Ply].Add(m);
-                }    
-                PrincipalVariation[Ply].Insert(0,bestMove);
-                //Add to PV
-                AddExactToPv(bestMove,alpha,depth);
             }
-
+            else{
             //ALL NODE
-            AddUpperNodeToTTable(bestMove,best);
+                TranspositionTable.Instance.Store(
+                    MyBoard.HashKey,null,depth,alpha, 
+                    TranspositionTableEntry.EntryType.ALL);
+            }
             return best;
         }
 
-        void AddExactToPv(Move m, int alpha, int depth){
-            TranspositionTable.Instance.Store(
-                MyBoard.HashKey,
-                new TranspositionTableEntry{
-                    Type = (byte) TranspositionTableEntry.EntryType.PV,
-                    Score = (UInt16)alpha,
-                    Age = (byte)MyBoard.History.Count,
-                    MoveValue = m.Value
-                }
-            );
+        private void UpdatePv(Move bestMove)
+        {
+            if (PrincipalVariation[Ply] == null)
+                PrincipalVariation[Ply] = new List<Move>();
+            else
+                PrincipalVariation[Ply].Clear();
+
+            if (PrincipalVariation[Ply + 1] != null)
+            {
+                foreach (var m in PrincipalVariation[Ply + 1])
+                    PrincipalVariation[Ply].Add(m);
+            }
+            PrincipalVariation[Ply].Insert(0, bestMove);
         }
 
-        void AddUpperNodeToTTable(Move m, int score){
-            TranspositionTable.Instance.Store(
-                MyBoard.HashKey,
-                new TranspositionTableEntry{
-                    Type = (byte) TranspositionTableEntry.EntryType.ALL,
-                    Score = (UInt16) score,
-                    Age = (byte)MyBoard.History.Count,
-                    MoveValue = m==null?0: m.Value
-                }
-            );
-        }
+
+
 
         void SearchFailHigh( Move m, int score, int depth)
         {
@@ -230,13 +250,7 @@ namespace mmchess
 
             //update the transposition table
             TranspositionTable.Instance.Store(
-                MyBoard.HashKey,
-                new TranspositionTableEntry{
-                    Type = (byte) TranspositionTableEntry.EntryType.CUT,
-                    Score = (byte)score,
-                    Age = (byte) MyBoard.History.Count,
-                    MoveValue = m.Value
-                });
+                MyBoard.HashKey,m,depth,score,TranspositionTableEntry.EntryType.CUT);
         }
 
         private void UpdateKillers(Move m)

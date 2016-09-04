@@ -72,6 +72,10 @@ namespace mmchess
         //Promotion=m.Promotion;
     }
 
+    public Move (uint value){
+        Value = value;
+    }
+
     public override string ToString()
     {
         var output = Board.SquareNames[From] + Board.SquareNames[To];
