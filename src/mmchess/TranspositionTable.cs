@@ -14,7 +14,24 @@ namespace mmchess
         }
         TranspositionTableEntry[] TTable;
         ulong KeyMask;
-        public TranspositionTable(){
+
+        static object _lock = new object();
+        static TranspositionTable _instance;
+        public static TranspositionTable Instance{
+            get{
+                if(_instance == null)
+                {
+                    lock(_lock){
+                        if (Instance==null){
+                            _instance = new TranspositionTable();
+                        }
+                    }
+                }
+                return _instance;
+            }
+        }
+
+        TranspositionTable(){
 
             ulong itemCount = (ulong)SizeInBytes/(ulong)TranspositionTableEntry.SizeOf;
             TTable=new TranspositionTableEntry[itemCount];
@@ -375,8 +392,7 @@ namespace mmchess
                     //decide to replace
                     //replacement strategy
                     //everytime we hit, we age                    
-                    existing.Age++;
-                    if(existing.Depth >= e.Depth && existing.Age < AGE_MAX)
+                    if(existing.Depth >= e.Depth && e.Age - existing.Age < AGE_MAX)
                         return; //do not replace
                 }
             }
