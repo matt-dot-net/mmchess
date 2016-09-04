@@ -22,7 +22,7 @@ namespace mmchess
                 if(_instance == null)
                 {
                     lock(_lock){
-                        if (Instance==null){
+                        if (_instance==null){
                             _instance = new TranspositionTable();
                         }
                     }
@@ -392,7 +392,7 @@ namespace mmchess
                     //decide to replace
                     //replacement strategy
                     //everytime we hit, we age                    
-                    if(e.Age - existing.Age < AGE_MAX)
+                    if(Math.Abs(e.Age - existing.Age) < AGE_MAX) //absolute val in case of overflow
                         return; //do not replace
                 }
             }
