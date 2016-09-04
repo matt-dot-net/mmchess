@@ -7,6 +7,7 @@ namespace mmchess
     {
         public const int AGE_MAX=2;
 
+        public int Collisions{get;set;}
         int SizeInBytes{
             get{
                     return 67108864; // 64MB
@@ -36,7 +37,7 @@ namespace mmchess
             ulong itemCount = (ulong)SizeInBytes/(ulong)TranspositionTableEntry.SizeOf;
             TTable=new TranspositionTableEntry[itemCount];
 
-            for(int i=0;KeyMask < itemCount;i++)
+            for(int i=0;KeyMask+1 < itemCount;i++)
                 KeyMask |= (ulong)1<<i;
             
         }
@@ -388,6 +389,7 @@ namespace mmchess
                 //verify lock
                 if((uint)(existing.Value ^ hashKey) != existing.Lock)
                 {
+                    Collisions++;
                     //we have a collision
                     //decide to replace
                     //replacement strategy

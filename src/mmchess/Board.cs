@@ -529,7 +529,7 @@ namespace mmchess
             Pieces[sideToMove] ^= moveMask;
             if (p==Piece.King)
                 King[sideToMove] ^= moveMask;
-            if (p==Piece.Bishop)
+            if (p==Piece.Queen)
                 Queens[sideToMove] ^= moveMask;
             if (p==Piece.Bishop)
                 Bishops[sideToMove] ^= moveMask;

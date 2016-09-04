@@ -214,7 +214,7 @@ namespace mmchess
                     Type = (byte) TranspositionTableEntry.EntryType.ALL,
                     Score = (UInt16) score,
                     Age = (byte)MyBoard.History.Count,
-                    MoveValue = m.Value
+                    MoveValue = m==null?0: m.Value
                 }
             );
         }
