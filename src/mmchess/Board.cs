@@ -22,6 +22,8 @@ namespace mmchess
         public ulong EnPassant { get; set; }
         public int SideToMove { get; set; }
 
+        public ulong HashKey{get;set;}
+
         public static readonly ulong[] FileMask = new ulong[8];
         public static readonly ulong[] RankMask = new ulong[8];
 
@@ -102,6 +104,7 @@ namespace mmchess
                 this.Pawns[i] = b.Pawns[i];
                 this.Pieces[i] = b.Pieces[i];
             }
+            HashKey = b.HashKey;
         }
 
         public Board()
@@ -145,6 +148,7 @@ namespace mmchess
             AllPieces = Pieces[0] | Pieces[1];
 
             BuildRotatedBoards(this);
+            HashKey = TranspositionTable.GetHashKey(this);
         }
 
         private static void BuildRotatedBoards(Board b)
@@ -242,6 +246,8 @@ namespace mmchess
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[from]] | BitMask.Mask[Rotated90Map[to]]);
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]]);
             AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]]);
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)Piece.Rook,from];
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)Piece.Rook,to];
 
         }
 
@@ -264,12 +270,15 @@ namespace mmchess
 
             //set enpassant sq
             if (((m.Bits & (byte)MoveBits.Pawn) > 0) && 
-                Math.Abs(m.To - m.From) == 16)
+                Math.Abs(m.To - m.From) == 16){
                     EnPassant = BitMask.Mask[m.From + (SideToMove == 1 ? 8 : -8)];
+                    HashKey^=EnPassant;
+                }
             else
                 EnPassant=0;
 
             SideToMove ^= 1;
+            HashKey ^= (ulong)SideToMove;
             // push the move onto the list of moves
             History.Add(hm);
 
@@ -300,8 +309,8 @@ namespace mmchess
                 case Piece.Queen:
                     Queens[SideToMove]^=BitMask.Mask[m.To];
                     break;
-                
             }
+            HashKey^=TranspositionTable.HashKeys[SideToMove,(int)piece,m.To];
         }
 
         void UpdateCapture(Move m, HistoryMove hm)
@@ -311,28 +320,34 @@ namespace mmchess
                 //find the captured piece
                 var xside = SideToMove ^ 1;
                 int sq = m.To;
+                Piece p = Piece.King;//needs to be assigned
                 if ((Knights[xside] & BitMask.Mask[m.To]) > 0)
                 {
+                    p = Piece.Knight;
                     Knights[xside] ^= BitMask.Mask[m.To];
                     hm.CapturedPiece = MoveBits.Knight;
                 }
                 else if ((Bishops[xside] & BitMask.Mask[m.To]) > 0)
                 {
+                    p=Piece.Bishop;
                     Bishops[xside] ^= BitMask.Mask[m.To];
                     hm.CapturedPiece = MoveBits.Bishop;
                 }
                 else if ((Rooks[xside] & BitMask.Mask[m.To]) > 0)
                 {
+                    p = Piece.Rook;
                     Rooks[xside] ^= BitMask.Mask[m.To];
                     hm.CapturedPiece = MoveBits.Rook;
                 }
                 else if ((Queens[xside] & BitMask.Mask[m.To]) > 0)
                 {
+                    p = Piece.Queen;
                     Queens[xside] ^= BitMask.Mask[m.To];
                     hm.CapturedPiece = MoveBits.Queen;
                 }
                 else if ((Pawns[xside] & BitMask.Mask[m.To]) > 0)
                 {
+                    p=Piece.Pawn;
                     Pawns[xside] ^= BitMask.Mask[m.To];
                     hm.CapturedPiece = MoveBits.Pawn;
                 }
@@ -346,6 +361,7 @@ namespace mmchess
                     AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[epSq]];
                     AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[epSq]];
                     AllPiecesR90 ^= BitMask.Mask[Rotated90Map[epSq]];
+                    HashKey ^= TranspositionTable.HashKeys[xside,(int)Piece.Pawn,epSq];
                     return;
                 }
                 else if ((King[xside] & BitMask.Mask[m.To]) > 0)
@@ -356,11 +372,13 @@ namespace mmchess
                 AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[sq]];
                 AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
                 AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
+                HashKey ^= TranspositionTable.HashKeys[xside,(int)p,sq];
             }
         }
 
         private void UpdateBitBoards(Move m)
         {
+            var p = Move.GetPieceFromMoveBits((MoveBits)m.Bits);
             var moveMask = BitMask.Mask[m.From] | BitMask.Mask[m.To];
 
             UpdateBoards(m, SideToMove, moveMask);
@@ -369,7 +387,8 @@ namespace mmchess
             AllPiecesL45 ^= (BitMask.Mask[RotatedL45Map[m.From]] | BitMask.Mask[RotatedL45Map[m.To]]);
             AllPiecesR45 ^= (BitMask.Mask[RotatedR45Map[m.From]] | BitMask.Mask[RotatedR45Map[m.To]]);
             AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
-
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)p,m.From];
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)p,m.To];
 
         }
 
@@ -391,7 +410,11 @@ namespace mmchess
 
             if(m.Promotion>0)
                 UpdatePromotion(m);
+            if(EnPassant>0)
+                HashKey^=EnPassant;
             EnPassant = m.EnPassant;
+            if(EnPassant >0)
+                HashKey^=EnPassant;
             CastleStatus = m.CastleStatus;
             UpdateBitBoards(m);
             History.RemoveAt(index);
@@ -400,39 +423,48 @@ namespace mmchess
         void UnmakeCastleMove(Move m)
         {
             ulong moveMask, l45Mask, r45Mask, r90Mask;
+            int from, to;
             //we just need to undo the rook shenanigans
             if(SideToMove==0){
                 if(m.To==62) //kingside
                 {
-                    moveMask = BitMask.Mask[61]|BitMask.Mask[63];
-                    l45Mask = BitMask.Mask[RotatedL45Map[61]] | BitMask.Mask[RotatedL45Map[63]];
-                    r45Mask = BitMask.Mask[RotatedR45Map[61]] | BitMask.Mask[RotatedR45Map[63]];
-                    r90Mask = BitMask.Mask[Rotated90Map[61]]|BitMask.Mask[Rotated90Map[63]];
+                    from = 61;
+                    to = 63;
+                    moveMask = BitMask.Mask[from]|BitMask.Mask[to];
+                    l45Mask = BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]];
+                    r90Mask = BitMask.Mask[Rotated90Map[from]]|BitMask.Mask[Rotated90Map[to]];
                 }
                 else
                 {
-                    moveMask = BitMask.Mask[56]|BitMask.Mask[59];
-                    l45Mask = BitMask.Mask[RotatedL45Map[56]] | BitMask.Mask[RotatedL45Map[59]];
-                    r45Mask = BitMask.Mask[RotatedR45Map[56]] | BitMask.Mask[RotatedR45Map[59]];
-                    r90Mask = BitMask.Mask[Rotated90Map[56]]|BitMask.Mask[Rotated90Map[59]];
+                    from = 56;
+                    to=59;
+                    moveMask = BitMask.Mask[from]|BitMask.Mask[to];
+                    l45Mask = BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]];
+                    r90Mask = BitMask.Mask[Rotated90Map[from]]|BitMask.Mask[Rotated90Map[to]];
                 }
 
             }
             else{
                 if(m.To==06)
                 {
-                    moveMask = BitMask.Mask[07]|BitMask.Mask[05];
-                    l45Mask = BitMask.Mask[RotatedL45Map[7]] | BitMask.Mask[RotatedL45Map[5]];
-                    r45Mask = BitMask.Mask[RotatedR45Map[7]] | BitMask.Mask[RotatedR45Map[5]];
-                    r90Mask = BitMask.Mask[Rotated90Map[7]]|BitMask.Mask[Rotated90Map[5]];
+                    from = 7;
+                    to=5;
+                    moveMask = BitMask.Mask[from]|BitMask.Mask[to];
+                    l45Mask = BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]];
+                    r90Mask = BitMask.Mask[Rotated90Map[from]]|BitMask.Mask[Rotated90Map[to]];
                 }
                     
                 else
                 {
-                    moveMask = BitMask.Mask[0]|BitMask.Mask[3];
-                    l45Mask = BitMask.Mask[RotatedL45Map[0]] | BitMask.Mask[RotatedL45Map[3]];
-                    r45Mask = BitMask.Mask[RotatedR45Map[0]] | BitMask.Mask[RotatedR45Map[3]];
-                    r90Mask = BitMask.Mask[Rotated90Map[0]]|BitMask.Mask[Rotated90Map[3]];
+                    from = 0;
+                    to = 3;
+                    moveMask = BitMask.Mask[from]|BitMask.Mask[to];
+                    l45Mask = BitMask.Mask[RotatedL45Map[from]] | BitMask.Mask[RotatedL45Map[to]];
+                    r45Mask = BitMask.Mask[RotatedR45Map[from]] | BitMask.Mask[RotatedR45Map[to]];
+                    r90Mask = BitMask.Mask[Rotated90Map[from]]|BitMask.Mask[Rotated90Map[to]];
                 }
                     
             }
@@ -442,6 +474,8 @@ namespace mmchess
             AllPiecesL45 ^= l45Mask;
             AllPiecesR45 ^= r45Mask;
             AllPiecesR90 ^= r90Mask;
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)Piece.Rook,from];
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)Piece.Rook,to];
             
         }
 
@@ -449,8 +483,10 @@ namespace mmchess
         {
             var xside = SideToMove ^ 1;
             int sq = m.To;
+            Piece p=Piece.Empty;
             if (m.CapturedPiece == MoveBits.Pawn)
             {
+                p=Piece.Pawn;
                 if (BitMask.Mask[m.To] == m.EnPassant)
                 {
                     sq = SideToMove == 0 ? m.To + 8 : m.To - 8;
@@ -459,23 +495,33 @@ namespace mmchess
                 else
                     Pawns[xside] |= BitMask.Mask[m.To];
             }
-            if (m.CapturedPiece == MoveBits.Knight)
+            if (m.CapturedPiece == MoveBits.Knight){
                 Knights[xside] |= BitMask.Mask[m.To];
-            else if (m.CapturedPiece == MoveBits.Bishop)
+                p = Piece.Knight;
+            }
+            else if (m.CapturedPiece == MoveBits.Bishop){
                 Bishops[xside] |= BitMask.Mask[m.To];
-            else if (m.CapturedPiece == MoveBits.Rook)
+                p = Piece.Bishop;
+            }
+            else if (m.CapturedPiece == MoveBits.Rook){
                 Rooks[xside] |= BitMask.Mask[m.To];
-            else if (m.CapturedPiece == MoveBits.Queen)
+                p = Piece.Rook;
+            }
+            else if (m.CapturedPiece == MoveBits.Queen){
                 Queens[xside] |= BitMask.Mask[m.To];
+                p = Piece.Queen;
+            }
             AllPieces ^= BitMask.Mask[sq];
             Pieces[xside] ^= BitMask.Mask[sq];
             AllPiecesL45 ^= BitMask.Mask[RotatedL45Map[sq]];
             AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
             AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
+            HashKey ^= TranspositionTable.HashKeys[SideToMove,(int)p,sq];
         }
 
         private void UpdateBoards(Move m, int sideToMove, ulong moveMask)
         {
+            Piece p = Move.GetPieceFromMoveBits((MoveBits)m.Bits);
             Pieces[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.King) > 0)
                 King[sideToMove] ^= moveMask;
@@ -489,6 +535,9 @@ namespace mmchess
                 Rooks[sideToMove] ^= moveMask;
             if ((m.Bits & (byte)MoveBits.Pawn) > 0)
                 Pawns[sideToMove] ^= moveMask;
+
+            HashKey ^= TranspositionTable.HashKeys[sideToMove,(int)p,m.From];
+            HashKey ^= TranspositionTable.HashKeys[sideToMove,(int)p,m.To];
 
         }
     }

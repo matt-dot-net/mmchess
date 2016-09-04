@@ -636,7 +636,7 @@ namespace mmchess
             }
         }
 
-        public static IList<Move> GenerateCapturesAndChecks(Board b){
+        public static IList<Move> GenerateCaptures(Board b){
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
             ulong moves;

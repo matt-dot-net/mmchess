@@ -22,11 +22,34 @@ namespace mmchess
         Knight = 0,
         Bishop = 1,
         Rook = 2,
-        Queen = 3
+        Queen = 3,
+        Pawn = 4,
+        King = 5,
+        Empty
     }
-    [StructLayout(LayoutKind.Explicit,Size=4)]
+    [StructLayout(LayoutKind.Explicit, Size = 4)]
     public class Move
     {
+        public static Piece GetPieceFromMoveBits(MoveBits bits)
+        {
+            switch (bits)
+            {
+                case MoveBits.Bishop:
+                    return Piece.Bishop;
+                case MoveBits.Knight:
+                    return Piece.Knight;
+                case MoveBits.Rook:
+                    return Piece.Rook;
+                case MoveBits.Queen:
+                    return Piece.Queen;
+                case MoveBits.King:
+                    return Piece.King;
+                case MoveBits.Pawn:
+                    return Piece.Pawn;
+            }
+            return Piece.Empty;
+        }
+
         static readonly char[] outputRanks = new char[] { '8', '7', '6', '5', '4', '3', '2', '1' };
         static readonly char[] outputFiles = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
         [FieldOffset(0)]
@@ -34,7 +57,7 @@ namespace mmchess
         [FieldOffset(1)]
         public byte To;
         [FieldOffset(2)]
-        public byte Bits ;
+        public byte Bits;
         [FieldOffset(3)]
         public byte Promotion;
         [FieldOffset(0)]
@@ -52,15 +75,17 @@ namespace mmchess
 
         public override string ToString()
         {
-            var output= Board.SquareNames[From] + Board.SquareNames[To];
-            if(Promotion>0){
+            var output = Board.SquareNames[From] + Board.SquareNames[To];
+            if (Promotion > 0)
+            {
                 output += "=";
-                switch((Piece)Promotion){
+                switch ((Piece)Promotion)
+                {
                     case Piece.Knight:
-                        output+="N";
+                        output += "N";
                         break;
                     case Piece.Bishop:
-                        output +="B";
+                        output += "B";
                         break;
                     case Piece.Rook:
                         output += "R";
@@ -88,12 +113,13 @@ namespace mmchess
                 bits = MoveBits.Queen;
             else if ((b.Pawns[b.SideToMove] & BitMask.Mask[From]) > 0)
                 bits = MoveBits.Pawn;
-            else if ((b.King[b.SideToMove] & BitMask.Mask[From])>0)
+            else if ((b.King[b.SideToMove] & BitMask.Mask[From]) > 0)
                 bits = MoveBits.King;
 
             if (bits == MoveBits.Pawn)
             {
-                if ((Bits & (byte)MoveBits.Capture) > 0){
+                if ((Bits & (byte)MoveBits.Capture) > 0)
+                {
                     output += outputFiles[From.File()];
                 }
             }
@@ -101,47 +127,53 @@ namespace mmchess
             {
                 output += 'N';
                 var sqs = MoveGenerator.KnightMoves[To] & b.Knights[b.SideToMove];
-                if ((sqs).Count() > 1){
-                    output += Board.SquareNames[From] ;
+                if ((sqs).Count() > 1)
+                {
+                    output += Board.SquareNames[From];
                 }
             }
             else if (bits == MoveBits.Bishop)
             {
                 output += 'B';
             }
-            else if (bits == MoveBits.Rook){
+            else if (bits == MoveBits.Rook)
+            {
                 output += 'R';
-                var sqs = MoveGenerator.RookAttacks(b,To) & b.Rooks[b.SideToMove];
-                if(sqs.Count() > 1){
+                var sqs = MoveGenerator.RookAttacks(b, To) & b.Rooks[b.SideToMove];
+                if (sqs.Count() > 1)
+                {
                     output += Board.SquareNames[From];
                 }
             }
             else if (bits == MoveBits.Queen)
             {
-                var sqs = MoveGenerator.QueenAttacks(b,To) & b.Queens[b.SideToMove];
-                if(sqs.Count() > 1)
-                    output+=Board.SquareNames[From];        
+                var sqs = MoveGenerator.QueenAttacks(b, To) & b.Queens[b.SideToMove];
+                if (sqs.Count() > 1)
+                    output += Board.SquareNames[From];
                 output += 'Q';
             }
-            else if (bits == MoveBits.King){
+            else if (bits == MoveBits.King)
+            {
                 output += 'K';
             }
             else
-                output = Board.SquareNames[From] ;
+                output = Board.SquareNames[From];
 
             if ((Bits & (byte)MoveBits.Capture) > 0)
                 output += 'x';
 
             output += Board.SquareNames[To];
 
-            if(Promotion>0){
+            if (Promotion > 0)
+            {
                 output += "=";
-                switch((Piece)Promotion){
+                switch ((Piece)Promotion)
+                {
                     case Piece.Knight:
-                        output+="N";
+                        output += "N";
                         break;
                     case Piece.Bishop:
-                        output +="B";
+                        output += "B";
                         break;
                     case Piece.Rook:
                         output += "R";
@@ -159,7 +191,7 @@ namespace mmchess
 
         public static Move ParseMove(Board b, string moveString)
         {
-            if(moveString.Length < 4)
+            if (moveString.Length < 4)
                 return null;
             var from = moveString.Substring(0, 2);
             var to = moveString.Substring(2, 2);
@@ -176,7 +208,7 @@ namespace mmchess
                 return null;
 
             MoveBits bits = 0;
-            Piece promotion=0;
+            Piece promotion = 0;
             if ((b.Knights[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.Knight;
             else if ((b.Bishops[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
@@ -196,21 +228,24 @@ namespace mmchess
                 }
                 bits |= MoveBits.Pawn;
 
-                if(moveString.Length==6){
+                if (moveString.Length == 6)
+                {
                     //Promotion
-                    if(moveString[4]=='='){
-                        switch(moveString[5]){
+                    if (moveString[4] == '=')
+                    {
+                        switch (moveString[5])
+                        {
                             case 'Q':
-                                promotion=Piece.Queen;
+                                promotion = Piece.Queen;
                                 break;
                             case 'R':
-                                promotion=Piece.Rook;
+                                promotion = Piece.Rook;
                                 break;
                             case 'B':
-                                promotion=Piece.Bishop;
+                                promotion = Piece.Bishop;
                                 break;
                             case 'N':
-                                promotion=Piece.Knight;
+                                promotion = Piece.Knight;
                                 break;
                         }
                     }
@@ -235,7 +270,7 @@ namespace mmchess
                 From = (byte)fromIndex,
                 To = (byte)toIndex,
                 Bits = (byte)bits,
-                Promotion=(byte)promotion
+                Promotion = (byte)promotion
             };
         }
     }
