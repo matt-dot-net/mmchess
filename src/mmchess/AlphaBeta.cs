@@ -11,8 +11,8 @@ namespace mmchess
         const int R = 3;
         int Ply { get; set; }
         public AlphaBetaMetrics Metrics { get; set; }
-        public Move[,] PrincipalVariation { get; private set;}
-        public int [] PvLength = new int[MAX_DEPTH];
+        public Move[,] PrincipalVariation { get; private set; }
+        public int[] PvLength = new int[MAX_DEPTH];
         public bool TimeUp { get; set; }
         DateTime StartTime { get; set; }
         Board MyBoard { get; set; }
@@ -27,8 +27,8 @@ namespace mmchess
         }
         public AlphaBeta(Board b, TimeSpan timeLimit)
         {
-            PrincipalVariation = new Move[MAX_DEPTH,MAX_DEPTH];
-            PvLength[0]=0;
+            PrincipalVariation = new Move[MAX_DEPTH, MAX_DEPTH];
+            PvLength[0] = 0;
             Ply = 0;
             MyBoard = b;
             StartTime = DateTime.Now;
@@ -44,14 +44,9 @@ namespace mmchess
 
         int OrderQuiesceMove(Move m)
         {
-            if ((m.Bits & (byte)MoveBits.Capture) > 0)
-            {
-                //sort by LVA/MVV
-                return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
-                    Evaluator.MovingPieceValue((MoveBits)m.Bits);
-            }
-
-            return int.MaxValue; // checks first
+            //sort by LVA/MVV
+            return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
+                Evaluator.MovingPieceValue((MoveBits)m.Bits);
         }
 
         int OrderMove(Move m, TranspositionTableEntry entry)
@@ -63,9 +58,9 @@ namespace mmchess
                     return int.MaxValue;// search this move first
             }
 
-            if (PrincipalVariation[Ply,Ply] != null)
+            if (PrincipalVariation[Ply, Ply] != null)
             {
-                if (PrincipalVariation[Ply,Ply].Value == m.Value)
+                if (PrincipalVariation[Ply, Ply].Value == m.Value)
                     return int.MaxValue; // search this move first 
                                          // should always be found in hash table
             }
@@ -113,7 +108,7 @@ namespace mmchess
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
-                int score = -Quiesce(-beta, -alpha);
+                int score = -Quiesce(-beta, -beta-1);
                 MyBoard.UnMakeMove();
                 if (score >= beta)
                     return beta;
@@ -128,7 +123,7 @@ namespace mmchess
         public int Search(int alpha, int beta, int depth)
         {
             Metrics.Nodes++;
-            PvLength[Ply]=Ply;
+            PvLength[Ply] = Ply;
             if ((Metrics.Nodes & 65536) > 0)
             {
                 CheckTime();
@@ -165,23 +160,24 @@ namespace mmchess
             }
 
             //next try a Null Move
-            if(Ply>0 && depth > R+1 &&
+            if (Ply > 0 && depth > R + 1 &&
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
-                !MyBoard.History[Ply-1].IsNullMove)
+                !MyBoard.History[Ply - 1].IsNullMove)
             {
-                MyBoard.SideToMove^=1;
-                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                MyBoard.SideToMove ^= 1;
+                MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
                 Ply++;
                 var oldEnPassant = MyBoard.EnPassant;
-                MyBoard.EnPassant=0;
+                MyBoard.EnPassant = 0;
                 MyBoard.History.Add(new HistoryMove(null));//store a null move in history
-                var nmScore = Search(-beta,1-beta,depth-R-1);
-                MyBoard.History.RemoveAt(MyBoard.History.Count-1);//remove the null move
-                MyBoard.EnPassant= oldEnPassant;
+                var nmScore = Search(-beta, 1 - beta, depth - R - 1);
+                MyBoard.History.RemoveAt(MyBoard.History.Count - 1);//remove the null move
+                MyBoard.EnPassant = oldEnPassant;
                 Ply--;
-                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
-                MyBoard.SideToMove^=1;
-                if(nmScore>=beta){
+                MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                MyBoard.SideToMove ^= 1;
+                if (nmScore >= beta)
+                {
                     Metrics.NullMoveFailHigh++;
                     Metrics.FailHigh++;
                     Metrics.FirstMoveFailHigh++;
@@ -208,8 +204,8 @@ namespace mmchess
                 {
                     return alpha;
                 }
-                if ((m.Bits & (byte)MoveBits.Capture)==0 && ++nonCapMovesSearched > 2) // start reducing depth if we aren't finding anything useful
-                    lmr=1;
+                if ((m.Bits & (byte)MoveBits.Capture) == 0 && ++nonCapMovesSearched > 2) // start reducing depth if we aren't finding anything useful
+                    lmr = 1;
 
                 if (score >= beta)
                 {
@@ -242,14 +238,13 @@ namespace mmchess
             {
                 //we can't make a move. check for mate or stalemate.
                 if (MyBoard.InCheck(MyBoard.SideToMove))
-                {
                     return -10000 + Ply;
-                }
-                else return CurrentDrawScore;
+                else
+                    return CurrentDrawScore;
             }
 
 
-            if (bestMove ==null)
+            if (bestMove == null)
             {
                 //ALL NODE
                 TranspositionTable.Instance.Store(
@@ -261,11 +256,11 @@ namespace mmchess
 
         private void UpdatePv(Move bestMove)
         {
-            PrincipalVariation[Ply,Ply]=bestMove;
+            PrincipalVariation[Ply, Ply] = bestMove;
 
-            for(int i=Ply+1;i<PvLength[Ply+1];i++)
-                PrincipalVariation[Ply,i] = PrincipalVariation[Ply+1,i];
-            PvLength[Ply] = PvLength[Ply+1];
+            for (int i = Ply + 1; i < PvLength[Ply + 1]; i++)
+                PrincipalVariation[Ply, i] = PrincipalVariation[Ply + 1, i];
+            PvLength[Ply] = PvLength[Ply + 1];
         }
 
         void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
@@ -273,7 +268,7 @@ namespace mmchess
             UpdateKillers(m);
             Metrics.FailHigh++;
 
-            if(entry != null && entry.MoveValue == m.Value)
+            if (entry != null && entry.MoveValue == m.Value)
                 Metrics.TTFailHigh++;
 
             else if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
