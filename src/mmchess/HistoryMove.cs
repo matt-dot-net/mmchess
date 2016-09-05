@@ -5,14 +5,15 @@ namespace mmchess{
         public ulong EnPassant {get;set;}
 
         public byte CastleStatus{get;set;}
-
+        public ulong HashKey{get;set;}
         public MoveBits CapturedPiece {get;set;}
-        public HistoryMove(Move m)
+        public HistoryMove(ulong hashKey, Move m)
         {
             if(m == null){
                 IsNullMove=true;
                 return;
             }
+            HashKey = hashKey;
             CopyBaseProperties(m);
         }
 

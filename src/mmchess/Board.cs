@@ -6,7 +6,7 @@ namespace mmchess
 {
     public class Board
     {
-        public List<HistoryMove> History { get; set; }
+        public GameHistory History { get; set; }
         public byte CastleStatus { get; set; }
         public ulong[] Pawns;
         public ulong[] Knights;
@@ -21,7 +21,6 @@ namespace mmchess
         public ulong[] Pieces { get; set; }
         public ulong EnPassant { get; set; }
         public int SideToMove { get; set; }
-
         public ulong HashKey{get;set;}
 
         public static readonly ulong[] FileMask = new ulong[8];
@@ -87,7 +86,7 @@ namespace mmchess
             this.AllPiecesR90 = b.AllPiecesR90;
             this.CastleStatus= b.CastleStatus;
             this.EnPassant = b.EnPassant;
-            this.History = new List<HistoryMove>(b.History);
+            this.History = new GameHistory();
             this.King = new ulong[2];
             this.Knights = new ulong[2];
             this.Rooks = new ulong[2];
@@ -114,9 +113,8 @@ namespace mmchess
 
         public void Initialize()
         {
+            History = new GameHistory();
             CastleStatus = 0xF;
-
-            History = new List<HistoryMove>();
             Pawns = new ulong[2];
             Pawns[1] = 0xff00;
             Pawns[0] = 0x00ff000000000000;
@@ -256,7 +254,7 @@ namespace mmchess
 
         public bool MakeMove(Move m)
         {
-            var hm = new HistoryMove(m);
+            var hm = new HistoryMove(HashKey, m);
             hm.EnPassant = EnPassant;
             hm.CastleStatus = CastleStatus;
 
@@ -422,7 +420,7 @@ namespace mmchess
                 HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
             CastleStatus = m.CastleStatus;
             UpdateBitBoards(m);
-            History.RemoveAt(index);
+            History.RemoveLast();
         }
 
         void UnmakeCastleMove(Move m)

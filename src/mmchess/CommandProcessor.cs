@@ -30,7 +30,9 @@ namespace mmchess{
         EpdTest,
         MoveInput,
         Accepted,
-        Rejected
+        Rejected,
+        SD,
+        ST
     }
     public class Command{
         public CommandVal Value {get;set;}
@@ -71,11 +73,25 @@ namespace mmchess{
                     cmd.Value==CommandVal.Time ||
                     cmd.Value==CommandVal.Otim || 
                     cmd.Value==CommandVal.Random ||
-                    cmd.Value==CommandVal.Level ||
                     cmd.Value==CommandVal.Post || cmd.Value==CommandVal.Hard)
             { 
                 //noop
 
+            }
+            else if (cmd.Value==CommandVal.Level){
+                
+            }
+            else if(cmd.Value == CommandVal.SD){
+                int d;
+                if(!int.TryParse(cmd.Arguments[1],out d))
+                    return;
+                state.DepthLimit = d; 
+            }
+            else if (cmd.Value==CommandVal.ST){
+                int t;
+                if(!int.TryParse(cmd.Arguments[1],out t))
+                    return;
+                state.TimeLimit = TimeSpan.FromSeconds(t); 
             }
             else if(cmd.Value == CommandVal.New)
             {

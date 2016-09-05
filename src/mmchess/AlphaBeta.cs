@@ -34,7 +34,6 @@ namespace mmchess
             Ply = 0;
             MyGameState=state;
             MyBoard = state.GameBoard;
-            StartTime = DateTime.Now;
             TimeLimit = TimeSpan.FromSeconds(5);
             Metrics = new AlphaBetaMetrics();
             Interrupt=interrupt;
@@ -167,7 +166,7 @@ namespace mmchess
                 Ply++;
                 var oldEnPassant = MyBoard.EnPassant;
                 MyBoard.EnPassant = 0;
-                MyBoard.History.Add(new HistoryMove(null));//store a null move in history
+                MyBoard.History.Add(new HistoryMove(MyBoard.HashKey,null));//store a null move in history
                 var nmScore = Search(-beta, 1 - beta, depth - R - 1);
                 MyBoard.History.RemoveAt(MyBoard.History.Count - 1);//remove the null move
                 MyBoard.EnPassant = oldEnPassant;
