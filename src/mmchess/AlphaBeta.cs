@@ -12,8 +12,7 @@ namespace mmchess
         public AlphaBetaMetrics Metrics { get; set; }
         public Move[,] PrincipalVariation { get; private set; }
         public int[] PvLength = new int[MAX_DEPTH];
-        TimeSpan TimeLimit { get; set; }        
-        DateTime StartTime { get; set; }
+        public TimeSpan TimeLimit { get; set; }        
         Board MyBoard { get; set; }
 
         GameState MyGameState{get;set;}
@@ -121,6 +120,12 @@ namespace mmchess
         {
             Metrics.Nodes++;
             PvLength[Ply] = Ply;
+
+            //detect draws
+            if(MyBoard.History.TimesPositionRepeated(MyBoard.HashKey) == 3 || 
+                MyBoard.History.HalfMovesSinceLastCaptureOrPawn==100)
+                return CurrentDrawScore;
+
             if ((Metrics.Nodes & 65536) > 0)
             {
                 Interrupt();

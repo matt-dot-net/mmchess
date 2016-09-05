@@ -15,6 +15,7 @@ namespace mmchess{
         Random,
         IsReady,
         Post,
+        NoPost,
         Hard,
         Position,
         PERFT,
@@ -60,6 +61,7 @@ namespace mmchess{
                 state.ComputerSide=-1;
             }
             if(cmd.Value==CommandVal.xboard){
+                state.UsingGui=true;
                 Console.WriteLine();
             }
             else if (cmd.Value==CommandVal.White || cmd.Value==CommandVal.Black){
@@ -73,13 +75,19 @@ namespace mmchess{
                     cmd.Value==CommandVal.Time ||
                     cmd.Value==CommandVal.Otim || 
                     cmd.Value==CommandVal.Random ||
-                    cmd.Value==CommandVal.Post || cmd.Value==CommandVal.Hard)
+                     cmd.Value==CommandVal.Hard)
             { 
                 //noop
 
             }
+            else if(cmd.Value==CommandVal.Post){
+                state.ShowThinking=true;
+            }
+            else if(cmd.Value==CommandVal.NoPost){
+                state.ShowThinking=false;
+            }
             else if (cmd.Value==CommandVal.Level){
-                
+
             }
             else if(cmd.Value == CommandVal.SD){
                 int d;
@@ -98,6 +106,7 @@ namespace mmchess{
                 state.GameBoard = new Board();
             }
             else if(cmd.Value == CommandVal.Uci){
+                state.UsingGui=true;
                 Console.WriteLine("id name mmchess {0}");
                 Console.WriteLine("author Matt McKnight");
                 Console.WriteLine("uciok");

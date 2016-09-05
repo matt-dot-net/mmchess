@@ -36,7 +36,7 @@ namespace mmchess
             int alpha = -10000;
             int beta = 10000;
             Move bestMove=null;
-            Console.WriteLine("Ply\tScore\tNodes\tPV");
+            //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
             for (int i = 0; i < 64 && !state.TimeUp; i++)
             {
                 int score;
@@ -70,8 +70,9 @@ namespace mmchess
                 {
                     //must make sure this wasn't updated while running out of time
                     bestMove = ab.PrincipalVariation[0,0];               
-                    Console.Write("{0}\t{1}\t{2}\t", i, score, ab.Metrics.Nodes);
-                    PrintPV(state.GameBoard, ab);
+                    Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score, 
+                        (DateTime.Now - startTime).TotalMilliseconds/10, ab.Metrics.Nodes);
+                    PrintPV(state.GameBoard, ab);   
                 }
                 Console.WriteLine();
 

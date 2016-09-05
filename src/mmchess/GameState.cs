@@ -3,6 +3,9 @@ namespace mmchess{
 
     public class GameState
     {
+        public bool ShowThinking{get;set;}
+        public bool UsingGui{get;set;}
+
         public int ComputerSide{get;set;}
         public String Opponent{get;set;}
 
@@ -25,7 +28,7 @@ namespace mmchess{
         public GameState()
         {
             GameBoard = new Board();
-            ComputerSide=-1;
+            ComputerSide=1;
         }
     }
 }
