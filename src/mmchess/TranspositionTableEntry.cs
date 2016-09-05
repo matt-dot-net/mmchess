@@ -32,10 +32,21 @@ namespace mmchess{
 
         public int Depth{get{
             return DepthAge & 63;
+        }
+        set{
+            //preserve top two bits for age
+            DepthAge &= 0xC0;   //1100 0000
+            //set the bottom 6 bits as depth
+            DepthAge |= (byte)(value&63); //0011 1111
         }}
 
+        //we store the age in the top two bits of the DepthAge field
         public int Age {
             get{ return DepthAge>>6;}
+            set {
+                Depth &= 63; // clear current Age
+                DepthAge |= (byte)((value & 3) << 6);// shift in the age 
+            }
         }
     }
 }

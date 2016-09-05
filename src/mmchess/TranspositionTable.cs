@@ -399,22 +399,19 @@ namespace mmchess
                 //verify lock
                 if((uint)(existing.Value ^ hashKey) != existing.Lock)
                 {
+                    //lock does not match so we have a collision
 
-                    //we have a collision
-                    //decide to replace
-                    //replacement strategy
-                    //everytime we hit, we age        
-                    var age = existing.Age; 
-                    //we always increment age on collision
-                    existing.DepthAge = (byte)(++age & 3 << 6);
-                    var draft = existing.Depth;       
-                    if(age < 4 && depth < draft)
-                    {
-                        Collisions++;
-                        return; //do not replace
-                    }
+                    //we need replacement strategy        
+
+                    //we prefer depth so if what we have is better, keep it
+                    if(existing.Depth > depth) 
+                        return; //the entry that's already here is better                
+
+                    //only count collisions if we decide to replace
+                    Collisions++;    
                 }
             }
+            
 
             newEntry.Lock = (uint)(newEntry.Value ^ hashKey);
             Stores++;
