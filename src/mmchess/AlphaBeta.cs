@@ -164,37 +164,37 @@ namespace mmchess
                 }
             }
 
-            // //next try a Null Move
-            // if(Ply>0 && depth > R+1 &&
-            //     !MyBoard.InCheck(MyBoard.SideToMove) &&
-            //     !MyBoard.History[Ply-1].IsNullMove)
-            // {
-            //     MyBoard.SideToMove^=1;
-            //     MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
-            //     Ply++;
-            //     var oldEnPassant = MyBoard.EnPassant;
-            //     MyBoard.EnPassant=0;
-            //     MyBoard.History.Add(new HistoryMove(null));//store a null move in history
-            //     var nmScore = Search(-beta,1-beta,depth-R-1);
-            //     MyBoard.History.RemoveAt(MyBoard.History.Count-1);//remove the null move
-            //     MyBoard.EnPassant= oldEnPassant;
-            //     Ply--;
-            //     MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
-            //     MyBoard.SideToMove^=1;
-            //     if(nmScore>=beta){
-            //         Metrics.NullMoveFailHigh++;
-            //         Metrics.FailHigh++;
-            //         Metrics.FirstMoveFailHigh++;
-            //         return beta;
-            //     }
-            // }
+            //next try a Null Move
+            if(Ply>0 && depth > R+1 &&
+                !MyBoard.InCheck(MyBoard.SideToMove) &&
+                !MyBoard.History[Ply-1].IsNullMove)
+            {
+                MyBoard.SideToMove^=1;
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                Ply++;
+                var oldEnPassant = MyBoard.EnPassant;
+                MyBoard.EnPassant=0;
+                MyBoard.History.Add(new HistoryMove(null));//store a null move in history
+                var nmScore = Search(-beta,1-beta,depth-R-1);
+                MyBoard.History.RemoveAt(MyBoard.History.Count-1);//remove the null move
+                MyBoard.EnPassant= oldEnPassant;
+                Ply--;
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+                MyBoard.SideToMove^=1;
+                if(nmScore>=beta){
+                    Metrics.NullMoveFailHigh++;
+                    Metrics.FailHigh++;
+                    Metrics.FirstMoveFailHigh++;
+                    return beta;
+                }
+            }
 
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
                 .OrderByDescending((m) => OrderMove(m, entry));
             Move lastMove = null;
-            int movesSearched = 0, lmr = 0;
+            int nonCapMovesSearched = 0, lmr = 0;
             foreach (var m in moves)
             {
                 if (!MyBoard.MakeMove(m))
@@ -208,12 +208,12 @@ namespace mmchess
                 {
                     return alpha;
                 }
-                if (movesSearched > 4) // start reducing depth if we aren't finding anything useful
+                if ((m.Bits & (byte)MoveBits.Capture)==0 && ++nonCapMovesSearched > 2) // start reducing depth if we aren't finding anything useful
                     lmr=1;
 
                 if (score >= beta)
                 {
-                    SearchFailHigh(m, score, depth);
+                    SearchFailHigh(m, score, depth, entry);
                     if (lastMove == null)
                         Metrics.FirstMoveFailHigh++;
                     return score;
@@ -268,12 +268,15 @@ namespace mmchess
             PvLength[Ply] = PvLength[Ply+1];
         }
 
-        void SearchFailHigh(Move m, int score, int depth)
+        void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
         {
             UpdateKillers(m);
             Metrics.FailHigh++;
 
-            if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
+            if(entry != null && entry.MoveValue == m.Value)
+                Metrics.TTFailHigh++;
+
+            else if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
                 (Killers[Ply, 1] != null && m.Value == Killers[Ply, 1].Value))
                 Metrics.KillerFailHigh++;
 
