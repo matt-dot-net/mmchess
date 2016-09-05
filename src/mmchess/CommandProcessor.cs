@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace mmchess{
     public enum CommandVal{
@@ -9,6 +10,7 @@ namespace mmchess{
         Eval,
         Go,
         SetBoard,
+        EpdTest,
         MoveInput
     }
     public class Command{
@@ -66,9 +68,27 @@ namespace mmchess{
                     b.UnMakeMove();
                 }            
 
+                else if (cmd.Value == CommandVal.EpdTest)
+                    EpdTest(cmd);
+
                 else if (cmd.Value == CommandVal.SetBoard){
                     b = Board.ParseFenString(String.Join(" ",cmd.Arguments,1,cmd.Arguments.Length-1));
                 }
+        }
+
+        static void EpdTest(Command cmd){
+            using (var fs = new FileStream(cmd.Arguments[1],FileMode.Open)){
+                var sr = new StreamReader(fs);
+                String line;
+                Board b;
+                do{
+                    line = sr.ReadLine();
+                    if(String.IsNullOrEmpty(line))
+                        break;
+                    b = Board.ParseFenString(line);
+                    DoCommand(new Command{Value=CommandVal.Go},ref b);
+                }while(!String.IsNullOrEmpty(line));
+            }
         }
     }
 }
