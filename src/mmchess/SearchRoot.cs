@@ -23,11 +23,12 @@ namespace mmchess
             AlphaBeta ab = new AlphaBeta(b, TimeSpan.FromSeconds(5));
             int alpha = -10000;
             int beta = 10000;
-
+            Move bestMove=null;
             Console.WriteLine("Ply\tScore\tNodes\tPV");
             for (int i = 0; i < 64 && !ab.TimeUp; i++)
             {
                 int score;
+
                 if (i > 0)
                 {
                     beta = alpha + 33;
@@ -40,11 +41,7 @@ namespace mmchess
                     if (score > alpha && score < beta)
                     {
                         alpha = score;
-                        //backup the PV
-
-                        // for(int j=1;j<ab.PvLength[1];j++)
-                        //     ab.PrincipalVariation[0,j] = ab.PrincipalVariation[1,j];
-                        // ab.PvLength[0] = ab.PvLength[1];                        
+                        bestMove = ab.PrincipalVariation[0,0];               
                         break;
                     }
 
@@ -69,7 +66,8 @@ namespace mmchess
                     break;
             }
             PrintMetrics(ab.Metrics);
-            b.MakeMove(ab.PrincipalVariation[0,0]);
+            Console.WriteLine("Computer move: {0}",bestMove.ToAlegbraicNotation(b));
+            b.MakeMove(bestMove);
         }
 
         private static void PrintPV(Board b, AlphaBeta ab)
