@@ -208,8 +208,8 @@ namespace mmchess
                 {
                     return alpha;
                 }
-                if ((++movesSearched & 4) == 4) // start reducing depth if we aren't finding anything useful
-                    lmr++;
+                if (movesSearched > 4) // start reducing depth if we aren't finding anything useful
+                    lmr=1;
 
                 if (score >= beta)
                 {

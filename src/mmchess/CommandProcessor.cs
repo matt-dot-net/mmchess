@@ -8,6 +8,7 @@ namespace mmchess{
         Undo,
         Eval,
         Go,
+        SetBoard,
         MoveInput
     }
     public class Command{
@@ -28,7 +29,7 @@ namespace mmchess{
             return new Command{Value=CommandVal.MoveInput,Arguments=new string[]{input}};
         }
 
-        public static void DoCommand(Command cmd, Board b){
+        public static void DoCommand(Command cmd, ref Board b){
             if (cmd.Value == CommandVal.PERFT)
                 {
                     int depth=0;
@@ -47,7 +48,7 @@ namespace mmchess{
                 if (cmd.Value == CommandVal.Go){
                     SearchRoot.Iterate(b);
                 }
-                if (cmd.Value == CommandVal.MoveInput)
+                else if (cmd.Value == CommandVal.MoveInput)
                 {
                     var m = Move.ParseMove(b, cmd.Arguments[0]);
                     if (m == null || !b.MakeMove(m))
@@ -56,14 +57,18 @@ namespace mmchess{
                     }
                 }
 
-                if(cmd.Value==CommandVal.Eval){
+                else if(cmd.Value==CommandVal.Eval){
                     Console.WriteLine("Eval Score: {0}",Evaluator.Evaluate(b));
                 }
 
-                if (cmd.Value == CommandVal.Undo)
+                else if (cmd.Value == CommandVal.Undo)
                 {
                     b.UnMakeMove();
                 }            
+
+                else if (cmd.Value == CommandVal.SetBoard){
+                    b = Board.ParseFenString(String.Join(" ",cmd.Arguments,1,cmd.Arguments.Length-1));
+                }
         }
     }
 }

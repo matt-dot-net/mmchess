@@ -544,5 +544,129 @@ namespace mmchess
             HashKey ^= TranspositionTable.HashKeys[sideToMove,(int)p-1,m.To];
 
         }
+
+        public static Board ParseFenString(String input){
+            
+            Board b = new Board();
+            b.AllPieces=b.AllPiecesL45=b.AllPiecesR45=b.AllPiecesR90=0;
+            for(int i=0;i<2;i++){
+                b.Pieces[i]=b.Rooks[i]=b.Bishops[i]=b.Knights[i]=b.Queens[i]=b.King[i]=b.Pawns[i]=0;
+                b.CastleStatus= 0;
+                b.EnPassant=b.HashKey = 0;
+            }
+
+            var groups = input.Split(' ');
+
+            if(groups.Length < 6)
+                throw new ArgumentException("input is not valid");
+
+            var grp = groups[0];
+#region parse piece squares
+            for(int i=0,sqIndex=0;i<grp.Length;i++)
+            {
+                var bitboard = BitMask.Mask[sqIndex];
+                if(grp[i] == '/')
+                    continue;
+                int skip=0;
+                if(int.TryParse(grp[i].ToString(),out skip)){
+                    sqIndex+=skip;//loop will advance the next one
+                    continue;
+                }
+                switch(grp[i]){
+                    case 'r' :
+                        b.Rooks[1] |= bitboard;
+                        b.Pieces[1] |= bitboard;
+                        break;
+                    case 'b' :
+                        b.Bishops[1] |= bitboard;
+                        b.Pieces[1] |= bitboard;
+                        break;
+                    case 'n' :
+                        b.Knights[1] |= bitboard;
+                        b.Pieces[1] |= bitboard;
+                        break;
+                    case 'q':
+                        b.Queens[1]|=bitboard;
+                        b.Pieces[1]|=bitboard;
+                        break;
+                    case 'p':
+                        b.Pawns[1]|=bitboard;
+                        b.Pieces[1]|=bitboard;
+                        break;
+                    case 'k':
+                        b.King[1]|=bitboard;
+                        b.Pieces[1]|=bitboard;
+                        break;
+                    case 'R' :
+                        b.Rooks[0] |= bitboard;
+                        b.Pieces[0] |= bitboard;
+                        break;
+                    case 'B' :
+                        b.Bishops[0] |= bitboard;
+                        b.Pieces[0] |= bitboard;
+                        break;
+                    case 'N' :
+                        b.Knights[0] |= bitboard;
+                        b.Pieces[0] |= bitboard;
+                        break;
+                    case 'Q':
+                        b.Queens[0]|=bitboard;
+                        b.Pieces[0]|=bitboard;
+                        break;
+                    case 'P':
+                        b.Pawns[0]|=bitboard;
+                        b.Pieces[0]|=bitboard;
+                        break;
+                    case 'K':
+                        b.King[0]|=bitboard;
+                        b.Pieces[0]|=bitboard;
+                        break;                        
+                }
+                b.AllPieces |= bitboard;
+                b.AllPiecesL45 |= BitMask.Mask[RotatedL45Map[sqIndex]];
+                b.AllPiecesR45 |= BitMask.Mask[RotatedR45Map[sqIndex]];
+                b.AllPiecesR90 |= BitMask.Mask[Rotated90Map[sqIndex]];
+                sqIndex++;
+            }
+#endregion
+
+            if(groups[1] == "w")
+                b.SideToMove=0;
+            else if (groups[1] == "b")
+                b.SideToMove=1;
+            else
+                throw new ArgumentException("invalid side to move");
+
+            
+            //CastleStatus
+            var castleStatus = groups[2];
+            if(castleStatus.Contains("K"))
+                b.CastleStatus |= 1;
+            if(castleStatus.Contains("Q"))
+                b.CastleStatus |= 2;
+            if(castleStatus.Contains("k"))
+                b.CastleStatus |= 4;
+            if(castleStatus.Contains("q"))
+                b.CastleStatus |= 8;
+            
+            //enpassant
+            if(groups[3] != "-")
+            {
+                for(int e = 0;e<64;e++)
+                {
+                    if(SquareNames[e]==groups[3]){
+                        b.EnPassant = BitMask.Mask[e];
+                        break;
+                    }
+                }
+                if(b.EnPassant ==0)
+                    throw new ArgumentException("invalid ep square");
+            }
+
+            //skip last two items
+
+            b.HashKey=TranspositionTable.GetHashKeyForPosition(b);
+            return b;
+        }
     }
 }

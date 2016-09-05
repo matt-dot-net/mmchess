@@ -15,7 +15,7 @@ namespace mmchess
                 Console.Write("> ");
                 var input = Console.ReadLine();
                 cmd = CommandParser.ParseCommand(input);
-                CommandParser.DoCommand(cmd,b);               
+                CommandParser.DoCommand(cmd,ref b);               
             }
         }
       
