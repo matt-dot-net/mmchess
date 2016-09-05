@@ -18,14 +18,26 @@ namespace mmchess
                 TranspositionTable.Instance.Collisions,
                 TranspositionTable.Instance.Hits);
         }
-        public static void Iterate(Board b)
+
+        static TimeSpan GetThinkTimeSpan(GameState state){
+            return TimeSpan.FromSeconds(5);
+        }
+
+        public static void Iterate(GameState state, Action interrupt)
         {
-            AlphaBeta ab = new AlphaBeta(b, TimeSpan.FromSeconds(5));
+            state.TimeUp=false;
+            var startTime = DateTime.Now;
+            var timeLimit = GetThinkTimeSpan(state);
+            AlphaBeta ab = new AlphaBeta(state,()=>{
+                if ((DateTime.Now - startTime) > timeLimit)
+                    state.TimeUp = true;
+                    interrupt();
+            });
             int alpha = -10000;
             int beta = 10000;
             Move bestMove=null;
             Console.WriteLine("Ply\tScore\tNodes\tPV");
-            for (int i = 0; i < 64 && !ab.TimeUp; i++)
+            for (int i = 0; i < 64 && !state.TimeUp; i++)
             {
                 int score;
 
@@ -37,11 +49,10 @@ namespace mmchess
 
                 do
                 {
-                    score = ab.Search(alpha, beta, i);
+                    score = ab.Search(alpha, beta, i);                    
                     if (score > alpha && score < beta)
                     {
                         alpha = score;
-                        bestMove = ab.PrincipalVariation[0,0];               
                         break;
                     }
 
@@ -52,13 +63,15 @@ namespace mmchess
                     }
 
                     else if (score <= alpha)
-                        alpha = -10000;
+                        alpha = -10000; 
 
-                } while (!ab.TimeUp);
-                if (!ab.TimeUp)
+                } while (!state.TimeUp);
+                if (!state.TimeUp)
                 {
+                    //must make sure this wasn't updated while running out of time
+                    bestMove = ab.PrincipalVariation[0,0];               
                     Console.Write("{0}\t{1}\t{2}\t", i, score, ab.Metrics.Nodes);
-                    PrintPV(b, ab);
+                    PrintPV(state.GameBoard, ab);
                 }
                 Console.WriteLine();
 
@@ -66,8 +79,8 @@ namespace mmchess
                     break;
             }
             PrintMetrics(ab.Metrics);
-            Console.WriteLine("Computer move: {0}",bestMove.ToAlegbraicNotation(b));
-            b.MakeMove(bestMove);
+            Console.WriteLine("move {0}",bestMove.ToAlegbraicNotation(state.GameBoard));
+            state.GameBoard.MakeMove(bestMove);
         }
 
         private static void PrintPV(Board b, AlphaBeta ab)

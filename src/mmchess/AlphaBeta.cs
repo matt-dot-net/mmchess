@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using static mmchess.TranspositionTableEntry;
 
@@ -13,10 +12,12 @@ namespace mmchess
         public AlphaBetaMetrics Metrics { get; set; }
         public Move[,] PrincipalVariation { get; private set; }
         public int[] PvLength = new int[MAX_DEPTH];
-        public bool TimeUp { get; set; }
+        TimeSpan TimeLimit { get; set; }        
         DateTime StartTime { get; set; }
         Board MyBoard { get; set; }
-        TimeSpan TimeLimit { get; set; }
+
+        GameState MyGameState{get;set;}
+        Action Interrupt{get;set;}
 
         Move[,] Killers = new Move[MAX_DEPTH, 2];
 
@@ -25,22 +26,19 @@ namespace mmchess
         {
             Metrics = new AlphaBetaMetrics();
         }
-        public AlphaBeta(Board b, TimeSpan timeLimit)
+        public AlphaBeta(GameState state, Action interrupt)
         {
+
             PrincipalVariation = new Move[MAX_DEPTH, MAX_DEPTH];
             PvLength[0] = 0;
             Ply = 0;
-            MyBoard = b;
+            MyGameState=state;
+            MyBoard = state.GameBoard;
             StartTime = DateTime.Now;
-            TimeLimit = timeLimit;
+            TimeLimit = TimeSpan.FromSeconds(5);
             Metrics = new AlphaBetaMetrics();
-        }
-
-        void CheckTime()
-        {
-            if (DateTime.Now - StartTime > TimeLimit)
-                TimeUp = true;
-        }
+            Interrupt=interrupt;
+        } 
 
         int OrderQuiesceMove(Move m)
         {
@@ -89,8 +87,8 @@ namespace mmchess
             Metrics.QNodes++;
             if ((Metrics.Nodes & 65536) > 0)
             {
-                CheckTime();
-                if (TimeUp)
+                Interrupt();
+                if (MyGameState.TimeUp)
                     return alpha;
             }
 
@@ -108,7 +106,7 @@ namespace mmchess
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
-                int score = -Quiesce(-beta, -beta-1);
+                int score = -Quiesce(-beta, -alpha);
                 MyBoard.UnMakeMove();
                 if (score >= beta)
                     return beta;
@@ -126,8 +124,8 @@ namespace mmchess
             PvLength[Ply] = Ply;
             if ((Metrics.Nodes & 65536) > 0)
             {
-                CheckTime();
-                if (TimeUp)
+                Interrupt();
+                if (MyGameState.TimeUp)
                     return alpha;
             }
 
@@ -200,7 +198,7 @@ namespace mmchess
                 int score = -Search(-beta, -alpha, depth - 1 - lmr);
                 MyBoard.UnMakeMove();
                 Ply--;
-                if (TimeUp)
+                if (MyGameState.TimeUp)
                 {
                     return alpha;
                 }
