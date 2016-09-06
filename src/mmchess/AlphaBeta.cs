@@ -14,7 +14,6 @@ namespace mmchess
         public int[] PvLength = new int[MAX_DEPTH];
         public TimeSpan TimeLimit { get; set; }        
         Board MyBoard { get; set; }
-
         GameState MyGameState{get;set;}
         Action Interrupt{get;set;}
 
@@ -83,7 +82,7 @@ namespace mmchess
         {
             Metrics.Nodes++;
             Metrics.QNodes++;
-            if ((Metrics.Nodes & 65536) > 0)
+            if ((Metrics.Nodes & 65535) == 65535)
             {
                 Interrupt();
                 if (MyGameState.TimeUp)
@@ -104,8 +103,13 @@ namespace mmchess
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
+                Ply++;
+                var temp = MyBoard.HashKey;
                 int score = -Quiesce(-beta, -alpha);
+                if(MyBoard.HashKey != temp)
+                    throw new Exception();
                 MyBoard.UnMakeMove();
+                Ply--;
                 if (score >= beta)
                     return beta;
                 if (score > alpha)
@@ -114,6 +118,10 @@ namespace mmchess
             }
             return alpha;
 
+        }
+
+        public int SearchRoot(int alpha,int beta, int depth){
+            throw new NotImplementedException();
         }
 
         public int Search(int alpha, int beta, int depth)
@@ -126,7 +134,7 @@ namespace mmchess
                 MyBoard.History.HalfMovesSinceLastCaptureOrPawn==100)
                 return CurrentDrawScore;
 
-            if ((Metrics.Nodes & 65536) > 0)
+            if ((Metrics.Nodes & 65535) == 65535)
             {
                 Interrupt();
                 if (MyGameState.TimeUp)
@@ -166,20 +174,15 @@ namespace mmchess
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
                 !MyBoard.History[Ply - 1].IsNullMove)
             {
-                MyBoard.SideToMove ^= 1;
-                MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
-                Ply++;
-                var oldEnPassant = MyBoard.EnPassant;
-                MyBoard.EnPassant = 0;
-                MyBoard.History.Add(new HistoryMove(MyBoard.HashKey,null));//store a null move in history
+                var temp = MyBoard.HashKey;
+                MakeNullMove();
                 var nmScore = Search(-beta, 1 - beta, depth - R - 1);
-                MyBoard.History.RemoveAt(MyBoard.History.Count - 1);//remove the null move
-                MyBoard.EnPassant = oldEnPassant;
-                Ply--;
-                MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
-                MyBoard.SideToMove ^= 1;
+                UnmakeNullMove();
+
+                if(MyBoard.HashKey != temp)
+                    throw new Exception("hashkey fail");
                 if (nmScore >= beta)
-                {
+                {   
                     Metrics.NullMoveFailHigh++;
                     Metrics.FailHigh++;
                     Metrics.FirstMoveFailHigh++;
@@ -190,7 +193,7 @@ namespace mmchess
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
-                .OrderByDescending((m) => OrderMove(m, entry));
+                .OrderByDescending((m) => OrderMove(m, entry)); 
             Move lastMove = null;
             int nonCapMovesSearched = 0, lmr = 0;
             foreach (var m in moves)
@@ -199,7 +202,12 @@ namespace mmchess
                     continue;
 
                 Ply++;
+                var temp = MyBoard.HashKey;
+                if(temp == 3884980836456674859)
+                    temp = MyBoard.HashKey;
                 int score = -Search(-beta, -alpha, depth - 1 - lmr);
+                if(MyBoard.HashKey != temp)
+                    throw new Exception();
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (MyGameState.TimeUp)
@@ -254,6 +262,39 @@ namespace mmchess
                     TranspositionTableEntry.EntryType.ALL);
             }
             return best;
+        }
+
+        private void UnmakeNullMove()
+        {
+            var nullMove = MyBoard.History[MyBoard.History.Count-1];
+            MyBoard.History.RemoveAt(MyBoard.History.Count - 1);//remove the null move
+            
+            if (nullMove.EnPassant > 0)
+            {
+                MyBoard.EnPassant = nullMove.EnPassant;
+                var file = MyBoard.EnPassant.BitScanForward().File();
+                MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
+            }
+            Ply--;
+            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+            MyBoard.SideToMove ^= 1;
+        }
+
+        private void MakeNullMove()
+        {
+            var nullMove = new HistoryMove(MyBoard.HashKey, null);
+
+            MyBoard.SideToMove ^= 1;
+            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+            Ply++;
+            if (MyBoard.EnPassant > 0)
+            {
+                nullMove.EnPassant = MyBoard.EnPassant;
+                var file = MyBoard.EnPassant.BitScanForward().File();
+                MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
+            }
+
+            MyBoard.History.Add(nullMove);//store a null move in history
         }
 
         private void UpdatePv(Move bestMove)

@@ -15,20 +15,32 @@ namespace mmchess
             {
                 var input = Console.ReadLine();
                 cmd = CommandParser.ParseCommand(input);
-                CommandParser.DoCommand(cmd,gameState);     
+                CommandParser.DoCommand(cmd, gameState);
 
-                if(gameState.IsMyTurn)
+                if (gameState.IsMyTurn)
                 {
-                    SearchRoot.Iterate(gameState,()=>{
-                        if(Console.In.Peek()>0){
+                    SearchRoot.Iterate(gameState, () =>
+                    {
+
+                        bool waitForLine = false;
+                        if (Console.IsInputRedirected)
+                            waitForLine = (Console.In.Peek() != -1);
+                        else if (Console.KeyAvailable)
+                            waitForLine = true;
+
+                        if (waitForLine)
+                        {
                             input = Console.ReadLine();
                             cmd = CommandParser.ParseCommand(input);
-                            CommandParser.DoCommand(cmd,gameState);
+                            CommandParser.DoCommand(cmd, gameState);
+
                         }
                     });
                 }
             }
         }
-      
+
+
+
     }
 }

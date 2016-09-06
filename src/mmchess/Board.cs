@@ -194,7 +194,6 @@ namespace mmchess
                 {
                     //moved a king, wipe out castle status
                     CastleStatus &= (byte)(SideToMove == 1 ? 3 : 12);
-                    HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
                 }
                 else
                 { //moving a rook
@@ -202,10 +201,8 @@ namespace mmchess
                         CastleStatus &= (byte)(m.From.File() == 7 ? 11 : 7);
                     else
                         CastleStatus &= (byte)(m.From.File() == 7 ? 14 : 13);
-                    HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
                 }
             }
-
         }
 
         void MakeCastleMove(Move m)
@@ -264,6 +261,9 @@ namespace mmchess
                 MakeCastleMove(m);
 
             UpdateCastleStatus(m);
+            if(CastleStatus != hm.CastleStatus)
+                HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
+                
             UpdateCapture(m, hm);
             UpdateBitBoards(m);
 
@@ -407,15 +407,12 @@ namespace mmchess
             HashKey ^= TranspositionTable.SideToMoveKey[SideToMove];
             SideToMove ^= 1;
 
-
             //restore captured piece
             if (m.CapturedPiece > 0)
                 UnmakeCapture(m);
 
             if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.From.File() - m.To.File()) == 2)
-            {
                 UnmakeCastleMove(m);
-            }
 
             if (m.Promotion > 0)
                 UpdatePromotion(m);

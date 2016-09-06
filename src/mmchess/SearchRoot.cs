@@ -20,7 +20,31 @@ namespace mmchess
         }
 
         static TimeSpan GetThinkTimeSpan(GameState state){
-            return TimeSpan.FromSeconds(5);
+            if(state == null)
+                throw new ArgumentNullException("state");
+            if(state.TimeControl == null)  
+                throw new ArgumentException("No Time Control set!");
+
+            switch(state.TimeControl.Type){
+                case TimeControlType.FixedTimePerMove:
+                    return TimeSpan.FromSeconds(state.TimeControl.FixedTimePerSearchSeconds);
+                case TimeControlType.TimePerGame:
+                    return TimeSpan.FromSeconds(
+                            (state.MyClock.TotalSeconds / 40) +
+                            (state.TimeControl.IncrementSeconds/2)
+                        );   
+                case TimeControlType.NumberOfMoves:
+                    var moves = (state.GameBoard.History.Count/2);
+                    if(moves > state.TimeControl.MovesInTimeControl){
+                        //find the remainder
+                        int timeControlsReached = moves/ state.TimeControl.MovesInTimeControl;
+                        moves -= state.TimeControl.MovesInTimeControl*timeControlsReached;
+                    }
+                    var movesRemaining = state.TimeControl.MovesInTimeControl-moves;
+                    return TimeSpan.FromSeconds(state.MyClock.TotalSeconds/movesRemaining);
+                default:
+                    return TimeSpan.MaxValue;
+            }
         }
 
         public static void Iterate(GameState state, Action interrupt)
@@ -66,7 +90,7 @@ namespace mmchess
                         alpha = -10000; 
 
                 } while (!state.TimeUp);
-                if (!state.TimeUp)
+                if (!state.TimeUp && i > 0)
                 {
                     //must make sure this wasn't updated while running out of time
                     bestMove = ab.PrincipalVariation[0,0];               
