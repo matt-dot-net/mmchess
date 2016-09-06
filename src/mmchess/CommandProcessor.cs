@@ -124,7 +124,7 @@ namespace mmchess
                 else
                 {
                     state.TimeControl.Type = TimeControlType.NumberOfMoves;
-
+                    state.TimeControl.MovesInTimeControl = moves;
                 }
 
                 int minutes;
