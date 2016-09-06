@@ -270,6 +270,11 @@ namespace mmchess
             if (m.Promotion > 0)
                 UpdatePromotion(m);
 
+            if(EnPassant >0){
+                int file = EnPassant.BitScanForward().File();
+                HashKey ^= TranspositionTable.EnPassantFileKey[file]; // remove 
+            }
+
             //set enpassant sq
             if (((m.Bits & (byte)MoveBits.Pawn) > 0) &&
                 Math.Abs(m.To - m.From) == 16)
@@ -281,7 +286,7 @@ namespace mmchess
                 EnPassant = 0;
 
             SideToMove ^= 1;
-            HashKey ^= TranspositionTable.SideToMoveKey[SideToMove];
+            HashKey ^= TranspositionTable.SideToMoveKey;
             // push the move onto the list of moves
             History.Add(hm);
 
@@ -292,7 +297,6 @@ namespace mmchess
                 return false;
             }
             return true;
-
         }
 
         void UpdatePromotion(Move m)
@@ -404,7 +408,7 @@ namespace mmchess
             if (index < 0)
                 return;
             var m = History[index];
-            HashKey ^= TranspositionTable.SideToMoveKey[SideToMove];
+            HashKey ^= TranspositionTable.SideToMoveKey;
             SideToMove ^= 1;
 
             //restore captured piece
@@ -419,6 +423,11 @@ namespace mmchess
             if (EnPassant > 0)
                 HashKey ^= TranspositionTable.EnPassantFileKey[m.To.File()];
             EnPassant = m.EnPassant;
+            if (EnPassant > 0)
+            {
+                int file = EnPassant.BitScanForward().File();
+                HashKey ^= TranspositionTable.EnPassantFileKey[file];
+            }
             if (CastleStatus != m.CastleStatus)
                 HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
             CastleStatus = m.CastleStatus;
