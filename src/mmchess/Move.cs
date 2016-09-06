@@ -162,9 +162,9 @@ namespace mmchess
             if(Math.Abs(To.File() - From.File()) > 1)
             {
                 if(To == 6 || To == 62)
-                    return "0-0";
+                    return "O-O";
                 else
-                    return "0-0-0";
+                    return "O-O-O";
             }
 
             output += 'K';
@@ -201,7 +201,7 @@ namespace mmchess
 
     }
 
-    char FileOrRank(Board b, MoveBits bits){
+    String FileOrRank(Board b, MoveBits bits){
         ulong bitboard=0;
         switch(bits){
             case MoveBits.Bishop:
@@ -217,12 +217,13 @@ namespace mmchess
                 bitboard = b.Knights[b.SideToMove];
                 break;
             default:
-                return outputFiles[From.File()];
+                return String.Empty;
         }
-
-        if((Board.FileMask[From.File()] & bitboard).Count() == 1)
-            return outputRanks[From.Rank()];        
-        return outputFiles[From.File()];
+        if((Board.FileMask[From.File()] & bitboard).Count() ==1)
+            return outputRanks[From.File()].ToString();      
+        if((Board.RankMask[From.Rank()] & bitboard).Count() ==1)
+            return outputRanks[From.Rank()].ToString();
+        return Board.SquareNames[From];
         
 
     }
