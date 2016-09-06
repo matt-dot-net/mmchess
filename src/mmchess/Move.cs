@@ -132,7 +132,8 @@ namespace mmchess
             var sqs = MoveGenerator.KnightMoves[To] & b.Knights[b.SideToMove];
             if ((sqs).Count() > 1)
             {
-                output += Board.SquareNames[From];
+                output += FileOrRank(b,bits);
+
             }
         }
         else if (bits == MoveBits.Bishop)
@@ -145,7 +146,7 @@ namespace mmchess
             var sqs = MoveGenerator.RookAttacks(b, To) & b.Rooks[b.SideToMove];
             if (sqs.Count() > 1)
             {
-                output += Board.SquareNames[From];
+                output += FileOrRank(b,bits);
             }
         }
         else if (bits == MoveBits.Queen)
@@ -157,6 +158,15 @@ namespace mmchess
         }
         else if (bits == MoveBits.King)
         {
+            //if we are castling
+            if(Math.Abs(To.File() - From.File()) > 1)
+            {
+                if(To == 6 || To == 62)
+                    return "0-0";
+                else
+                    return "0-0-0";
+            }
+
             output += 'K';
         }
         else
@@ -191,6 +201,31 @@ namespace mmchess
 
     }
 
+    char FileOrRank(Board b, MoveBits bits){
+        ulong bitboard=0;
+        switch(bits){
+            case MoveBits.Bishop:
+                bitboard = b.Bishops[b.SideToMove];
+                break;
+            case MoveBits.Rook:
+                bitboard = b.Rooks[b.SideToMove];
+                break;
+            case MoveBits.Queen:
+                bitboard = b.Queens[b.SideToMove];
+                break;
+            case MoveBits.Knight:
+                bitboard = b.Knights[b.SideToMove];
+                break;
+            default:
+                return outputFiles[From.File()];
+        }
+
+        if((Board.FileMask[From.File()] & bitboard).Count() == 1)
+            return outputRanks[From.Rank()];        
+        return outputFiles[From.File()];
+        
+
+    }
 
     public static Move ParseMove(Board b, string moveString)
     {
