@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace mmchess
 {
@@ -400,19 +399,22 @@ namespace mmchess
                 //verify lock
                 if((uint)(existing.Value ^ hashKey) != existing.Lock)
                 {
-                    //lock does not match so we have a collision
-
-                    //we need replacement strategy        
-
-                    //we prefer depth so if what we have is better, keep it
-                    if(existing.Depth > depth) 
-                        return; //the entry that's already here is better                
-
-                    //only count collisions if we decide to replace
                     Collisions++;    
+
+                    //lock does not match so we have a collision
+                    //we need replacement strategy        
+                    //strategy is as follows:
+                    //  prefer deeper results
+                    //  but we can't keep results around forever just because they are deep
+                    //  so we will increase the age of an entry everytime we decide to keep it
+                    //  ultimately we will replace an entry regardless of age after four attempts 
+
+                    if(existing.Depth > depth) {
+                        if(existing.Age++ < 3)
+                            return; //the entry that's already here is better
+                    }                
                 }
             }
-            
 
             newEntry.Lock = (uint)(newEntry.Value ^ hashKey);
             Stores++;
