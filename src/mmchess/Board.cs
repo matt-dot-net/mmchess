@@ -546,9 +546,6 @@ namespace mmchess
                 Rooks[sideToMove] ^= moveMask;
             if (p == Piece.Pawn)
                 Pawns[sideToMove] ^= moveMask;
-
-            HashKey ^= TranspositionTable.HashKeys[sideToMove, (int)p - 1, m.From];
-            HashKey ^= TranspositionTable.HashKeys[sideToMove, (int)p - 1, m.To];
         }
 
         public static Board ParseFenString(String input)
