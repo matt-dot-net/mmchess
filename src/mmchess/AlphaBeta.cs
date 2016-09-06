@@ -104,10 +104,7 @@ namespace mmchess
                 if (!MyBoard.MakeMove(m))
                     continue;
                 Ply++;
-                var temp = MyBoard.HashKey;
                 int score = -Quiesce(-beta, -alpha);
-                if(MyBoard.HashKey != temp)
-                    throw new Exception();
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (score >= beta)
@@ -174,13 +171,11 @@ namespace mmchess
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
                 !MyBoard.History[Ply - 1].IsNullMove)
             {
-                var temp = MyBoard.HashKey;
+
                 MakeNullMove();
                 var nmScore = Search(-beta, 1 - beta, depth - R - 1);
                 UnmakeNullMove();
 
-                if(MyBoard.HashKey != temp)
-                    throw new Exception("hashkey fail");
                 if (nmScore >= beta)
                 {   
                     Metrics.NullMoveFailHigh++;
@@ -200,14 +195,8 @@ namespace mmchess
             {
                 if (!MyBoard.MakeMove(m))
                     continue;
-
                 Ply++;
-                var temp = MyBoard.HashKey;
-                if(temp == 3884980836456674859)
-                    temp = MyBoard.HashKey;
                 int score = -Search(-beta, -alpha, depth - 1 - lmr);
-                if(MyBoard.HashKey != temp)
-                    throw new Exception();
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (MyGameState.TimeUp)
