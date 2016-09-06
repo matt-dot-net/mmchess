@@ -164,6 +164,7 @@ namespace mmchess
                 }
             }
 
+            int mateThreat=0;
             //next try a Null Move
             if (Ply > 0 && depth > R + 1 &&
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
@@ -171,15 +172,21 @@ namespace mmchess
             {
 
                 MakeNullMove();
-                var nmScore = Search(-beta, 1 - beta, depth - R - 1);
-                UnmakeNullMove();
+                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);          
 
                 if (nmScore >= beta)
                 {   
                     Metrics.NullMoveFailHigh++;
                     Metrics.FailHigh++;
                     Metrics.FirstMoveFailHigh++;
+                    UnmakeNullMove();
                     return beta;
+                }
+                else{
+                    nmScore = -Search(-beta,5000,depth-R-1);
+                    if(nmScore > 5000)
+                        mateThreat=1;
+                    UnmakeNullMove();
                 }
             }
 
@@ -201,8 +208,10 @@ namespace mmchess
                 if (MyGameState.TimeUp)
                     return alpha;
 
-                if ((m.Bits & (byte)MoveBits.Capture) == 0 && ++nonCapMovesSearched > 2) // start reducing depth if we aren't finding anything useful
-                    lmr = 1;
+                if (mateThreat==0 && //don't reduce if we have a mate threat.
+                    (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
+                    ++nonCapMovesSearched > 2) //wait until after killers have been searched
+                    lmr = 1; // start reducing depth if we aren't finding anything useful
 
                 if (score >= beta)
                 {
@@ -263,7 +272,7 @@ namespace mmchess
                 MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
             }
             Ply--;
-            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey;
             MyBoard.SideToMove ^= 1;
         }
 
@@ -272,13 +281,14 @@ namespace mmchess
             var nullMove = new HistoryMove(MyBoard.HashKey, null);
 
             MyBoard.SideToMove ^= 1;
-            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey[MyBoard.SideToMove];
+            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey;
             Ply++;
             if (MyBoard.EnPassant > 0)
             {
                 nullMove.EnPassant = MyBoard.EnPassant;
                 var file = MyBoard.EnPassant.BitScanForward().File();
                 MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
+                MyBoard.EnPassant=0;
             }
 
             MyBoard.History.Add(nullMove);//store a null move in history
