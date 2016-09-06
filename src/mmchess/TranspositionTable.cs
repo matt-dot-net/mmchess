@@ -386,9 +386,10 @@ namespace mmchess
             
             var index = HashFunction(hashKey);
             var existing = TTable[index];
+
             var newEntry = new TranspositionTableEntry{
                 Type = (byte)type,
-                Score = (UInt16)score,
+                Score = (Int16)score,
                 DepthAge = (byte)depth,
 
             };
@@ -421,7 +422,7 @@ namespace mmchess
         public TranspositionTableEntry Read(ulong hashKey){
             var e = TTable[HashFunction(hashKey)];
             if(e == null)
-                return null;
+                return null;              
             //verify lock
             if((uint)(e.Value ^ hashKey) != e.Lock)
                 return null;

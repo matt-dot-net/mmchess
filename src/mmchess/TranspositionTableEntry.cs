@@ -22,9 +22,9 @@ namespace mmchess{
         [FieldOffset(5)]
         public Byte DepthAge; //This field will use 2-bits for age and 6-bits for depth
         [FieldOffset(6)]
-        public UInt16 Score;
+        public Int16 Score;
+        
         [FieldOffset(0)]
-
         public uint Value;
 
         [FieldOffset(8)]
