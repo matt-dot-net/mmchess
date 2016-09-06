@@ -159,9 +159,7 @@ namespace mmchess
                             return entry.Score;
                         case EntryType.ALL:
                         case EntryType.CUT:
-                            {
-                                return entry.Score;
-                            }
+                            return entry.Score;
                     }
                 }
             }
@@ -191,18 +189,18 @@ namespace mmchess
                 .OrderByDescending((m) => OrderMove(m, entry)); 
             Move lastMove = null;
             int nonCapMovesSearched = 0, lmr = 0;
+
             foreach (var m in moves)
             {
                 if (!MyBoard.MakeMove(m))
-                    continue;
+                    continue;               
                 Ply++;
                 int score = -Search(-beta, -alpha, depth - 1 - lmr);
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (MyGameState.TimeUp)
-                {
                     return alpha;
-                }
+
                 if ((m.Bits & (byte)MoveBits.Capture) == 0 && ++nonCapMovesSearched > 2) // start reducing depth if we aren't finding anything useful
                     lmr = 1;
 
