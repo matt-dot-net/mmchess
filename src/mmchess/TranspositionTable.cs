@@ -276,9 +276,7 @@ namespace mmchess
             0x8464d0b1a1c7a840,0xd29147a7c448b209,0x547c914dae8833d2,0x4ea326614b526181,
         };
 
-        public static readonly ulong [] SideToMoveKey = new ulong[2]{
-            0x1c9e7aff5f9e45ef,0x4c45362999b2481e,
-        };
+        public static readonly ulong SideToMoveKey = 0x4c45362999b2481;
 
         public static readonly ulong [] CastleStatusKey = new ulong [16]{
             0xc7531492d2deac48,0x29bfb6b94690e79d,0x7064484865528a46,0x4098158749f2c173,
@@ -319,8 +317,13 @@ namespace mmchess
 
         public static ulong GetHashKeyForPosition(Board b){
             ulong hashKey=0;
-            hashKey^=(ulong)b.SideToMove;
-            hashKey^=b.EnPassant;
+            if(b.SideToMove == 1)
+                hashKey^=SideToMoveKey;
+
+            if(b.EnPassant>0){
+                int file = b.EnPassant.BitScanForward().File();
+                hashKey^=EnPassantFileKey[file];
+            }
 
             for(int side=0;side<2;side++){
                 ulong subpieces;
