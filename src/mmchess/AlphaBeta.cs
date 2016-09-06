@@ -183,9 +183,12 @@ namespace mmchess
                     return beta;
                 }
                 else{
+                    Metrics.NullMoveResearch++;
                     nmScore = -Search(-beta,5000,depth-R-1);
-                    if(nmScore > 5000)
+                    if(nmScore > 5000){
                         mateThreat=1;
+                        Metrics.MateThreats++;
+                    }
                     UnmakeNullMove();
                 }
             }

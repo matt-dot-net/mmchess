@@ -8,5 +8,7 @@ namespace mmchess{
         public ulong KillerFailHigh{get;set;}
         public ulong TTFailHigh{get;set;}
         public ulong NullMoveFailHigh{get;set;}
+        public ulong NullMoveResearch{get;set;}
+        public uint MateThreats{get;set;}
     }
 }
