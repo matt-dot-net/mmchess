@@ -14,8 +14,8 @@ namespace mmchess
             Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0}",
                 100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
                 100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1));
-            Console.WriteLine("NullMove%={2:0.0}, NMResearch={1}, MateThreats={2}",
-                100 % (double)metrics.NullMoveFailHigh / ((double)metrics.FirstMoveFailHigh + 1),
+            Console.WriteLine("NullMove%={0:0.0}, NMResearch={1}, MateThreats={2}",
+                100 * (double)metrics.NullMoveFailHigh / ((double)metrics.FirstMoveFailHigh + 1),
                 metrics.NullMoveResearch,
                 metrics.MateThreats);
             Console.WriteLine("HashTable: Collisions={0}, Hits={1}",
