@@ -20,7 +20,10 @@ namespace mmchess
 
         static readonly int DoubledPawnPenalty = -8;
         static readonly int OpenFileInFrontOfCastledKingPenalty = -50;
+        static readonly int KingUnderAttack = -150;
 
+        static readonly ulong kingside = Board.FileMask[7] | Board.FileMask[6] | Board.FileMask[5];
+        static readonly ulong queenside = Board.FileMask[0] | Board.FileMask[1] | Board.FileMask[2];
 
         static readonly Int16[,] PawnDevelopment = new Int16[2, 64]
        {
@@ -137,6 +140,11 @@ namespace mmchess
 
             eval += EvaluateDevelopment(b);
 
+            var pawnScore = EvaluatePawns(b);
+            eval += pawnScore.Eval;
+
+            eval += EvaluateKingSafety(b, pawnScore);
+
             return eval;
         }
 
@@ -174,10 +182,7 @@ namespace mmchess
                     eval[side] += PawnDevelopment[side, sq];
                 }
 
-                //if the opponent has a queen on the board, evaluate castle status
-                var kingSq = b.King[side].BitScanForward();
-                if ((b.Queens[xside] > 0) && (b.Rooks[xside] > 0) && (2 < kingSq.File() && kingSq.File() < 6))
-                    eval[side] += NotCastledPenalty;
+
             }
             return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
@@ -197,32 +202,125 @@ namespace mmchess
 
         }
 
-        static int EvaluatePawns(Board b)
+        static int EvaluateKingSafety(Board b, PawnScore pawnScore)
+        {
+
+            int[] eval = new int[2];
+
+            for (int side = 0; side < 2; side++)
+            {
+                var xside = side ^ 1;
+                if ((kingside & b.King[side]) > 0)
+                { // if my king is on the kingside
+
+                    if ((b.Rooks[side] & Board.FileMask[7]) > 0) // if I have a rook in the corner
+                    {
+                        //if the opponent has a queen and rook on the board, evaluate castle status
+
+                        if ((b.Queens[xside] > 0) &&
+                            (b.Rooks[xside] > 0))
+                            eval[side] += NotCastledPenalty;
+                    }
+                    else
+                    {
+                        //king looks safely tucked
+                        //evaluate the pawns in front of my king
+                        for (int f = 5; f < 8; f++)
+                        {
+                            //if I have no pawns on the file
+                            if (pawnScore.Files[side, f] == 0)
+                            {
+                                eval[side] += OpenFileInFrontOfCastledKingPenalty;
+
+                                //look for case where the opponent has an opening
+                                //and a major piece, and has not castled in that direction
+                                if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
+                                    ((b.Rooks[xside] | b.Queens[xside]) & Board.FileMask[f]) > 0 && //heavypiece
+                                    ((b.King[xside] & queenside) > 0))//opponents king is safely on the other side
+                                {
+                                    //major probjem
+                                    eval[side] += KingUnderAttack;
+                                }
+                            }
+
+                        }
+                    }
+                }
+                else if ((queenside & b.King[side]) > 0)
+                {
+                    //my king is on the queenside
+                    if ((b.Rooks[side] & Board.FileMask[0]) > 0) //there is a rook in the corner
+                    {
+                        //if the opponent has a queen and rook on the board, evaluate castle status
+
+                        if ((b.Queens[xside] > 0) &&
+                            (b.Rooks[xside] > 0))
+                            eval[side] += NotCastledPenalty;
+                    }
+                    else
+                    {
+                        //king is tucked
+                        //evaluate the pawns in front of my king
+                        for (int f = 2; f >= 0; f--)
+                        {
+                            //if I have no pawns on the file
+                            if (pawnScore.Files[side, f] == 0)
+                            {
+                                eval[side] += OpenFileInFrontOfCastledKingPenalty;
+
+                                //look for case where the opponent has an opening
+                                //and a major piece, and has not castled in that direction
+                                if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
+                                    ((b.Rooks[xside] | b.Queens[xside]) & kingside) > 0 && //heavypiece
+                                    ((b.King[xside] & kingside) > 0)) //opponents king is safely on the other side
+                                {
+                                    //major probjem
+                                    eval[side] += KingUnderAttack;
+                                }
+                            }
+
+                        }
+                    }
+                }
+                else
+                {
+                    //king is in the middle of the board
+                    if ((b.Queens[xside] > 0) &&
+                        (b.Rooks[xside] > 0))
+                    {
+                        eval[side] += NotCastledPenalty;
+                    }
+                }
+            }
+            return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
+        }
+
+        static PawnScore EvaluatePawns(Board b)
         {
             int[] eval = new int[2];
             var fileMask = Board.FileMask;
-
+            var returnVal = new PawnScore();
             for (int side = 0; side < 2; side++)
             {
                 ulong pawns = b.Pawns[side];
                 int xside = side ^ 1;
                 ulong opponentPawns = b.Pawns[side ^ 1];
-                int[] halfOpenFiles = new int[8];
+
 
                 //evaluate file by file
                 for (int i = 0; i < 8; i++)
                 {
 
-                    var myPawns = pawns & Board.FileMask[i];
-                    var theirPawns = b.Pawns[xside] & Board.FileMask[i];
-                    var bothPawns = (myPawns | theirPawns);
+                    returnVal.Files[side, i] = pawns & Board.FileMask[i];
+                    returnVal.Files[xside, i] = opponentPawns & Board.FileMask[i];
+
 
                     //evaluate my doubled pawns
-                    //note we like the opponent to have doubled pawns
-                    if (myPawns.Count() > 1)
+                    if (returnVal.Files[side, i].Count() > 1)
                     {
                         //doubled pawns
-                        if (i > 0 && i < 8) //ignoring outside pawns
+                        if (i > 0 && i < 7) //ignoring outside pawns
+                                            //check for isolated doubled pawns
                             if ((pawns & Board.FileMask[i - 1]) == 0 &&
                                 (pawns & Board.FileMask[i + 1]) == 0)
                             {
@@ -233,22 +331,11 @@ namespace mmchess
                                 eval[side] += 2 * DoubledPawnPenalty;
                             }
                     }
-
-                    //open files in front of king
-                    if (i < 3 && i > 4)
-                    {
-                        if (myPawns == 0 && (b.King[side] & fileMask[i]) > 0)
-                        {
-                            if(bothPawns == 0)
-                                eval[side] += 2*OpenFileInFrontOfCastledKingPenalty;
-                            else
-                                eval[side] += OpenFileInFrontOfCastledKingPenalty; //half open file
-                        }
-                    }
                 }
             }
 
-            return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
+            returnVal.Eval = eval[b.SideToMove] - eval[b.SideToMove ^ 1];
+            return returnVal;
         }
     }
 }
