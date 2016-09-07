@@ -11,7 +11,6 @@ namespace mmchess{
             CUT=4
         }  ;
 
-  
         public const int SizeOf = 8;
 
         [FieldOffset(0)]

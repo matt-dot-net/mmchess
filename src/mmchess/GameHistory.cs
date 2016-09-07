@@ -8,7 +8,12 @@ namespace mmchess{
             
         }
 
-
+        public bool IsGameDrawn(ulong hashKey)
+        {
+            return TimesPositionRepeated(hashKey) == 3 ||
+                            HalfMovesSinceLastCaptureOrPawn == 100;
+        }
+        
         public int HalfMovesSinceLastCaptureOrPawn{
             get{
                 int j=0;

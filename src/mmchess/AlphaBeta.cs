@@ -127,9 +127,10 @@ namespace mmchess
             PvLength[Ply] = Ply;
 
             //detect draws
-            if(MyBoard.History.TimesPositionRepeated(MyBoard.HashKey) == 3 || 
-                MyBoard.History.HalfMovesSinceLastCaptureOrPawn==100)
+            if (this.MyBoard.History.IsGameDrawn(MyBoard.HashKey))
+            {
                 return CurrentDrawScore;
+            }
 
             if ((Metrics.Nodes & 65535) == 65535)
             {
@@ -163,7 +164,7 @@ namespace mmchess
                 }
             }
 
-            int mateThreat=0;
+            int mateThreat = 0;
             //next try a Null Move
             if (Ply > 0 && depth > R + 1 &&
                 !MyBoard.InCheck(MyBoard.SideToMove) &&
@@ -171,21 +172,23 @@ namespace mmchess
             {
 
                 MakeNullMove();
-                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);          
+                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
 
                 if (nmScore >= beta)
-                {   
+                {
                     Metrics.NullMoveFailHigh++;
                     Metrics.FailHigh++;
                     Metrics.FirstMoveFailHigh++;
                     UnmakeNullMove();
                     return beta;
                 }
-                else{
+                else
+                {
                     Metrics.NullMoveResearch++;
-                    nmScore = -Search(-beta,5000,depth-R-1);
-                    if(nmScore > 5000){
-                        mateThreat=1;
+                    nmScore = -Search(-beta, 5000, depth - R - 1);
+                    if (nmScore > 5000)
+                    {
+                        mateThreat = 1;
                         Metrics.MateThreats++;
                     }
                     UnmakeNullMove();
@@ -195,14 +198,14 @@ namespace mmchess
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
-                .OrderByDescending((m) => OrderMove(m, entry)); 
+                .OrderByDescending((m) => OrderMove(m, entry));
             Move lastMove = null;
             int nonCapMovesSearched = 0, lmr = 0;
 
             foreach (var m in moves)
             {
                 if (!MyBoard.MakeMove(m))
-                    continue;               
+                    continue;
                 Ply++;
                 int score = -Search(-beta, -alpha, depth - 1 - lmr);
                 MyBoard.UnMakeMove();
@@ -210,7 +213,7 @@ namespace mmchess
                 if (MyGameState.TimeUp)
                     return alpha;
 
-                if (mateThreat==0 && //don't reduce if we have a mate threat.
+                if (mateThreat == 0 && //don't reduce if we have a mate threat.
                     (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
                     ++nonCapMovesSearched > 2) //wait until after killers have been searched
                     lmr = 1; // start reducing depth if we aren't finding anything useful

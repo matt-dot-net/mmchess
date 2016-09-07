@@ -65,6 +65,10 @@ namespace mmchess
                     state.TimeUp = true;
                 interrupt();
             });
+
+            //increment transposition table search Id
+            TranspositionTable.Instance.NextSearchId();
+
             int alpha = -10000;
             int beta = 10000;
             Move bestMove = null;
@@ -132,6 +136,9 @@ namespace mmchess
             var tempHashKey = b.HashKey;
             while (true)
             {
+                if (b.History.IsGameDrawn(b.HashKey))
+                    break;
+
                 var entry = TranspositionTable.Instance.Read(b.HashKey);
                 if (entry == null || entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
                     break;

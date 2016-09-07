@@ -4,11 +4,15 @@ namespace mmchess
 {
     public class TranspositionTable
     {
-        public const int AGE_MAX=2;
-
         public ulong Collisions{get;set;}
         public ulong Hits{get;set;}
         public ulong Stores{get;set;}
+
+        public int SearchId{
+            get;
+            private set;
+        } //used for automatic aging.
+  
         int SizeInBytes{
             get{
                     return 67108864; // 64MB
@@ -42,6 +46,13 @@ namespace mmchess
                 KeyMask |= (ulong)1<<i;
             
         }
+
+        public void NextSearchId(){
+            lock(_lock){
+                SearchId = (SearchId+1) & 3;
+            } 
+        }
+
 #region HashKey Random Values
         public static readonly ulong[,,] HashKeys = new ulong[2,6, 64]
         {
@@ -402,7 +413,8 @@ namespace mmchess
             var newEntry = new TranspositionTableEntry{
                 Type = (byte)type,
                 Score = (Int16)score,
-                DepthAge = (byte)depth,
+                Depth=depth,
+                Age=SearchId
             };
             if(m != null)
                 newEntry.MoveValue =m.Value;
@@ -412,19 +424,19 @@ namespace mmchess
                 //verify lock
                 if(newEntry.Lock != existing.Lock)
                 {
-                    Collisions++;    
-
                     //lock does not match so we have a collision
                     //we need replacement strategy        
                     //strategy is as follows:
                     //  prefer deeper results
                     //  but we can't keep results around forever just because they are deep
-                    //  so we will increase the age of an entry everytime we decide to keep it
+                    //  so we will remember the search (by age) and not keep anything for more than 4 searches
                     //  ultimately we will replace an entry regardless of age after four attempts 
 
                     if(existing.Depth > depth) {
-                        if(existing.Age++ < 3)
-                            return; //the entry that's already here is better
+                        if(existing.Age == newEntry.Age){
+                            Collisions++;    //only count a collision if we could not replace
+                            return; //the entry that's already here is better and new
+                        }
                     }                
                 }
             }
