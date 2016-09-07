@@ -15,7 +15,7 @@ namespace mmchess
   
         int SizeInBytes{
             get{
-                    return 67108864; // 64MB
+                    return 128 * 1024 * 1024; // 64MB
             }
         }
         TranspositionTableEntry[] TTable;
