@@ -16,9 +16,14 @@ namespace mmchess
 
     public static class Evaluator
     {
-        public static readonly Int16 NOT_CASTLED_PENALTY = -50;
-        public static readonly Int16[,] PawnDevelopment = new Int16[2, 64]
-        {
+        static readonly Int16 NotCastledPenalty = -50;
+
+        static readonly int DoubledPawnPenalty = -8;
+        static readonly int OpenFileInFrontOfCastledKingPenalty = -50;
+
+
+        static readonly Int16[,] PawnDevelopment = new Int16[2, 64]
+       {
             {
              0 ,0 ,0 ,0 ,0 ,0 ,0 , 0,
              24,24,24,24,24,24,24,24,
@@ -40,10 +45,10 @@ namespace mmchess
              0 ,0 ,0 ,0 ,0 ,0 ,0 , 0,
             },
 
-        };
+       };
 
-        public static readonly Int16[,] KnightDevelopment = new Int16[2, 64]
-        {
+        static readonly Int16[,] KnightDevelopment = new Int16[2, 64]
+       {
              {
              0,  0,  0,  0,  0,  0,  0, 0,
              4, 16, 16, 16, 16, 16, 16, 4,
@@ -64,10 +69,10 @@ namespace mmchess
             4, 16, 16, 16, 16, 16, 16, 4,
             0,  0,  0,  0,  0,  0,  0, 0,
             }
-        };
+       };
 
-        public static readonly Int16[,] BishopDevelopment = new Int16[2, 64]
-        {
+        static readonly Int16[,] BishopDevelopment = new Int16[2, 64]
+       {
             {
              00, 16, 16, 16, 16, 16, 16, 00,
              00, 16, 16, 16, 16, 16, 16, 00,
@@ -88,7 +93,7 @@ namespace mmchess
             00, 16, 16, 16, 16, 16, 16, 00,
             00, 16, 16, 16, 16, 16, 16, 00,
             }
-        };
+       };
 
         public static int MovingPieceValue(MoveBits bits)
         {
@@ -172,7 +177,7 @@ namespace mmchess
                 //if the opponent has a queen on the board, evaluate castle status
                 var kingSq = b.King[side].BitScanForward();
                 if ((b.Queens[xside] > 0) && (b.Rooks[xside] > 0) && (2 < kingSq.File() && kingSq.File() < 6))
-                    eval[side] += NOT_CASTLED_PENALTY;
+                    eval[side] += NotCastledPenalty;
             }
             return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
@@ -190,6 +195,60 @@ namespace mmchess
 
             return eval;
 
+        }
+
+        static int EvaluatePawns(Board b)
+        {
+            int[] eval = new int[2];
+            var fileMask = Board.FileMask;
+
+            for (int side = 0; side < 2; side++)
+            {
+                ulong pawns = b.Pawns[side];
+                int xside = side ^ 1;
+                ulong opponentPawns = b.Pawns[side ^ 1];
+                int[] halfOpenFiles = new int[8];
+
+                //evaluate file by file
+                for (int i = 0; i < 8; i++)
+                {
+
+                    var myPawns = pawns & Board.FileMask[i];
+                    var theirPawns = b.Pawns[xside] & Board.FileMask[i];
+                    var bothPawns = (myPawns | theirPawns);
+
+                    //evaluate my doubled pawns
+                    //note we like the opponent to have doubled pawns
+                    if (myPawns.Count() > 1)
+                    {
+                        //doubled pawns
+                        if (i > 0 && i < 8) //ignoring outside pawns
+                            if ((pawns & Board.FileMask[i - 1]) == 0 &&
+                                (pawns & Board.FileMask[i + 1]) == 0)
+                            {
+                                eval[side] += 4 * DoubledPawnPenalty;
+                            }
+                            else
+                            {
+                                eval[side] += 2 * DoubledPawnPenalty;
+                            }
+                    }
+
+                    //open files in front of king
+                    if (i < 3 && i > 4)
+                    {
+                        if (myPawns == 0 && (b.King[side] & fileMask[i]) > 0)
+                        {
+                            if(bothPawns == 0)
+                                eval[side] += 2*OpenFileInFrontOfCastledKingPenalty;
+                            else
+                                eval[side] += OpenFileInFrontOfCastledKingPenalty; //half open file
+                        }
+                    }
+                }
+            }
+
+            return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
     }
 }
