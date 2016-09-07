@@ -627,6 +627,12 @@ namespace mmchess
         {
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
+
+            if(b.InCheck(b.SideToMove)){
+                GenerateEvasions(b,list);
+                return list;
+            }
+
             ulong moves;
             ulong pieces = b.Rooks[b.SideToMove];
             while (pieces > 0)
