@@ -325,6 +325,8 @@ namespace mmchess
                 hashKey^=EnPassantFileKey[file];
             }
 
+            hashKey ^= CastleStatusKey[b.CastleStatus];
+
             for(int side=0;side<2;side++){
                 ulong subpieces;
                 subpieces = b.Knights[side];

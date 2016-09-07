@@ -261,8 +261,10 @@ namespace mmchess
                 MakeCastleMove(m);
 
             UpdateCastleStatus(m);
-            if(CastleStatus != hm.CastleStatus)
+            if(CastleStatus != hm.CastleStatus){
+                HashKey ^= TranspositionTable.CastleStatusKey[hm.CastleStatus];
                 HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
+            }
                 
             UpdateCapture(m, hm);
             UpdateBitBoards(m);
@@ -296,6 +298,10 @@ namespace mmchess
                 UnMakeMove();
                 return false;
             }
+
+            if(HashKey != TranspositionTable.GetHashKeyForPosition(this))
+                throw new Exception("invalid hashkey");
+
             return true;
         }
 
@@ -318,6 +324,8 @@ namespace mmchess
                     Queens[SideToMove] ^= BitMask.Mask[m.To];
                     break;
             }
+            //remove the Pawn
+            HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn-1, m.To];
             HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)piece - 1, m.To];
         }
 
@@ -428,9 +436,11 @@ namespace mmchess
                 int file = EnPassant.BitScanForward().File();
                 HashKey ^= TranspositionTable.EnPassantFileKey[file];
             }
-            if (CastleStatus != m.CastleStatus)
+            if (CastleStatus != m.CastleStatus){
                 HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
-            CastleStatus = m.CastleStatus;
+                CastleStatus = m.CastleStatus;
+                HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
+            }
             UpdateBitBoards(m);
             History.RemoveLast();
         }
