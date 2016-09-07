@@ -136,6 +136,10 @@ namespace mmchess
         public static int Evaluate(Board b)
         {
             int eval = 0;
+
+            if(EvaluateDraw(b))
+                return 0;
+
             eval += EvaluateMaterial(b);
 
             eval += EvaluateDevelopment(b);
@@ -146,6 +150,30 @@ namespace mmchess
             eval += EvaluateKingSafety(b, pawnScore);
 
             return eval;
+        }
+
+        static bool EvaluateDraw(Board b){
+            if(b.History.IsGameDrawn(b.HashKey))
+                return true;
+
+            //if only the kings remain
+            if(b.AllPieces.Count() == 2)
+                return true;
+
+            //if there are no pawns
+            if((b.Pawns[0] | b.Pawns[1]) == 0)
+            {
+                
+                if((b.Rooks[0] | b.Rooks[1] | b.Queens[0] | b.Queens[1])>0)
+                    return false;
+                
+                if((b.Knights[0] | b.Knights[1] | b.Bishops[0] | b.Bishops[1]).Count() == 1)
+                    return true;
+            }
+            else{
+                //todo calculate if king is in front of pawn...
+            }
+            return false;
         }
 
         static int EvaluateDevelopment(Board b)

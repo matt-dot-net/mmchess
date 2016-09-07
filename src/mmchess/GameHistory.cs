@@ -10,8 +10,7 @@ namespace mmchess{
 
         public bool IsGameDrawn(ulong hashKey)
         {
-            return TimesPositionRepeated(hashKey) == 3 ||
-                            HalfMovesSinceLastCaptureOrPawn == 100;
+            return DrawnByRepetition(hashKey) || HalfMovesSinceLastCaptureOrPawn >= 100;
         }
         
         public int HalfMovesSinceLastCaptureOrPawn{
@@ -26,16 +25,17 @@ namespace mmchess{
             }
         }
 
-        public int TimesPositionRepeated(ulong hashKey){
+        public bool DrawnByRepetition(ulong hashKey){
                 int repeats=0;
                 for(int i=this.Count-1;i>=0;i--){
                     var m = this[i];
                     if((m.Bits & (byte)MoveBits.Capture)>0 || (m.Bits & (byte)MoveBits.Pawn)>0)
                         break;
                     if(m.HashKey == hashKey)
-                        repeats++;
+                        if(++repeats == 3)
+                            return true;
                 }
-                return repeats;
+                return false;
         }
 
         public void RemoveLast(){

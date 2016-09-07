@@ -12,10 +12,10 @@ namespace mmchess
         public AlphaBetaMetrics Metrics { get; set; }
         public Move[,] PrincipalVariation { get; private set; }
         public int[] PvLength = new int[MAX_DEPTH];
-        public TimeSpan TimeLimit { get; set; }        
+        public TimeSpan TimeLimit { get; set; }
         Board MyBoard { get; set; }
-        GameState MyGameState{get;set;}
-        Action Interrupt{get;set;}
+        GameState MyGameState { get; set; }
+        Action Interrupt { get; set; }
 
         Move[,] Killers = new Move[MAX_DEPTH, 2];
 
@@ -30,12 +30,12 @@ namespace mmchess
             PrincipalVariation = new Move[MAX_DEPTH, MAX_DEPTH];
             PvLength[0] = 0;
             Ply = 0;
-            MyGameState=state;
+            MyGameState = state;
             MyBoard = state.GameBoard;
             TimeLimit = TimeSpan.FromSeconds(5);
             Metrics = new AlphaBetaMetrics();
-            Interrupt=interrupt;
-        } 
+            Interrupt = interrupt;
+        }
 
         int OrderQuiesceMove(Move m)
         {
@@ -89,15 +89,20 @@ namespace mmchess
                     return alpha;
             }
 
-            int standPat = Evaluator.Evaluate(MyBoard);
-            if (standPat >= beta)
-                return beta;
-            
-            if(standPat < alpha - (int)PieceValues.Queen)
-                return alpha;
+            //attemp to stand pat (don't search if eval tells us we are in a good position)
+            if(!MyBoard.InCheck(MyBoard.SideToMove))
+            {
 
-            if (alpha < standPat)
-                alpha = standPat;
+                int standPat = Evaluator.Evaluate(MyBoard);
+                if (standPat >= beta)
+                    return beta;
+
+                if (standPat < alpha - (int)PieceValues.Queen)
+                    return alpha;
+
+                if (alpha < standPat)
+                    alpha = standPat;
+            }
 
             var moves = MoveGenerator
                 .GenerateCaptures(MyBoard)
@@ -121,20 +126,20 @@ namespace mmchess
 
         }
 
-        public int SearchRoot(int alpha,int beta, int depth){
+        public int SearchRoot(int alpha, int beta, int depth)
+        {
             throw new NotImplementedException();
         }
 
         public int Search(int alpha, int beta, int depth)
         {
+            if(Ply == MAX_DEPTH-1)
+                return alpha;
+
             Metrics.Nodes++;
             PvLength[Ply] = Ply;
-
-            //detect draws
-            if (this.MyBoard.History.IsGameDrawn(MyBoard.HashKey))
-            {
-                return CurrentDrawScore;
-            }
+            var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
+            int ext = inCheck? 1:0;
 
             if ((Metrics.Nodes & 65535) == 65535)
             {
@@ -171,7 +176,7 @@ namespace mmchess
             int mateThreat = 0;
             //next try a Null Move
             if (Ply > 0 && depth > R + 1 &&
-                !MyBoard.InCheck(MyBoard.SideToMove) &&
+                !inCheck &&
                 !MyBoard.History[Ply - 1].IsNullMove)
             {
 
@@ -193,6 +198,7 @@ namespace mmchess
                     if (nmScore > 5000)
                     {
                         mateThreat = 1;
+                        ext=1;
                         Metrics.MateThreats++;
                     }
                     UnmakeNullMove();
@@ -211,7 +217,19 @@ namespace mmchess
                 if (!MyBoard.MakeMove(m))
                     continue;
                 Ply++;
-                int score = -Search(-beta, -alpha, depth - 1 - lmr);
+                int score;
+
+                //if we don't yet have a move, then search full window
+                if (bestMove == null)
+                    score = -Search(-beta, -alpha, depth - 1 - lmr + ext);
+                else //otherwise, use a zero window
+                {
+                    score = -Search(-alpha - 1, -alpha, depth - 1 - lmr + ext);
+                    if(score > alpha){ //this move might be better than our current best move
+                        //we have to research with full window
+                        score = -Search(-beta,-alpha, depth-1-lmr+ext);
+                    }
+                }
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (MyGameState.TimeUp)
@@ -252,7 +270,7 @@ namespace mmchess
             if (lastMove == null)
             {
                 //we can't make a move. check for mate or stalemate.
-                if (MyBoard.InCheck(MyBoard.SideToMove))
+                if (inCheck)
                     return -10000 + Ply;
                 else
                     return CurrentDrawScore;
@@ -271,9 +289,9 @@ namespace mmchess
 
         private void UnmakeNullMove()
         {
-            var nullMove = MyBoard.History[MyBoard.History.Count-1];
+            var nullMove = MyBoard.History[MyBoard.History.Count - 1];
             MyBoard.History.RemoveAt(MyBoard.History.Count - 1);//remove the null move
-            
+
             if (nullMove.EnPassant > 0)
             {
                 MyBoard.EnPassant = nullMove.EnPassant;
@@ -297,7 +315,7 @@ namespace mmchess
                 nullMove.EnPassant = MyBoard.EnPassant;
                 var file = MyBoard.EnPassant.BitScanForward().File();
                 MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
-                MyBoard.EnPassant=0;
+                MyBoard.EnPassant = 0;
             }
 
             MyBoard.History.Add(nullMove);//store a null move in history
