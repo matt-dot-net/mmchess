@@ -386,6 +386,14 @@ namespace mmchess
         public ulong HashFunction(ulong key){
             return key & KeyMask;
         }
+
+        uint CalculateLock(ulong hashKey){
+            uint entrylock = (uint)(hashKey>>32)        // top of the hashKey value
+                                        ^                  //XOR 
+                             (uint)(hashKey & 0xFFFFFFFF); // with bottom of the hashkey 
+            return entrylock;
+        }
+
         public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type){
             
             var index = HashFunction(hashKey);
@@ -395,14 +403,14 @@ namespace mmchess
                 Type = (byte)type,
                 Score = (Int16)score,
                 DepthAge = (byte)depth,
-
             };
             if(m != null)
                 newEntry.MoveValue =m.Value;
 
+            newEntry.Lock = CalculateLock(hashKey);
             if(existing != null){
                 //verify lock
-                if((uint)(existing.Value ^ hashKey) != existing.Lock)
+                if(newEntry.Lock != existing.Lock)
                 {
                     Collisions++;    
 
@@ -421,7 +429,6 @@ namespace mmchess
                 }
             }
 
-            newEntry.Lock = (uint)(newEntry.Value ^ hashKey);
             Stores++;
             TTable[index]=newEntry;
         }
@@ -431,7 +438,7 @@ namespace mmchess
             if(e == null)
                 return null;              
             //verify lock
-            if((uint)(e.Value ^ hashKey) != e.Lock)
+            if(CalculateLock(hashKey) != e.Lock)
                 return null;
             Hits++;
             return e;

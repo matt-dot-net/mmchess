@@ -25,7 +25,7 @@ namespace mmchess{
         public Int16 Score;
         
         [FieldOffset(0)]
-        public uint Value;
+        public ulong Value;
 
         [FieldOffset(8)]
         public uint Lock;
