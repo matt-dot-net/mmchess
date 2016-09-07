@@ -154,8 +154,7 @@ namespace mmchess
                     switch ((EntryType)entry.Type)
                     {
                         case EntryType.PV:
-                            if (entry.Value < beta)
-                                UpdatePv(new Move(entry.Value));
+                            UpdatePv(new Move(entry.MoveValue));
                             return entry.Score;
                         case EntryType.ALL:
                         case EntryType.CUT:
