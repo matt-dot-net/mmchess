@@ -148,7 +148,6 @@ namespace mmchess
                     return alpha;
             }
 
-            int best = -10000;
             Move bestMove = null;
             if (depth <= 0)
                 return Quiesce(alpha, beta);
@@ -174,36 +173,36 @@ namespace mmchess
             }
 
             int mateThreat = 0;
-            //next try a Null Move
-            if (Ply > 0 && depth > R + 1 &&
-                !inCheck &&
-                !MyBoard.History[Ply - 1].IsNullMove)
-            {
+            // //next try a Null Move
+            // if (Ply > 0 && depth > R + 1 &&
+            //     !inCheck &&
+            //     !MyBoard.History[Ply - 1].IsNullMove)
+            // {
 
-                MakeNullMove();
-                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
+            //     MakeNullMove();
+            //     var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
 
-                if (nmScore >= beta)
-                {
-                    Metrics.NullMoveFailHigh++;
-                    Metrics.FailHigh++;
-                    Metrics.FirstMoveFailHigh++;
-                    UnmakeNullMove();
-                    return beta;
-                }
-                else
-                {
-                    Metrics.NullMoveResearch++;
-                    nmScore = -Search(-beta, 5000, depth - R - 1);
-                    if (nmScore > 5000)
-                    {
-                        mateThreat = 1;
-                        ext=1;
-                        Metrics.MateThreats++;
-                    }
-                    UnmakeNullMove();
-                }
-            }
+            //     if (nmScore >= beta)
+            //     {
+            //         Metrics.NullMoveFailHigh++;
+            //         Metrics.FailHigh++;
+            //         Metrics.FirstMoveFailHigh++;
+            //         UnmakeNullMove();
+            //         return beta;
+            //     }
+            //     else
+            //     {
+            //         Metrics.NullMoveResearch++;
+            //         nmScore = -Search(-beta, 5000, depth - R - 1);
+            //         if (nmScore > 5000)
+            //         {
+            //             mateThreat = 1;
+            //             ext=1;
+            //             Metrics.MateThreats++;
+            //         }
+            //         UnmakeNullMove();
+            //     }
+            // }
 
 
             var moves = MoveGenerator
@@ -247,22 +246,20 @@ namespace mmchess
                         Metrics.FirstMoveFailHigh++;
                     return score;
                 }
-                if (score > best)
-                {
-                    best = score;
 
-                    if (score > alpha)
-                    {
-                        alpha = score;
-                        bestMove = m;
-                        // PV Node
-                        //update the PV
-                        UpdatePv(bestMove);
-                        //Add to hashtable
-                        TranspositionTable.Instance.Store(
-                            MyBoard.HashKey, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV);
-                    }
+
+                if (score > alpha)
+                {
+                    alpha = score;
+                    bestMove = m;
+                    // PV Node
+                    //update the PV
+                    UpdatePv(bestMove);
+                    //Add to hashtable
+                    TranspositionTable.Instance.Store(
+                        MyBoard.HashKey, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV);
                 }
+                
                 lastMove = m;
             }
 
@@ -284,7 +281,7 @@ namespace mmchess
                     MyBoard.HashKey, null, depth, alpha,
                     TranspositionTableEntry.EntryType.ALL);
             }
-            return best;
+            return alpha;
         }
 
         private void UnmakeNullMove()
