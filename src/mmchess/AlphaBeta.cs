@@ -216,28 +216,48 @@ namespace mmchess
                 if (!MyBoard.MakeMove(m))
                     continue;
                 Ply++;
+
                 int score;
 
-                //if we don't yet have a move, then search full window
+
+                //if we don't yet have a move, then search full window (PV Node)
                 if (bestMove == null)
-                    score = -Search(-beta, -alpha, depth - 1 - lmr + ext);
+                    score = -Search(-beta, -alpha, depth - 1 + ext);
                 else //otherwise, use a zero window
                 {
-                    score = -Search(-alpha - 1, -alpha, depth - 1 - lmr + ext);
-                    if(score > alpha){ //this move might be better than our current best move
+                    //zero window search
+                    score = -Search(-alpha - 1, -alpha, depth - 1 + ext);
+
+                    if(score > alpha)
+                    {   
+                        //this move might be better than our current best move
                         //we have to research with full window
+
+                        //LATE MOVE REDUCTIONS
+                        if (depth>3 && 
+                            ext==0 && //no extension
+                            !inCheck && //i am in check at this node
+                            !MyBoard.InCheck(MyBoard.SideToMove) && //the move we just made checks the opponent
+                            mateThreat == 0 && //don't reduce if we have a mate threat.
+                            (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
+                            ++nonCapMovesSearched > 2) //wait until after killers have been searched
+                            lmr = 1; // start reducing depth if we aren't finding anything useful
+
                         score = -Search(-beta,-alpha, depth-1-lmr+ext);
+
+                        if(score>alpha && lmr == 1){
+                            //let's research again without the lmr
+                            Metrics.LMRResearch++;
+                            score = -Search(-beta,-alpha,depth-1);
+                        }
                     }
                 }
+
+
                 MyBoard.UnMakeMove();
                 Ply--;
                 if (MyGameState.TimeUp)
                     return alpha;
-
-                if (mateThreat == 0 && //don't reduce if we have a mate threat.
-                    (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
-                    ++nonCapMovesSearched > 2) //wait until after killers have been searched
-                    lmr = 1; // start reducing depth if we aren't finding anything useful
 
                 if (score >= beta)
                 {
