@@ -197,6 +197,11 @@ namespace mmchess
             }
         }
 
+        b.MakeMove(this);
+        if(b.InCheck(b.SideToMove))
+            output+="+";
+        b.UnMakeMove();
+
         return output;
 
     }
