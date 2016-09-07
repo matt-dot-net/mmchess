@@ -6,15 +6,17 @@ namespace mmchess
     {
         static void PrintMetrics(AlphaBetaMetrics metrics)
         {
-            Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3}",
+            Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3}, EBF({4})={5:0.00}",
                 metrics.Nodes,
                 metrics.QNodes,
                 100 * (double)metrics.QNodes / ((double)metrics.Nodes + 1),
-                (metrics.Nodes / 1000 / 5));
+                (metrics.Nodes / 1000 / 5),
+                metrics.Depth,
+                (float)(metrics.DepthNodes[metrics.Depth]-metrics.DepthNodes[metrics.Depth-1])/(float)(metrics.DepthNodes[metrics.Depth-1]+1));
             Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0}",
                 100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
                 100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1));
-            Console.WriteLine("NullMove%={0:0.0}, NMResearch={1}, MateThreats={2}",
+            Console.WriteLine("NullMove%={0:0.0}, NMResearch={1}, MateThreats={2}, LMRResearch={3}",
                 100 * (double)metrics.NullMoveFailHigh / ((double)metrics.FirstMoveFailHigh + 1),
                 metrics.NullMoveResearch,
                 metrics.MateThreats,
@@ -103,13 +105,20 @@ namespace mmchess
                         alpha = -10000;
 
                 } while (!state.TimeUp);
-                if (!state.TimeUp && i > 0)
-                {
-                    //must make sure this wasn't updated while running out of time
-                    bestMove = ab.PrincipalVariation[0, 0];
-                    Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score,
-                        (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
-                    PrintPV(state.GameBoard, ab);
+                
+
+
+                if (!state.TimeUp){
+                    ab.Metrics.DepthNodes[i]=ab.Metrics.Nodes;
+                    ab.Metrics.Depth = i;
+                    if(i > 0)
+                    {
+                        //must make sure this wasn't updated while running out of time
+                        bestMove = ab.PrincipalVariation[0, 0];
+                        Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score,
+                            (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
+                        PrintPV(state.GameBoard, ab);
+                    }
                 }
                 Console.WriteLine();
 

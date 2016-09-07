@@ -6,7 +6,7 @@ namespace mmchess
 {
     public class AlphaBeta
     {
-        const int MAX_DEPTH = 64;
+        public const int MAX_DEPTH = 64;
         const int R = 3;
         int Ply { get; set; }
         public AlphaBetaMetrics Metrics { get; set; }
@@ -97,6 +97,7 @@ namespace mmchess
                 if (standPat >= beta)
                     return beta;
 
+                //Don't bother searching if we are evaluating at less than a Queen
                 if (standPat < alpha - (int)PieceValues.Queen)
                     return alpha;
 
@@ -241,8 +242,10 @@ namespace mmchess
                             mateThreat == 0 && //don't reduce if we have a mate threat.
                             (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
                             ++nonCapMovesSearched > 2) //wait until after killers have been searched
+                        {
                             lmr = 1; // start reducing depth if we aren't finding anything useful
-
+                        }
+                        
                         score = -Search(-beta,-alpha, depth-1-lmr+ext);
 
                         if(score>alpha && lmr == 1){
