@@ -298,10 +298,7 @@ namespace mmchess
                 UnMakeMove();
                 return false;
             }
-
-            if(HashKey != TranspositionTable.GetHashKeyForPosition(this))
-                throw new Exception("invalid hashkey");
-
+            
             return true;
         }
 

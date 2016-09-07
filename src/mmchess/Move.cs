@@ -220,7 +220,7 @@ namespace mmchess
                 return String.Empty;
         }
         if((Board.FileMask[From.File()] & bitboard).Count() ==1)
-            return outputRanks[From.File()].ToString();      
+            return outputFiles[From.File()].ToString();      
         if((Board.RankMask[From.Rank()] & bitboard).Count() ==1)
             return outputRanks[From.Rank()].ToString();
         return Board.SquareNames[From];
