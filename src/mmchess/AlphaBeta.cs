@@ -92,6 +92,10 @@ namespace mmchess
             int standPat = Evaluator.Evaluate(MyBoard);
             if (standPat >= beta)
                 return beta;
+            
+            if(standPat < alpha - (int)PieceValues.Queen)
+                return alpha;
+
             if (alpha < standPat)
                 alpha = standPat;
 
