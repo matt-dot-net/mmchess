@@ -1,45 +1,67 @@
 using System.Collections.Generic;
 namespace mmchess{
 
-    public class GameHistory : List<HistoryMove>
+    public class GameHistory 
     {
+        List<HistoryMove> _history;
+        List<int> _pawnOrCapIndices = new List<int>();
 
+        public int Count{
+            get{
+                return _history.Count;
+            }
+        }
+
+        public HistoryMove this[int index]
+        {
+            get{
+                return _history[index];
+            }
+        }
         public GameHistory(){
-            
+            _history = new List<HistoryMove>();
+        }
+
+        public void Add(HistoryMove move){
+            _history.Add(move);
+            if((move.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
+                _pawnOrCapIndices.Add(_history.Count-1);
+        }
+
+        public bool FiftyMoveRule(){
+            if(_pawnOrCapIndices.Count <= 0)
+                return false;
+            return (_history.Count-1 - _pawnOrCapIndices[_pawnOrCapIndices.Count-1])==100;
         }
 
         public bool IsGameDrawn(ulong hashKey)
         {
-            return DrawnByRepetition(hashKey) || HalfMovesSinceLastCaptureOrPawn >= 100;
+            return DrawnByRepetition(hashKey) || FiftyMoveRule();
         }
-        
-        public int HalfMovesSinceLastCaptureOrPawn{
-            get{
-                int j=0;
-                for(int i=this.Count-1;i>=0;i--,j++){
-                    var m = this[i];
-                    if((m.Bits & (byte)MoveBits.Capture)>0 || (m.Bits & (byte)MoveBits.Pawn)>0)
-                        break;
-                }
-                return j;
-            }
-        }
+                        
 
-        public bool DrawnByRepetition(ulong hashKey){
-                int repeats=0;
-                for(int i=this.Count-1;i>=0;i--){
-                    var m = this[i];
-                    if((m.Bits & (byte)MoveBits.Capture)>0 || (m.Bits & (byte)MoveBits.Pawn)>0)
-                        break;
-                    if(m.HashKey == hashKey)
-                        if(++repeats == 3)
-                            return true;
-                }
-                return false;
+        public bool DrawnByRepetition(ulong hashKey)
+        {
+            int repeats=0;
+            int lastIndex = 0;
+            if(_pawnOrCapIndices.Count > 0)
+                lastIndex = _pawnOrCapIndices[_pawnOrCapIndices.Count-1];
+            for(int i=_history.Count-1;i>=lastIndex;i--){
+                var m = _history[i];
+                if(m.HashKey == hashKey)
+                    if(++repeats == 3)
+                        return true;
+            }
+            return false;
         }
 
         public void RemoveLast(){
-            this.RemoveAt(this.Count-1);
+            var lastIndex = _history.Count-1;
+            var m = _history[lastIndex];            
+            _history.RemoveAt(lastIndex);
+            if((m.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
+                _pawnOrCapIndices.RemoveAt(_pawnOrCapIndices.Count-1);
+            
         }
     }
 }

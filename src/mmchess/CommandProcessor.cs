@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace mmchess
 {
@@ -54,6 +55,8 @@ namespace mmchess
             CommandVal cmd;
             var buffer = input.Split(' ');
             input = buffer[0];
+            if(String.IsNullOrEmpty(input))
+                return new Command { Value=CommandVal.NoOp};
             if (Enum.TryParse(input, true, out cmd))
                 return new Command { Value = cmd, Arguments = buffer };
             return new Command { Value = CommandVal.MoveInput, Arguments = new string[] { input } };
@@ -247,27 +250,105 @@ namespace mmchess
 
             else if (cmd.Value == CommandVal.SetBoard)
             {
-                state.GameBoard = Board.ParseFenString(String.Join(" ", cmd.Arguments, 1, cmd.Arguments.Length - 1));
+                try
+                {
+                    state.GameBoard = Board.ParseFenString(String.Join(" ", cmd.Arguments, 1, cmd.Arguments.Length - 1));
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                }
             }
         }
 
         static void EpdTest(Command cmd)
         {
-            using (var fs = new FileStream(cmd.Arguments[1], FileMode.Open))
+            int tests = 0, successes = 0;
+            try
             {
-                var sr = new StreamReader(fs);
-                String line;
 
-                var gameState = new GameState();
-                do
+                using (var fs = new FileStream(cmd.Arguments[1], FileMode.Open))
                 {
-                    line = sr.ReadLine();
-                    if (String.IsNullOrEmpty(line))
-                        break;
-                    gameState.GameBoard = Board.ParseFenString(line);
-                    DoCommand(new Command { Value = CommandVal.Go }, gameState);
-                } while (!String.IsNullOrEmpty(line));
+                    Console.WriteLine("beginning test in 5 seconds... type 'quit' to abort");
+                    System.Threading.Thread.Sleep(5000);
+                    var sr = new StreamReader(fs);
+                    String line;
+                    bool quit = false;
+
+                    var gameState = new GameState();
+                    gameState.TimeControl = new TimeControl
+                    {
+                        Type = TimeControlType.FixedTimePerMove,
+                        FixedTimePerSearchSeconds = 5
+                    };
+                    do
+                    {
+                        line = sr.ReadLine();
+
+                        if(String.IsNullOrEmpty(line))
+                            break;
+
+                        var bmRegex = new Regex("bm (?<bms>[^;]*)");
+                        var match = bmRegex.Match(line);
+                        var bestMoves = match.Groups["bms"].Value.Split(' ');
+
+                        Console.WriteLine(line);
+                        if (String.IsNullOrEmpty(line))
+                            break;
+                        gameState.GameBoard = Board.ParseFenString(line);
+                        var found = Iterate.DoIterate(gameState, () =>
+                        {
+                            bool waitForLine = false;
+                            if (Console.IsInputRedirected)
+                                waitForLine = (Console.In.Peek() != -1);
+                            else if (Console.KeyAvailable)
+                                waitForLine = true;
+
+                            if (waitForLine)
+                            {
+                                var input = Console.ReadLine();
+                                cmd = CommandParser.ParseCommand(input);
+                                if (cmd.Value == CommandVal.Quit)
+                                {
+                                    quit = true;
+                                    gameState.TimeUp = true;
+                                    Console.WriteLine("Aborting");
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Running test!");
+                                }
+                            }
+                        });
+
+                        var moveStr = found.ToAlegbraicNotation(gameState.GameBoard);
+                        bool fail = true;
+                        foreach (var bm in bestMoves)
+                        {
+                            if (bm.ToLower() == moveStr.ToLower())
+                            {
+                                fail = false;
+                                break;
+                            }
+                        }
+                        tests++;
+                        if (fail)
+                            Console.WriteLine("FAIL");
+                        else
+                        {
+                            successes++;
+                            Console.WriteLine("SUCCESS!");
+                        }
+                    } while (!String.IsNullOrEmpty(line) && !quit);
+                }
             }
+            catch (FileNotFoundException fex)
+            {
+                Console.WriteLine(fex.Message);
+            }
+
+            Console.WriteLine("Test suite complete");
+            Console.WriteLine("{0}/{1} Solved", successes, tests);
         }
     }
 }

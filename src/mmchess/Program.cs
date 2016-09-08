@@ -19,7 +19,7 @@ namespace mmchess
 
                 if (gameState.IsMyTurn)
                 {
-                    Iterate.DoIterate(gameState, () =>
+                    var myMove = Iterate.DoIterate(gameState, () =>
                     {
 
                         bool waitForLine = false;
@@ -36,6 +36,12 @@ namespace mmchess
 
                         }
                     });
+
+                    if (myMove != null)
+                    {
+                        Console.WriteLine("move {0}", myMove.ToAlegbraicNotation(gameState.GameBoard));
+                        gameState.GameBoard.MakeMove(myMove);
+                    }
                 }
             }
         }

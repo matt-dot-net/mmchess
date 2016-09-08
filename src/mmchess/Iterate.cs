@@ -8,17 +8,26 @@ namespace mmchess
         {
             //prevent index out of bounds.
             //note, this will not effect the calculation
-            if(metrics.Depth == 0){
-                metrics.Depth=1;
+            if (metrics.Depth == 0)
+            {
+                metrics.Depth = 1;
             }
-
+            float ebf = 0;
+            for (int d = 1; d < metrics.Depth; d++)
+            {
+                var bf = (float)metrics.DepthNodes[d] / (float)(metrics.DepthNodes[d - 1] + 1);
+                if (ebf > 0)
+                    ebf = (ebf + bf) / 2;
+                else
+                    ebf = bf;
+            }
             Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3}, EBF({4})={5:0.00}",
                 metrics.Nodes,
                 metrics.QNodes,
                 100 * (double)metrics.QNodes / ((double)metrics.Nodes + 1),
                 (metrics.Nodes / 1000 / 5),
                 metrics.Depth,
-                (float)(metrics.DepthNodes[metrics.Depth]-metrics.DepthNodes[metrics.Depth-1])/(float)(metrics.DepthNodes[metrics.Depth-1]+1));
+                ebf);
             Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
                 100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
                 100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1),
@@ -66,7 +75,7 @@ namespace mmchess
             }
         }
 
-        public static void DoIterate(GameState state, Action interrupt)
+        public static Move DoIterate(GameState state, Action interrupt)
         {
             state.TimeUp = false;
             var startTime = DateTime.Now;
@@ -85,11 +94,11 @@ namespace mmchess
             int beta = 10000;
             Move bestMove = null;
             //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
-            ab.Metrics.Depth=0;
+            ab.Metrics.Depth = 0;
             for (int i = 0; i < 64 && !state.TimeUp; i++)
             {
                 int score;
-
+                int alphaRelax = 1, betaRelax = 1;
                 if (i > 0)
                 {
                     beta = alpha + 33;
@@ -99,6 +108,16 @@ namespace mmchess
                 do
                 {
                     score = ab.Search(alpha, beta, i);
+                    if (i > 0 && !state.TimeUp)
+                    {
+                        var newBest = ab.PrincipalVariation[0, 0];
+                        if (newBest != null && ab.PvLength[0]>0)
+                        {
+                            bestMove = newBest;
+                            PrintSearchResult(state, startTime, ab, i, score);
+                        }
+                    }
+
                     if (score > alpha && score < beta)
                     {
                         alpha = score;
@@ -107,40 +126,39 @@ namespace mmchess
 
                     if (score >= beta)
                     {
-                        beta = 10000;
-                        continue;
+
+                        beta = Math.Max(10000, beta + (33 * betaRelax));
+                        betaRelax *= 2;
                     }
 
                     else if (score <= alpha)
-                        alpha = -10000;
-
-                } while (!state.TimeUp);
-                
-
-
-                if (!state.TimeUp){
-                    ab.Metrics.DepthNodes[i]=ab.Metrics.Nodes;
-                    ab.Metrics.Depth = i;
-                    if(i > 0)
                     {
-                        //must make sure this wasn't updated while running out of time
-                        bestMove = ab.PrincipalVariation[0, 0];
-                        Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score,
-                            (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
-                        PrintPV(state.GameBoard, ab);
+                        alpha = Math.Min(-10000, alpha - (33 * alphaRelax));
+                        alphaRelax *= 2;
                     }
-                }
-                Console.WriteLine();
 
-                if (Math.Abs(score) > 9900)
+                } while (!state.TimeUp || bestMove == null);
+
+                if (!state.TimeUp)
+                {
+                    ab.Metrics.DepthNodes[i] = ab.Metrics.Nodes;
+                    ab.Metrics.Depth = i;
+                }
+
+
+                if (i > 0 && Math.Abs(score) > 9900)
                     break;
             }
             PrintMetrics(ab.Metrics);
-            if (bestMove != null)
-            {
-                Console.WriteLine("move {0}", bestMove.ToAlegbraicNotation(state.GameBoard));
-                state.GameBoard.MakeMove(bestMove);
-            }
+            return bestMove;
+        }
+
+        private static void PrintSearchResult(GameState state, DateTime startTime, AlphaBeta ab, int i, int score)
+        {
+            Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score,
+                (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
+            PrintPV(state.GameBoard, ab);
+            Console.WriteLine();
         }
 
         private static void PrintPV(Board b, AlphaBeta ab)
@@ -156,8 +174,12 @@ namespace mmchess
             var tempHashKey = b.HashKey;
             while (true)
             {
+                //make sure the hash table isn't leading us beyond a draw
                 if (b.History.IsGameDrawn(b.HashKey))
+                {
+                    Console.Write("(draw)");
                     break;
+                }
 
                 var entry = TranspositionTable.Instance.Read(b.HashKey);
                 if (entry == null || entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
@@ -166,8 +188,6 @@ namespace mmchess
                 Console.Write("{0}(HT) ", m.ToAlegbraicNotation(b));
                 if (!b.MakeMove(m))
                     throw new Exception("invalid move from HT!");
-                if (b.HashKey != TranspositionTable.GetHashKeyForPosition(b))
-                    throw new Exception("Invalid hashkey");
             }
             while (b.HashKey != tempHashKey)
                 b.UnMakeMove();
