@@ -170,17 +170,9 @@ namespace mmchess
                     switch ((EntryType)entry.Type)
                     {
                         case EntryType.PV:
-                            UpdatePv(new Move(entry.MoveValue));
-                            return entry.Score;
                         case EntryType.ALL:
-                            if(entry.Score>=beta)
-                                return beta;
-                            break;
                         case EntryType.CUT:
-                            if(entry.Score<alpha)
-                                return alpha;
-                            break;
-                            
+                            return entry.Score;
                     }
                 }
             }
@@ -191,30 +183,24 @@ namespace mmchess
                 !inCheck &&
                 !MyBoard.History[Ply - 1].IsNullMove)
             {
-
+                Metrics.NullMoveTries++;
                 MakeNullMove();
                 var nmScore = Search(-beta, 1 - beta, depth - R - 1);
+                UnmakeNullMove();
+
+                if(MyGameState.TimeUp)
+                    return alpha;
+
 
                 if (nmScore >= beta)
                 {
                     Metrics.NullMoveFailHigh++;
-                    Metrics.FailHigh++;
-                    Metrics.FirstMoveFailHigh++;
-                    UnmakeNullMove();
-                    return beta;
+                    
+
+                    TranspositionTable.Instance.Store(MyBoard.HashKey,null,depth,nmScore,EntryType.CUT);
+                    return nmScore;
                 }
-                else
-                {
-                    Metrics.NullMoveResearch++;
-                    nmScore = -Search(-beta, 5000, depth - R - 1);
-                    if (nmScore > 5000)
-                    {
-                        mateThreat = 1;
-                        ext=1;
-                        Metrics.MateThreats++;
-                    }
-                    UnmakeNullMove();
-                }
+                
             }
 
 
@@ -232,30 +218,30 @@ namespace mmchess
 
                 int score;
 
+                //LATE MOVE REDUCTIONS
+                if (depth>3 && 
+                    ext==0 && //no extension
+                    !inCheck && //i am in check at this node
+                    !MyBoard.InCheck(MyBoard.SideToMove) && //the move we just made checks the opponent
+                    mateThreat == 0 && //don't reduce if we have a mate threat.
+                    (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
+                    ++nonCapMovesSearched > 2) //wait until after killers have been searched
+                {
+                    lmr = 1; // start reducing depth if we aren't finding anything useful
+                }                
+
                 //if we don't yet have a move, then search full window (PV Node)
                 if (bestMove == null)
-                    score = -Search(-beta, -alpha, depth - 1 + ext);
+                    score = -Search(-beta, -alpha, depth - 1 -lmr + ext);
                 else //otherwise, use a zero window
                 {
                     //zero window search
-                    score = -Search(-alpha - 1, -alpha, depth - 1 + ext);
+                    score = -Search(-alpha - 1, -alpha, depth - 1 -lmr + ext);
 
                     if(score > alpha)
                     {   
                         //this move might be better than our current best move
                         //we have to research with full window
-
-                        //LATE MOVE REDUCTIONS
-                        if (depth>3 && 
-                            ext==0 && //no extension
-                            !inCheck && //i am in check at this node
-                            !MyBoard.InCheck(MyBoard.SideToMove) && //the move we just made checks the opponent
-                            mateThreat == 0 && //don't reduce if we have a mate threat.
-                            (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
-                            ++nonCapMovesSearched > 2) //wait until after killers have been searched
-                        {
-                            lmr = 1; // start reducing depth if we aren't finding anything useful
-                        }
                         
                         score = -Search(-beta,-alpha, depth-1-lmr+ext);
 

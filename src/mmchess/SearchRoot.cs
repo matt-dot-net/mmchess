@@ -22,7 +22,8 @@ namespace mmchess
             Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0}",
                 100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
                 100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1));
-            Console.WriteLine("NullMove%={0:0.0}, NMResearch={1}, MateThreats={2}, LMRResearch={3}",
+            Console.WriteLine("NullMoveTries={0} NullMove%={1:0.0}, NMResearch={2}, MateThreats={3}, LMRResearch={4}",
+                metrics.NullMoveTries,
                 100 * (double)metrics.NullMoveFailHigh / ((double)metrics.FirstMoveFailHigh + 1),
                 metrics.NullMoveResearch,
                 metrics.MateThreats,
