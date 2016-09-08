@@ -2,20 +2,18 @@ using System;
 namespace mmchess
 {
 
-
-    public enum PieceValues
-    {
-        Rook = 500,
-        Knight = 300,
-        Bishop = 310,
-        Pawn = 100,
-        Queen = 900
-    }
-
-
-
     public static class Evaluator
     {
+        public static readonly int[] PieceValues = new int [7]{
+            0,  //empty
+            300, //knight
+            310, //bishop
+            500, //rook
+            900, //queen
+            100, //pawn  
+            10000 //king
+        };
+
         static readonly Int16 NotCastledPenalty = -50;
         static readonly int MinorMaterialInbalanceBonus = 100;
         static readonly int DoubledPawnPenalty = -8;
@@ -100,34 +98,24 @@ namespace mmchess
 
         public static int MovingPieceValue(MoveBits bits)
         {
-            if ((bits & MoveBits.Bishop) > 0)
-                return (int)PieceValues.Bishop;
-            if ((bits & MoveBits.Knight) > 0)
-                return (int)PieceValues.Knight;
-            if ((bits & MoveBits.Rook) > 0)
-                return (int)PieceValues.Rook;
-            if ((bits & MoveBits.Queen) > 0)
-                return (int)PieceValues.Queen;
-            if ((bits & MoveBits.Pawn) > 0)
-                return (int)PieceValues.Pawn;
-            return 1000; // king 
+            return (int)PieceValues[(int)Move.GetPiece(bits)];
         }
 
         public static int PieceValueOnSquare(Board b, int sq)
         {
 
             if (((b.Rooks[0] | b.Rooks[1]) & BitMask.Mask[sq]) > 0)
-                return (int)PieceValues.Rook;
+                return PieceValues[(int)Piece.Rook];
             if (((b.Queens[0] | b.Queens[1]) & BitMask.Mask[sq]) > 0)
-                return (int)PieceValues.Rook;
+                return PieceValues[(int)Piece.Queen];
             if (((b.Bishops[0] | b.Bishops[1]) & BitMask.Mask[sq]) > 0)
-                return (int)PieceValues.Bishop;
+                return PieceValues[(int)Piece.Bishop];
             if (((b.Knights[0] | b.Knights[1]) & BitMask.Mask[sq]) > 0)
-                return (int)PieceValues.Knight;
+                return PieceValues[(int)Piece.Knight];
             if (((b.Pawns[0] | b.Pawns[1]) & BitMask.Mask[sq]) > 0)
-                return (int)PieceValues.Pawn;
+                return PieceValues[(int)Piece.Pawn];
             if (((b.King[0] | b.King[1]) & BitMask.Mask[sq]) > 0)
-                return int.MaxValue;
+                return PieceValues[(int)Piece.King];
 
             return 0;
 
@@ -149,7 +137,7 @@ namespace mmchess
             eval += EvaluateKingSafety(b, pawnScore);
 
             //don't need to do these things if score is already bad
-            if(eval > -(int)PieceValues.Knight) // if i am down a knight or more, don't worry about these
+            if(eval > - PieceValues[(int)Piece.Knight]) // if i am down a knight or more, don't worry about these
             {
                 eval += EvaluatePieces(e); 
             }
@@ -164,7 +152,7 @@ namespace mmchess
             int side = e.Board.SideToMove;
             int xside = side ^1;
             // a rook+pawn for two pieces is not good
-            if (e.Material < (int)PieceValues.Pawn)
+            if (e.Material < PieceValues[(int)Piece.Pawn])
             {
                 if (e.Board.Rooks[xside].Count() == 2 &&     //opp has too rooks
                 e.Board.Rooks[side].Count() == 1 &&    //i have one rook
@@ -250,11 +238,11 @@ namespace mmchess
             int eval = 0;
             int xside = b.SideToMove ^ 1;
             int side = b.SideToMove;
-            eval += (b.Rooks[side].Count() - b.Rooks[xside].Count()) * (int)PieceValues.Rook;
-            eval += (b.Bishops[side].Count() - b.Bishops[xside].Count()) * (int)PieceValues.Bishop;
-            eval += (b.Queens[side].Count() - b.Queens[xside].Count()) * (int)PieceValues.Queen;
-            eval += (b.Knights[side].Count() - b.Knights[xside].Count()) * (int)PieceValues.Knight;
-            eval += (b.Pawns[side].Count() - b.Pawns[xside].Count()) * (int)PieceValues.Pawn;
+            eval += (b.Rooks[side].Count() - b.Rooks[xside].Count()) * PieceValues[(int)Piece.Rook];
+            eval += (b.Bishops[side].Count() - b.Bishops[xside].Count()) * PieceValues[(int)Piece.Bishop];
+            eval += (b.Queens[side].Count() - b.Queens[xside].Count()) * PieceValues[(int)Piece.Queen];
+            eval += (b.Knights[side].Count() - b.Knights[xside].Count()) * PieceValues[(int)Piece.Knight];
+            eval += (b.Pawns[side].Count() - b.Pawns[xside].Count()) * PieceValues[(int)Piece.Pawn];
 
             return eval;
 
