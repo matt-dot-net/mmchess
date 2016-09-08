@@ -63,9 +63,10 @@ namespace mmchess
             {
                 //sort by victim-attacker (LVV/MVA)
                 //note these will occur after killer moves if they are deemed to be losing
-                return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
-                    Evaluator.MovingPieceValue((MoveBits)m.Bits);
-
+                return (Evaluator.PieceValueOnSquare(MyBoard, m.To) -
+                    Evaluator.MovingPieceValue((MoveBits)m.Bits))
+                    +
+                    Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Promotion)]; //add promotion in as well
             }
             else
             {
@@ -99,7 +100,7 @@ namespace mmchess
                     return beta;
 
                 //Don't bother searching if we are evaluating at less than a Queen
-                if (standPat < alpha - (int)PieceValues.Queen)
+                if (standPat < alpha - Evaluator.PieceValues[(int)Piece.Queen])
                     return alpha;
 
                 if (alpha < standPat)
@@ -188,7 +189,7 @@ namespace mmchess
             {
 
                 MakeNullMove();
-                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
+                var nmScore = Search(-beta, 1 - beta, depth - R - 1);
 
                 if (nmScore >= beta)
                 {
