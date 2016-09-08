@@ -17,7 +17,7 @@ namespace mmchess
     public static class Evaluator
     {
         static readonly Int16 NotCastledPenalty = -50;
-
+        static readonly int MinorMaterialInbalanceBonus = 100;
         static readonly int DoubledPawnPenalty = -8;
         static readonly int OpenFileInFrontOfCastledKingPenalty = -50;
         static readonly int KingUnderAttack = -150;
@@ -137,40 +137,70 @@ namespace mmchess
         {
             int eval = 0;
 
-            if(EvaluateDraw(b))
+            if (EvaluateDraw(b))
                 return 0;
-
-            eval += EvaluateMaterial(b);
-
+            var e = new Evaluation(b);
+            eval = e.Material;
             eval += EvaluateDevelopment(b);
-
+            
             var pawnScore = EvaluatePawns(b);
             eval += pawnScore.Eval;
 
             eval += EvaluateKingSafety(b, pawnScore);
 
+            //don't need to do these things if score is already bad
+            if(eval > -(int)PieceValues.Knight) // if i am down a knight or more, don't worry about these
+            {
+                eval += EvaluatePieces(e); 
+            }
             return eval;
         }
 
-        static bool EvaluateDraw(Board b){
-            if(b.History.IsGameDrawn(b.HashKey))
+        static int EvaluatePieces(Evaluation e)
+        {
+            //evaluate material imbalance...
+            //only one of us can have this so it won't be evaluated twice
+            int eval = 0;
+            int side = e.Board.SideToMove;
+            int xside = side ^1;
+            // a rook+pawn for two pieces is not good
+            if (e.Material < (int)PieceValues.Pawn)
+            {
+                if (e.Board.Rooks[xside].Count() == 2 &&     //opp has too rooks
+                e.Board.Rooks[side].Count() == 1 &&    //i have one rook
+                e.Board.Minors(xside).Count() == 2 &&  //opponent has two minors
+                e.Board.Minors(side).Count() == 4) //i have four minors 
+                    // I have 2 minors for one rook and a pawn
+                   {
+                    eval += MinorMaterialInbalanceBonus;
+                }
+            }
+
+            return eval;
+
+        }
+
+        static bool EvaluateDraw(Board b)
+        {
+            if (b.History.IsGameDrawn(b.HashKey))
                 return true;
 
             //if only the kings remain
-            if(b.AllPieces.Count() == 2)
+            if (b.AllPieces.Count() == 2)
                 return true;
 
             //if there are no pawns
-            if((b.Pawns[0] | b.Pawns[1]) == 0)
+            if ((b.Pawns[0] | b.Pawns[1]) == 0)
             {
-                
-                if((b.Rooks[0] | b.Rooks[1] | b.Queens[0] | b.Queens[1])>0)
+
+                if ((b.Rooks[0] | b.Rooks[1] | b.Queens[0] | b.Queens[1]) > 0)
                     return false;
-                
-                if((b.Knights[0] | b.Knights[1] | b.Bishops[0] | b.Bishops[1]).Count() == 1)
+
+                if ((b.Knights[0] | b.Knights[1] | b.Bishops[0] | b.Bishops[1]).Count() == 1)
                     return true;
             }
-            else{
+            else
+            {
                 //todo calculate if king is in front of pawn...
             }
             return false;
@@ -215,7 +245,7 @@ namespace mmchess
             return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
 
-        static int EvaluateMaterial(Board b)
+        public static int EvaluateMaterial(Board b)
         {
             int eval = 0;
             int xside = b.SideToMove ^ 1;

@@ -6,6 +6,12 @@ namespace mmchess
     {
         static void PrintMetrics(AlphaBetaMetrics metrics)
         {
+            //prevent index out of bounds.
+            //note, this will not effect the calculation
+            if(metrics.Depth == 0){
+                metrics.Depth=1;
+            }
+
             Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3}, EBF({4})={5:0.00}",
                 metrics.Nodes,
                 metrics.QNodes,

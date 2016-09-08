@@ -1,1 +1,4 @@
 Checks/Promotions need to get sorted
+
+average branching factor over all searches
+random value on unorderd moves (1-4)

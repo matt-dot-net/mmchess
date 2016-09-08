@@ -111,6 +111,10 @@ namespace mmchess
             Initialize();
         }
 
+        public ulong Minors(int side){  
+            return Knights[side] | Bishops[side];
+        }
+
         public void Initialize()
         {
             History = new GameHistory();
