@@ -76,6 +76,7 @@ namespace mmchess
             int beta = 10000;
             Move bestMove = null;
             //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
+            ab.Metrics.Depth=0;
             for (int i = 0; i < 64 && !state.TimeUp; i++)
             {
                 int score;

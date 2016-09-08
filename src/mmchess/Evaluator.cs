@@ -110,7 +110,7 @@ namespace mmchess
                 return (int)PieceValues.Queen;
             if ((bits & MoveBits.Pawn) > 0)
                 return (int)PieceValues.Pawn;
-            return int.MaxValue; // king
+            return 1000; // king 
         }
 
         public static int PieceValueOnSquare(Board b, int sq)

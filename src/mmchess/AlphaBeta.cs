@@ -62,7 +62,7 @@ namespace mmchess
 
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
-                //sort by LVA/MVV
+                //sort by victim-attacker (LVV/MVA)
                 return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
                     Evaluator.MovingPieceValue((MoveBits)m.Bits);
 
@@ -167,43 +167,49 @@ namespace mmchess
                             UpdatePv(new Move(entry.MoveValue));
                             return entry.Score;
                         case EntryType.ALL:
+                            if(entry.Score>=beta)
+                                return beta;
+                            break;
                         case EntryType.CUT:
-                            return entry.Score;
+                            if(entry.Score<alpha)
+                                return alpha;
+                            break;
+                            
                     }
                 }
             }
 
             int mateThreat = 0;
-            // //next try a Null Move
-            // if (Ply > 0 && depth > R + 1 &&
-            //     !inCheck &&
-            //     !MyBoard.History[Ply - 1].IsNullMove)
-            // {
+            //next try a Null Move
+            if (Ply > 0 && depth > R + 1 &&
+                !inCheck &&
+                !MyBoard.History[Ply - 1].IsNullMove)
+            {
 
-            //     MakeNullMove();
-            //     var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
+                MakeNullMove();
+                var nmScore = -Search(-beta, 1 - beta, depth - R - 1);
 
-            //     if (nmScore >= beta)
-            //     {
-            //         Metrics.NullMoveFailHigh++;
-            //         Metrics.FailHigh++;
-            //         Metrics.FirstMoveFailHigh++;
-            //         UnmakeNullMove();
-            //         return beta;
-            //     }
-            //     else
-            //     {
-            //         Metrics.NullMoveResearch++;
-            //         nmScore = -Search(-beta, 5000, depth - R - 1);
-            //         if (nmScore > 5000)
-            //         {
-            //             mateThreat = 1;
-            //             ext=1;
-            //             Metrics.MateThreats++;
-            //         }
-            //         UnmakeNullMove();
-            //     }
-            // }
+                if (nmScore >= beta)
+                {
+                    Metrics.NullMoveFailHigh++;
+                    Metrics.FailHigh++;
+                    Metrics.FirstMoveFailHigh++;
+                    UnmakeNullMove();
+                    return beta;
+                }
+                else
+                {
+                    Metrics.NullMoveResearch++;
+                    nmScore = -Search(-beta, 5000, depth - R - 1);
+                    if (nmScore > 5000)
+                    {
+                        mateThreat = 1;
+                        ext=1;
+                        Metrics.MateThreats++;
+                    }
+                    UnmakeNullMove();
+                }
+            }
 
 
             var moves = MoveGenerator
@@ -219,7 +225,6 @@ namespace mmchess
                 Ply++;
 
                 int score;
-
 
                 //if we don't yet have a move, then search full window (PV Node)
                 if (bestMove == null)
