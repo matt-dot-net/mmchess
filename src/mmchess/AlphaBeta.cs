@@ -46,7 +46,6 @@ namespace mmchess
 
         int OrderMove(Move m, TranspositionTableEntry entry)
         {
-
             if (entry != null)
             {
                 if (m.Value == entry.MoveValue)
@@ -63,16 +62,18 @@ namespace mmchess
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
                 //sort by victim-attacker (LVV/MVA)
+                //note these will occur after killer moves if they are deemed to be losing
                 return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
                     Evaluator.MovingPieceValue((MoveBits)m.Bits);
 
             }
             else
             {
+                //these happen before losing captures
                 if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
-                    return 2;
+                    return -1;
                 else if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
-                    return 1;
+                    return -2;
             }
 
             return 0;
