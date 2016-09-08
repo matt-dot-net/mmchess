@@ -974,7 +974,7 @@ namespace mmchess
 
         private static void GeneratePromotions(IList<Move> list, Move m)
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 1; i < 5; i++)
             {
                 var promoMove = new Move(m);
                 promoMove.Promotion = (byte)(Piece)i;
