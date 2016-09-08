@@ -2,7 +2,7 @@ using System;
 
 namespace mmchess
 {
-    public static class SearchRoot
+    public static class Iterate
     {
         static void PrintMetrics(AlphaBetaMetrics metrics)
         {
@@ -19,12 +19,14 @@ namespace mmchess
                 (metrics.Nodes / 1000 / 5),
                 metrics.Depth,
                 (float)(metrics.DepthNodes[metrics.Depth]-metrics.DepthNodes[metrics.Depth-1])/(float)(metrics.DepthNodes[metrics.Depth-1]+1));
-            Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0}",
+            Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
                 100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
-                100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1));
+                100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1),
+                metrics.FPrune,
+                metrics.EFPrune);
             Console.WriteLine("NullMoveTries={0} NullMove%={1:0.0}, NMResearch={2}, MateThreats={3}, LMRResearch={4}",
                 metrics.NullMoveTries,
-                100 * (double)metrics.NullMoveFailHigh / ((double)metrics.FirstMoveFailHigh + 1),
+                100 * (double)metrics.NullMoveFailHigh / ((double)metrics.NullMoveTries + 1),
                 metrics.NullMoveResearch,
                 metrics.MateThreats,
                 metrics.LMRResearch);
@@ -64,7 +66,7 @@ namespace mmchess
             }
         }
 
-        public static void Iterate(GameState state, Action interrupt)
+        public static void DoIterate(GameState state, Action interrupt)
         {
             state.TimeUp = false;
             var startTime = DateTime.Now;

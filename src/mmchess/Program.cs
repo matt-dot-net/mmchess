@@ -19,7 +19,7 @@ namespace mmchess
 
                 if (gameState.IsMyTurn)
                 {
-                    SearchRoot.Iterate(gameState, () =>
+                    Iterate.DoIterate(gameState, () =>
                     {
 
                         bool waitForLine = false;

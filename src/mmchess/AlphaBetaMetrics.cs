@@ -12,7 +12,8 @@ namespace mmchess{
         public ulong NullMoveResearch{get;set;}
         public ulong MateThreats{get;set;}
         public ulong LMRResearch{get;set;}
-
+        public ulong FPrune{get;set;}
+        public ulong EFPrune {get;set;}
         public ulong[] DepthNodes{get;set;}
         public int Depth{get;set;}
         public AlphaBetaMetrics (){

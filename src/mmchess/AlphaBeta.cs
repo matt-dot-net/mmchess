@@ -166,14 +166,14 @@ namespace mmchess
                 //we have a hit from the TTable
                 if (entry.Depth > depth)
                 {
-
-                    switch ((EntryType)entry.Type)
-                    {
-                        case EntryType.PV:
-                        case EntryType.ALL:
-                        case EntryType.CUT:
-                            return entry.Score;
-                    }
+                    return entry.Score;
+                    // switch ((EntryType)entry.Type)
+                    // {
+                    //     case EntryType.PV:
+                    //     case EntryType.ALL:
+                    //     case EntryType.CUT:
+                    //         return entry.Score;
+                    // }
                 }
             }
 
@@ -215,19 +215,34 @@ namespace mmchess
                 if (!MyBoard.MakeMove(m))
                     continue;
                 Ply++;
-
                 int score;
+                var justGaveCheck=MyBoard.InCheck(MyBoard.SideToMove);
 
                 //LATE MOVE REDUCTIONS
-                if (depth>3 && 
-                    ext==0 && //no extension
+                if (ext==0 && //no extension
                     !inCheck && //i am in check at this node
-                    !MyBoard.InCheck(MyBoard.SideToMove) && //the move we just made checks the opponent
+                    !justGaveCheck && //the move we just made checks the opponent
                     mateThreat == 0 && //don't reduce if we have a mate threat.
                     (m.Bits & (byte)MoveBits.Capture) == 0 && //wait until after captures have been searched 
                     ++nonCapMovesSearched > 2) //wait until after killers have been searched
                 {
-                    lmr = 1; // start reducing depth if we aren't finding anything useful
+                    if(depth > 3)
+                        lmr = 1; // start reducing depth if we aren't finding anything useful
+                    //FUTILITY PRUNING
+                    else if (depth < 3 && alpha > -9900 && beta <9900)
+                    {
+                        var eval = Evaluator.Evaluate(MyBoard);
+                        if(depth == 2 && eval + Evaluator.PieceValues[(int)Piece.Rook] <= alpha){
+                            Metrics.EFPrune++;
+                            continue; //prune
+                        }
+                        
+                        else if (depth == 1 && eval + Evaluator.PieceValues[(int)Piece.Knight] <= alpha){
+                            Metrics.FPrune++;
+                            continue;
+                        }
+
+                    }
                 }                
 
                 //if we don't yet have a move, then search full window (PV Node)
