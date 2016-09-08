@@ -49,7 +49,7 @@ namespace mmchess
             else if ((bits & MoveBits.Rook) > 0)
                 return Piece.Rook;
             else
-                throw new Exception(String.Format("Unhandled bits {0}", bits));
+                throw new Exception(String.Format("Unhandled bits {0}", (int)bits));
 
         }
         public static Piece GetPieceFromMoveBits(MoveBits bits)
