@@ -978,7 +978,6 @@ namespace mmchess
             {
                 var promoMove = new Move(m);
                 promoMove.Promotion = (byte)(Piece)i;
-                promoMove.Bits = (byte)MoveBits.Pawn;
                 list.Add(promoMove);
             }
         }

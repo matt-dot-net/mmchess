@@ -40,8 +40,7 @@ namespace mmchess
         int OrderQuiesceMove(Move m)
         {
             //sort by LVA/MVV
-            return Evaluator.PieceValueOnSquare(MyBoard, m.To) -
-                Evaluator.MovingPieceValue((MoveBits)m.Bits);
+            return LvaMvv(m);
         }
 
         int OrderMove(Move m, TranspositionTableEntry entry)
@@ -61,12 +60,7 @@ namespace mmchess
 
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
-                //sort by victim-attacker (LVV/MVA)
-                //note these will occur after killer moves if they are deemed to be losing
-                return (Evaluator.PieceValueOnSquare(MyBoard, m.To) -
-                    Evaluator.MovingPieceValue((MoveBits)m.Bits))
-                    +
-                    Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Promotion)]; //add promotion in as well
+                return LvaMvv(m);
             }
             else
             {
@@ -78,6 +72,16 @@ namespace mmchess
             }
 
             return 0;
+        }
+
+        private int LvaMvv(Move m)
+        {
+            //sort by victim-attacker (LVV/MVA)
+            //note these will occur after killer moves if they are deemed to be losing
+            return (Evaluator.PieceValueOnSquare(MyBoard, m.To) -
+                Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
+                +
+                Evaluator.PieceValues[m.Promotion]; //add promotion in as well
         }
 
         public int Quiesce(int alpha, int beta)

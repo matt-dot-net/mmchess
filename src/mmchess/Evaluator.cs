@@ -96,11 +96,6 @@ namespace mmchess
             }
        };
 
-        public static int MovingPieceValue(MoveBits bits)
-        {
-            return (int)PieceValues[(int)Move.GetPiece(bits)];
-        }
-
         public static int PieceValueOnSquare(Board b, int sq)
         {
 
