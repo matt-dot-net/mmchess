@@ -18,6 +18,17 @@ namespace mmchess
         public ulong AllPiecesR45 { get; set; }
         public ulong AllPiecesL45 { get; set; }
         public ulong[] Pieces { get; set; }
+        public int  PieceCount(int stm){
+            return (Majors(stm) | Minors(stm)).Count(); 
+        }
+
+        public ulong Majors(int stm){
+            return Rooks[stm] | Queens[stm];
+        }
+
+        public ulong Minors(int stm){
+            return Knights[stm] | Bishops[stm];
+        }
         public ulong EnPassant { get; set; }
         public int SideToMove { get; set; }
         public ulong HashKey { get; set; }
@@ -111,9 +122,6 @@ namespace mmchess
             Initialize();
         }
 
-        public ulong Minors(int side){  
-            return Knights[side] | Bishops[side];
-        }
 
         public void Initialize()
         {
