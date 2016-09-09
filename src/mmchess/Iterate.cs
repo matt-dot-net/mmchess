@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 
 namespace mmchess
 {
     public static class Iterate
     {
-        static void PrintMetrics(AlphaBetaMetrics metrics)
+        static void PrintMetrics(AlphaBetaMetrics metrics, TimeSpan searchTime)
         {
             //prevent index out of bounds.
             //note, this will not effect the calculation
@@ -21,11 +22,11 @@ namespace mmchess
                 else
                     ebf = bf;
             }
-            Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3}, EBF({4})={5:0.00}",
+            Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3:0}, EBF({4})={5:0.00}",
                 metrics.Nodes,
                 metrics.QNodes,
                 100 * (double)metrics.QNodes / ((double)metrics.Nodes + 1),
-                (metrics.Nodes / 1000 / 5),
+                (metrics.Nodes / 1000 / searchTime.TotalSeconds),
                 metrics.Depth,
                 ebf);
             Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
@@ -149,7 +150,7 @@ namespace mmchess
                 if (i > 0 && Math.Abs(score) > 9900)
                     break;
             }
-            PrintMetrics(ab.Metrics);
+            PrintMetrics(ab.Metrics, DateTime.Now-startTime);
             return bestMove;
         }
 
@@ -172,14 +173,12 @@ namespace mmchess
 
             //Walk through the TT table to augment the PV
             int hashTableMoves=0;
+            List<ulong> hashKeys = new List<ulong>();
             while (true)
             {
-                //make sure the hash table isn't leading us beyond a draw
-                if (b.History.IsGameDrawn(b.HashKey))
-                {
-                    Console.Write("(draw)");
+                //don't let the hashtable send us into a cycle
+                if (hashKeys.Contains(b.HashKey))
                     break;
-                }
 
                 var entry = TranspositionTable.Instance.Read(b.HashKey);
                 if (entry == null || entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
@@ -189,6 +188,7 @@ namespace mmchess
                 if (!b.MakeMove(m))
                     throw new Exception("invalid move from HT!");
                 hashTableMoves++;
+                hashKeys.Add(b.HashKey);
             }
             while (hashTableMoves-->0)
                 b.UnMakeMove();
