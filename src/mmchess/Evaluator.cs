@@ -19,6 +19,7 @@ namespace mmchess
         static readonly int DoubledPawnPenalty = -8;
         static readonly int OpenFileInFrontOfCastledKingPenalty = -50;
         static readonly int KingUnderAttack = -150;
+        static readonly int PassedPawnBonus = 20;
 
         static readonly ulong kingside = Board.FileMask[7] | Board.FileMask[6] | Board.FileMask[5];
         static readonly ulong queenside = Board.FileMask[0] | Board.FileMask[1] | Board.FileMask[2];
@@ -95,6 +96,41 @@ namespace mmchess
             00, 16, 16, 16, 16, 16, 16, 00,
             }
        };
+
+       static ulong [,] PassedPawnMask = new ulong[2,64];
+
+       static Evaluator(){
+           //white pawns
+           for(int sq=8;sq<56;sq++){ 
+                if(Math.Abs((sq-9).File() - sq.File()) ==1){
+                    for(int minus9=sq-9;minus9>7;minus9-=8)
+                        PassedPawnMask[0,sq] |= BitMask.Mask[minus9];
+                }
+                if(Math.Abs((sq-7).File() - sq.File())==1)
+                {
+                    for(int minus7=sq-7;minus7>7;minus7-=8)
+                        PassedPawnMask[0,sq] |= BitMask.Mask[minus7];
+                }
+                for(int minus8=sq-8;minus8>7;minus8-=8)
+                    PassedPawnMask[0,sq] |= BitMask.Mask[minus8];
+           }
+
+           //black pawns
+           for(int sq=8; sq<56; sq++){
+               if(Math.Abs((sq+9).File() - sq.File())==1)
+               {
+                   for(int plus9=sq+9;plus9<56;plus9+=8)
+                    PassedPawnMask[1,sq]|= BitMask.Mask[plus9];
+               }
+                if(Math.Abs((sq+7).File() - sq.File())==1)
+                {
+                    for(int plus7=sq+7;plus7<56;plus7+= 8)
+                        PassedPawnMask[1,sq] |= BitMask.Mask[plus7];
+                }
+                for(int plus8=sq+8;plus8<56;plus8+=8)
+                    PassedPawnMask[1,sq] |= BitMask.Mask[plus8];               
+           }
+       }
 
         public static int PieceValueOnSquare(Board b, int sq)
         {
@@ -348,6 +384,7 @@ namespace mmchess
                 ulong opponentPawns = b.Pawns[side ^ 1];
 
 
+
                 //evaluate file by file
                 for (int i = 0; i < 8; i++)
                 {
@@ -371,6 +408,18 @@ namespace mmchess
                             {
                                 eval[side] += 2 * DoubledPawnPenalty;
                             }
+                    }
+                }
+
+                var p = pawns;
+                while(p>0){
+                    var pawnsq = p.BitScanForward();
+                    p ^= BitMask.Mask[pawnsq];
+
+                    if((PassedPawnMask[side,pawnsq] & opponentPawns) == 0){
+                        var distanceMultiplier = side==1?pawnsq.Rank() :8-pawnsq.Rank(); 
+                        eval[side]+=
+                            PassedPawnBonus *distanceMultiplier;
                     }
                 }
             }
