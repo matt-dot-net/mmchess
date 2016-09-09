@@ -623,13 +623,14 @@ namespace mmchess
             }
         }
 
-        public static IList<Move> GenerateCaptures(Board b)
+        public static IList<Move> GenerateCapturesAndPromotions(Board b)
         {
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
 
-            if(b.InCheck(b.SideToMove)){
-                GenerateEvasions(b,list);
+            if (b.InCheck(b.SideToMove))
+            {
+                GenerateEvasions(b, list);
                 return list;
             }
 
@@ -731,19 +732,37 @@ namespace mmchess
                 pieces ^= BitMask.Mask[sq];
 
                 moves = PawnAttacks[b.SideToMove, sq];
-                moves &= b.Pieces[xside];
+                moves &= (b.Pieces[xside]);
+                moves |= PawnMoves[b.SideToMove, sq] &
+                    ~b.AllPieces & 
+                    (Board.RankMask[0]|Board.RankMask[7]); // include regular promotions
 
                 while (moves > 0)
                 {
                     int to = moves.BitScanForward();
                     moves ^= BitMask.Mask[to];
-
-                    list.Add(new Move
+                    if (to.Rank() == 0 || to.Rank() == 7)
                     {
-                        From = (byte)sq,
-                        To = (byte)to,
-                        Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
-                    });
+                        var m = new Move()
+                        {
+                            From = (byte)sq,
+                            To = (byte)to,
+                            Bits = (byte)MoveBits.Pawn
+                        };
+
+                        if ((b.Pieces[xside] & BitMask.Mask[to]) > 0)
+                            m.Bits |= (byte)MoveBits.Capture;
+                        GeneratePromotions(list, m);
+                    }
+                    else
+                    {
+                        list.Add(new Move
+                        {
+                            From = (byte)sq,
+                            To = (byte)to,
+                            Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
+                        });
+                    }
                 }
             }
             pieces = b.King[b.SideToMove];
@@ -874,20 +893,27 @@ namespace mmchess
                 ulong moves = RookAttacks(b, sq);
                 moves &= ~sidePieces;
 
-                while (moves > 0)
-                {
-                    int toSq = moves.BitScanForward();
-                    moves ^= BitMask.Mask[toSq];
-                    var capture = (BitMask.Mask[toSq] & b.AllPieces) > 0;
-                    list.Add(new Move
-                    {
-                        From = (byte)sq,
-                        To = (byte)toSq,
-                        Bits = (byte)((byte)which | (capture ? (byte)MoveBits.Capture : 0))
-                    });
-                }
+                moves = AddMovesToList(b, which, list, sq, moves);
 
             }
+        }
+
+        private static ulong AddMovesToList(Board b, MoveBits which, IList<Move> list, int sq, ulong moves)
+        {
+            while (moves > 0)
+            {
+                int toSq = moves.BitScanForward();
+                moves ^= BitMask.Mask[toSq];
+                var capture = (BitMask.Mask[toSq] & b.AllPieces) > 0;
+                list.Add(new Move
+                {
+                    From = (byte)sq,
+                    To = (byte)toSq,
+                    Bits = (byte)((byte)which | (capture ? (byte)MoveBits.Capture : 0))
+                });
+            }
+
+            return moves;
         }
 
         static void GenerateDiagonalMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)

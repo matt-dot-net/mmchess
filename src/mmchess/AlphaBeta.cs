@@ -39,7 +39,17 @@ namespace mmchess
 
         int OrderQuiesceMove(Move m)
         {
-            //sort by LVA/MVV
+            if ((m.Bits & (byte)MoveBits.Capture) > 0)
+            {
+                //first let's focus on the last moved piece.
+                var count = MyBoard.History.Count;
+                if(count > 0)
+                { // there was a previous move
+                    if(m.To == MyBoard.History[count-1].To)
+                        return 2*LvaMvv(m);
+                        //  put recaptures of the last moved piece ahead of others 
+                }
+            } 
             return LvaMvv(m);
         }
 
@@ -54,7 +64,7 @@ namespace mmchess
             if (!MyBoard.MakeMove(m))
                 return int.MinValue;
 
-            var score = -Quiesce(-10000, 10000);
+            var score = Quiesce(-10000, 10000);
 
             MyBoard.UnMakeMove();
             return score;
@@ -69,24 +79,35 @@ namespace mmchess
                     return int.MaxValue;// search this move first
             }
 
-            if (PrincipalVariation[Ply, Ply] != null)
-            {
-                if (PrincipalVariation[Ply, Ply].Value == m.Value)
-                    return int.MaxValue; // search this move first 
-                                         // should always be found in hash table
-            }
-
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
-                return 1 + LvaMvv(m); //even captures should happen first
+                //first let's focus on the last moved piece.
+                var count = MyBoard.History.Count;
+                if(count > 0)
+                { // there was a previous move
+                    if(m.To == MyBoard.History[count-1].To)
+                        return LvaMvv(m) + int.MaxValue/2;  
+                        //  put recaptures of the last moved piece ahead of others 
+                }
+
+                //now winning and event captures
+                if(Evaluator.PieceValueOnSquare(MyBoard, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
+                    return LvaMvv(m);
+                else
+                {
+                    //losing captures
+                    return int.MinValue + LvaMvv(m);
+                }
+
+                 
             }
             else
             {
                 //these happen before losing captures
                 if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
-                    return -1;
+                    return 1;
                 else if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
-                    return -2;
+                    return 2;
             }
 
             return 0;
@@ -96,7 +117,9 @@ namespace mmchess
         {
             //sort by victim-attacker (LVV/MVA)
             //note these will occur after killer moves if they are deemed to be losing
-            return (Evaluator.PieceValueOnSquare(MyBoard, m.To) -
+            return (
+                //we multiple the victim value so that moves like rook x rook are higher than pawn x pawn
+                128*Evaluator.PieceValueOnSquare(MyBoard, m.To) -
                 Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
                 +
                 Evaluator.PieceValues[m.Promotion]; //add promotion in as well
@@ -131,7 +154,7 @@ namespace mmchess
             }
 
             var moves = MoveGenerator
-                .GenerateCaptures(MyBoard)
+                .GenerateCapturesAndPromotions(MyBoard)
                 .OrderByDescending((m) => OrderQuiesceMove(m));
 
             if (inCheck && moves.Count() == 0)
@@ -140,6 +163,7 @@ namespace mmchess
             foreach (var m in moves)
             {
                 if (!inCheck &&
+                    (m.Bits & (byte)MoveBits.Capture) == 1 && //is a capture
                     LvaMvv(m) < 0 && //if it looks like a losing capture
                     MyBoard.History.Count > 0 &&
                     m.To != MyBoard.History[MyBoard.History.Count - 1].To)// and not a recapture
@@ -231,6 +255,10 @@ namespace mmchess
 
                 if (score >= beta)
                 {
+                    //we want to try this move first next TimeUp
+                    NewRootMove(m);
+                    PvLength[0] = 1;
+                    PrincipalVariation[0,0]=m;
                     return score;
                 }
 
@@ -260,9 +288,8 @@ namespace mmchess
 
             if (bestMove != null)
             {
-                //we need to move this one to the top of root moves
-                RootMoves.Remove(bestMove);
-                RootMoves.Insert(0,bestMove);
+                if(bestMove != RootMoves[0])
+                    NewRootMove(bestMove);
             }            
             return alpha;
         }
@@ -303,6 +330,7 @@ namespace mmchess
             //next try a Null Move
             if (Ply > 0 &&
                 depth > 1 &&
+                alpha==beta-1 &&
                 !inCheck &&
                 !MyBoard.History[Ply - 1].IsNullMove &&
                 myPieceCount > 0 &&
@@ -366,7 +394,6 @@ namespace mmchess
                     //FUTILITY PRUNING
                     else if (depth < 3 && alpha > -9900 && beta < 9900)
                     {
-                        var eval = Evaluator.Evaluate(MyBoard);
                         if (depth == 2 && -Evaluator.EvaluateMaterial(MyBoard) + Evaluator.PieceValues[(int)Piece.Rook] <= alpha)
                         {
                             Metrics.EFPrune++;
@@ -503,6 +530,12 @@ namespace mmchess
             for (int i = Ply + 1; i < PvLength[Ply + 1]; i++)
                 PrincipalVariation[Ply, i] = PrincipalVariation[Ply + 1, i];
             PvLength[Ply] = PvLength[Ply + 1];
+        }
+
+        void NewRootMove(Move m){
+            //we need to move this one to the top of root moves
+            RootMoves.Remove(m);
+            RootMoves.Insert(0,m);
         }
 
         void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
