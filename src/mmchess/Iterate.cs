@@ -107,7 +107,7 @@ namespace mmchess
 
                 do
                 {
-                    score = ab.Search(alpha, beta, i);
+                    score = ab.SearchRoot(alpha, beta, i);
                     if (i > 0 && !state.TimeUp)
                     {
                         var newBest = ab.PrincipalVariation[0, 0];
@@ -127,14 +127,14 @@ namespace mmchess
                     if (score >= beta)
                     {
 
-                        beta = Math.Max(10000, beta + (33 * betaRelax));
-                        betaRelax *= 2;
+                        beta = Math.Min(10000, beta + (33 * betaRelax));
+                        betaRelax *= 4;
                     }
 
                     else if (score <= alpha)
                     {
-                        alpha = Math.Min(-10000, alpha - (33 * alphaRelax));
-                        alphaRelax *= 2;
+                        alpha = Math.Max(-10000, alpha - (33 * alphaRelax));
+                        alphaRelax *= 4;
                     }
 
                 } while (!state.TimeUp || bestMove == null);
@@ -171,7 +171,7 @@ namespace mmchess
             }
 
             //Walk through the TT table to augment the PV
-            var tempHashKey = b.HashKey;
+            int hashTableMoves=0;
             while (true)
             {
                 //make sure the hash table isn't leading us beyond a draw
@@ -188,8 +188,9 @@ namespace mmchess
                 Console.Write("{0}(HT) ", m.ToAlegbraicNotation(b));
                 if (!b.MakeMove(m))
                     throw new Exception("invalid move from HT!");
+                hashTableMoves++;
             }
-            while (b.HashKey != tempHashKey)
+            while (hashTableMoves-->0)
                 b.UnMakeMove();
 
             for (int j = ab.PvLength[0] - 1; j >= 0; j--)
