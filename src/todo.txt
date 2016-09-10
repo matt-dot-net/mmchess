@@ -1,2 +1,5 @@
+
+//dumb:
+
 Checks/Promotions need to get sorted
 random value on unorderd moves (1-4)??

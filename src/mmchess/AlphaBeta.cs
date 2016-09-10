@@ -178,16 +178,6 @@ namespace mmchess
                     return Evaluator.Evaluate(MyBoard);
                 }
 
-                //if not a capture, check for draw by rep or fifty moves
-                if ((m.Bits & (byte)MoveBits.Capture) == 0)
-                {
-                    if (MyGameState.GameBoard.History.IsGameDrawn(MyBoard.HashKey))
-                    {
-                        TakeBack();
-                        return CurrentDrawScore;
-                    }
-                }
-
                 int score = -Quiesce(-beta, -alpha);
                 TakeBack();
                 if (score >= beta)
@@ -237,11 +227,11 @@ namespace mmchess
 
                 if (depth > 0){
                     if(bestMove == null)
-                        score = -Search(-beta, -alpha, depth);
+                        score = -Search(-beta, -alpha, depth-1);
                     else   {
-                        score = -Search(-alpha-1,-alpha,depth);
+                        score = -Search(-alpha-1,-alpha,depth-1);
                         if(score > alpha)
-                            score = -Search(-beta,-alpha, depth);
+                            score = -Search(-beta,-alpha, depth-1);
                     }
                     
                 }
@@ -379,8 +369,9 @@ namespace mmchess
 
                 var justGaveCheck = MyBoard.InCheck(MyBoard.SideToMove);
                 var capture = ((m.Bits & (byte)MoveBits.Capture) != 0);
-                if (!capture)
-                    ++nonCaptureMoves;
+                if (!capture && (entry==null || entry.MoveValue!=m.Value)) // don't count the hash move as a non-capture
+                    ++nonCaptureMoves;                                     // while it might not be a capture, the point 
+                                                                           // here is to start counting after generated captures
 
                 //LATE MOVE REDUCTIONS
                 if (ext == 0 && //no extension
@@ -501,7 +492,8 @@ namespace mmchess
                 MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
             }
             Ply--;
-            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey;
+            if(MyBoard.SideToMove == 1)
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
             MyBoard.SideToMove ^= 1;
         }
 
@@ -510,7 +502,9 @@ namespace mmchess
             var nullMove = new HistoryMove(MyBoard.HashKey, null);
 
             MyBoard.SideToMove ^= 1;
-            MyBoard.HashKey ^= TranspositionTable.SideToMoveKey;
+            if(MyBoard.SideToMove == 1)
+                MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
+
             Ply++;
             if (MyBoard.EnPassant > 0)
             {
@@ -551,8 +545,9 @@ namespace mmchess
                 Metrics.KillerFailHigh++;
 
             //update the transposition table
+            //the move doesn't matter if it is a CUT node
             TranspositionTable.Instance.Store(
-                MyBoard.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT);
+                MyBoard.HashKey, null, depth, score, TranspositionTableEntry.EntryType.CUT);
         }
 
         private void UpdateKillers(Move m)
