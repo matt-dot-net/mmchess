@@ -86,7 +86,7 @@ namespace mmchess
                 if(count > 0)
                 { // there was a previous move
                     if(m.To == MyBoard.History[count-1].To)
-                        return LvaMvv(m) + int.MaxValue/2;  
+                        return 2*LvaMvv(m);
                         //  put recaptures of the last moved piece ahead of others 
                 }
 

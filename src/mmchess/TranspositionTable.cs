@@ -409,7 +409,7 @@ namespace mmchess
             
             var index = HashFunction(hashKey);
             var existing = TTable[index];
-            
+
             var newEntry = new TranspositionTableEntry{
                 Type = (byte)type,
                 Score = (Int16)score,
