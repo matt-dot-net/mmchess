@@ -230,9 +230,7 @@ namespace mmchess
                     {
                         eval[side] += RookOnOpenFileBonus;
                         if (e.PawnScore.Files[xside, sq.File()] == 0)
-                        {
                             eval[side] += RookOnOpenFileBonus; // we'll get this bonus twice if the file is completely open
-                        }
                     }
 
                     //rooks on the seventh (or eigth)
@@ -249,16 +247,21 @@ namespace mmchess
                     int sq = knights.BitScanForward();
                     knights ^= BitMask.Mask[sq];
 
+                    //only looking for forward knights
+                    if(side==0 && sq.Rank()>3)
+                        continue;
+                    else if (side==1 && sq.Rank()<3)
+                        continue;
+
                     //look for knights on outposts
                     if ((MoveGenerator.PawnAttacks[xside, sq] & e.Board.Pawns[side]) > 0)
                     {
                         //knight is defended by a pawn
                         //use the passed pawn lookup - minus the file to see if
                         //we have an ouput
-                        if ((PassedPawnMask[side, sq] & ~Board.FileMask[sq.File()] & e.Board.Pawns[xside]) == 0)
-                        {
+                        if ((PassedPawnMask[side, sq] & ~Board.FileMask[sq.File()] & e.Board.Pawns[xside]) == 0)                        
                             eval[side] += KnightOnOutpostBonus;
-                        }
+                        
                     }
 
                     EvalTrappedKnights(e, eval, side, sq);
