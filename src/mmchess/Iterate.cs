@@ -70,7 +70,7 @@ namespace mmchess
                         moves -= state.TimeControl.MovesInTimeControl * timeControlsReached;
                     }
                     var movesRemaining = state.TimeControl.MovesInTimeControl - moves;
-                    return TimeSpan.FromSeconds(state.MyClock.TotalSeconds / movesRemaining);
+                    return TimeSpan.FromSeconds((state.MyClock.TotalSeconds-1) / movesRemaining);
                 default:
                     return TimeSpan.MaxValue;
             }
@@ -109,19 +109,11 @@ namespace mmchess
                 do
                 {
                     score = ab.SearchRoot(alpha, beta, i);
-                    if (i > 0 && !state.TimeUp)
-                    {
-                        var newBest = ab.PrincipalVariation[0, 0];
-                        if (newBest != null && ab.PvLength[0]>0)
-                        {
-                            bestMove = newBest;
-                            PrintSearchResult(state, startTime, ab, i, score);
-                        }
-                    }
 
                     if (score > alpha && score < beta)
                     {
                         alpha = score;
+                        bestMove=ab.PrincipalVariation[0,0];
                         break;
                     }
 
@@ -142,6 +134,7 @@ namespace mmchess
 
                 if (!state.TimeUp)
                 {
+                    PrintSearchResult(state, startTime, ab, i, score);
                     ab.Metrics.DepthNodes[i] = ab.Metrics.Nodes;
                     ab.Metrics.Depth = i;
                 }
@@ -150,7 +143,7 @@ namespace mmchess
                 if (i > 0 && Math.Abs(score) > 9900)
                     break;
             }
-            PrintMetrics(ab.Metrics, DateTime.Now-startTime);
+            PrintMetrics(ab.Metrics, DateTime.Now - startTime);
             return bestMove;
         }
 
@@ -172,7 +165,7 @@ namespace mmchess
             }
 
             //Walk through the TT table to augment the PV
-            int hashTableMoves=0;
+            int hashTableMoves = 0;
             List<ulong> hashKeys = new List<ulong>();
             while (true)
             {
@@ -190,7 +183,7 @@ namespace mmchess
                 hashTableMoves++;
                 hashKeys.Add(b.HashKey);
             }
-            while (hashTableMoves-->0)
+            while (hashTableMoves-- > 0)
                 b.UnMakeMove();
 
             for (int j = ab.PvLength[0] - 1; j >= 0; j--)

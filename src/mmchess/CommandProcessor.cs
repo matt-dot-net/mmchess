@@ -236,7 +236,7 @@ namespace mmchess
 
             else if (cmd.Value == CommandVal.Eval)
             {
-                Console.WriteLine("Eval Score: {0}", Evaluator.Evaluate(state.GameBoard));
+                Console.WriteLine("Eval Score: {0}", Evaluator.Evaluate(state.GameBoard,-10000,10000));
             }
 
             else if (cmd.Value == CommandVal.Undo ||

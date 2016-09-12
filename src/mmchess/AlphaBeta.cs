@@ -141,7 +141,7 @@ namespace mmchess
             var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
             if (!inCheck)
             {
-                int standPat = Evaluator.Evaluate(MyBoard);
+                int standPat = Evaluator.Evaluate(MyBoard,alpha,beta);
                 if (standPat >= beta)
                     return beta;
 
@@ -175,7 +175,7 @@ namespace mmchess
                 if (Ply >= MAX_DEPTH)
                 {
                     TakeBack();
-                    return Evaluator.Evaluate(MyBoard);
+                    return Evaluator.Evaluate(MyBoard, -10000,10000);
                 }
 
                 int score = -Quiesce(-beta, -alpha);
@@ -278,8 +278,9 @@ namespace mmchess
 
             if (bestMove != null)
             {
-                if(bestMove != RootMoves[0])
+                if(bestMove != RootMoves[0]){
                     NewRootMove(bestMove);
+                }
             }            
             return alpha;
         }
@@ -364,7 +365,7 @@ namespace mmchess
                 if (Ply >= MAX_DEPTH)
                 {
                     TakeBack();
-                    return Evaluator.Evaluate(MyBoard);
+                    return Evaluator.Evaluate(MyBoard,-10000,10000);
                 }
 
                 var justGaveCheck = MyBoard.InCheck(MyBoard.SideToMove);

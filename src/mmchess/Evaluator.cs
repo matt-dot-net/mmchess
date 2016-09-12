@@ -168,7 +168,7 @@ namespace mmchess
 
         //evaluate returns a score that is from the perspective
         //of the side to move.
-        public static int Evaluate(Board b)
+        public static int Evaluate(Board b,int alpha, int beta)
         {
             int eval = 0;
 
@@ -176,6 +176,11 @@ namespace mmchess
                 return 0;
             var e = new Evaluation(b);
             eval = e.Material;
+
+            //attempt a lazy exit
+            if(eval <= alpha-300 || eval >= beta+300)
+                return eval;
+            
             eval += EvaluateDevelopment(b);
 
             e.PawnScore= EvaluatePawns(b);
@@ -472,15 +477,15 @@ namespace mmchess
                             {
                                 eval[side] += OpenFileInFrontOfCastledKingPenalty;
 
-                                //look for case where the opponent has an opening
-                                //and a major piece, and has not castled in that direction
-                                if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
-                                    ((b.Rooks[xside] | b.Queens[xside]) & Board.FileMask[f]) > 0 && //heavypiece
-                                    ((b.King[xside] & queenside) > 0))//opponents king is safely on the other side
-                                {
-                                    //major probjem
-                                    eval[side] += KingUnderAttack;
-                                }
+                                // //look for case where the opponent has an opening
+                                // //and a major piece, and has not castled in that direction
+                                // if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
+                                //     ((b.Rooks[xside] | b.Queens[xside]) & Board.FileMask[f]) > 0 && //heavypiece
+                                //     ((b.King[xside] & queenside) > 0))//opponents king is safely on the other side
+                                // {
+                                //     //major probjem
+                                //     eval[side] += KingUnderAttack;
+                                // }
                             }
 
                         }
@@ -508,15 +513,15 @@ namespace mmchess
                             {
                                 eval[side] += OpenFileInFrontOfCastledKingPenalty;
 
-                                //look for case where the opponent has an opening
-                                //and a major piece, and has not castled in that direction
-                                if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
-                                    ((b.Rooks[xside] | b.Queens[xside]) & kingside) > 0 && //heavypiece
-                                    ((b.King[xside] & kingside) > 0)) //opponents king is safely on the other side
-                                {
-                                    //major probjem
-                                    eval[side] += KingUnderAttack;
-                                }
+                                // //look for case where the opponent has an opening
+                                // //and a major piece, and has not castled in that direction
+                                // if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
+                                //     ((b.Rooks[xside] | b.Queens[xside]) & kingside) > 0 && //heavypiece
+                                //     ((b.King[xside] & kingside) > 0)) //opponents king is safely on the other side
+                                // {
+                                //     //major probjem
+                                //     eval[side] += KingUnderAttack;
+                                // }
                             }
 
                         }

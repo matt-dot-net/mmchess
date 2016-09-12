@@ -9,11 +9,11 @@ namespace mmchess{
         public MoveBits CapturedPiece {get;set;}
         public HistoryMove(ulong hashKey, Move m)
         {
+            HashKey = hashKey;
             if(m == null){
                 IsNullMove=true;
                 return;
             }
-            HashKey = hashKey;
             CopyBaseProperties(m);
         }
 
