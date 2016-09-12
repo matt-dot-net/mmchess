@@ -178,10 +178,10 @@ namespace mmchess
             eval = e.Material;
             eval += EvaluateDevelopment(b);
 
-            var pawnScore = EvaluatePawns(b);
-            eval += pawnScore.Eval;
+            e.PawnScore= EvaluatePawns(b);
+            eval += e.PawnScore.Eval;
 
-            eval += EvaluateKingSafety(b, pawnScore);
+            eval += EvaluateKingSafety(b, e.PawnScore);
             eval += EvaluatePieces(e);
 
             return eval;
@@ -261,59 +261,102 @@ namespace mmchess
                         }
                     }
 
-                    //look for trapped knights
+                    EvalTrappedKnights(e, eval, side, sq);
+                }
+
+                var bishops = e.Board.Bishops[side];
+                while (bishops > 0)
+                {
+                    int sq = bishops.BitScanForward();
+                    bishops ^= BitMask.Mask[sq];
+
+                    //evaluate trapped bishops
                     if (side == 0)
                     {
-                        if (sq == 7) // white knight on h8
-                        {
-                            if ((e.Board.Pawns[1] & (BitMask.Mask[13] | BitMask.Mask[15])) > 0)
-                                eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }
-                        else if(sq==0){  //white knight on a8
-                            if ((e.Board.Pawns[1] & (BitMask.Mask[8] | BitMask.Mask[10])) > 0)
-                                eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                            
-                        }
-                        else if (sq==15) //white knight on h7
-                        {
-                            if((e.Board.Pawns[1] & BitMask.Mask[14] & (BitMask.Mask[23]|BitMask.Mask[21])) > 0)
-                                eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }
-                        else if (sq==08) //white knight on a7
-                        {
-                            if((e.Board.Pawns[1] & BitMask.Mask[9] & (BitMask.Mask[16]|BitMask.Mask[18])) > 0)
-                                eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }                        
-                        
+                        if (sq == 23 && //white bishop on h6
+                            (e.Board.Pawns[1] & BitMask.Mask[30]) > 0 &&
+                            (e.Board.Pawns[1] & BitMask.Mask[21]) > 0)
+                            eval[side] -= PieceValues[(int)Piece.Bishop] / 3;
 
+                        else if (sq == 16 && //white bishop on a6
+                            (e.Board.Pawns[1] & BitMask.Mask[25]) > 0 &&
+                            (e.Board.Pawns[1] & BitMask.Mask[18]) > 0)
+                            eval[side] -= PieceValues[(int)Piece.Bishop] / 3;
                     }
-                    else{
-                        if (sq == 63) // black knight on h1
-                        {
-                            if ((e.Board.Pawns[0] & (BitMask.Mask[53] | BitMask.Mask[55])) > 0)
-                                eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }
-                        else if(sq==56){ //black knight on a1
-                            if ((e.Board.Pawns[0] & (BitMask.Mask[48] | BitMask.Mask[50])) > 0)
-                                eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }                        
-                        else if (sq==55) //black knight on h2
-                        {
-                            if((e.Board.Pawns[0] & BitMask.Mask[54] & (BitMask.Mask[45]|BitMask.Mask[47])) > 0)
-                                eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                        }
-                        else if(sq==48)//black knight on a2
-                        {
-                            if((e.Board.Pawns[0] & BitMask.Mask[49] & (BitMask.Mask[40]|BitMask.Mask[42)) > 0)
-                                eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
-                            
-                        }
+                    else
+                    {
+                        if (sq == 47 && //blackbishop on h3
+                          (e.Board.Pawns[0] & BitMask.Mask[38]) > 0 &&
+                          (e.Board.Pawns[0] & BitMask.Mask[47]) > 0)
+                            eval[side] -= PieceValues[(int)Piece.Bishop] / 3;
+                        else if (sq == 40 && //black bishop on a3
+                          (e.Board.Pawns[0] & BitMask.Mask[33]) > 0 &&
+                          (e.Board.Pawns[0] & BitMask.Mask[42]) > 0)
+                            eval[side] -= PieceValues[(int)Piece.Bishop] / 3;
                     }
                 }
 
             }
 
             return eval[e.Board.SideToMove] - eval[e.Board.SideToMove ^ 1];
+        }
+
+        private static void EvalTrappedKnights(Evaluation e, int[] eval, int side, int sq)
+        {
+            //look for trapped knights
+            if (side == 0)
+            {
+                if (sq == 7) // white knight on h8
+                {
+                    if ((e.Board.Pawns[1] & (BitMask.Mask[13] | BitMask.Mask[15])) > 0)
+                        eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+                else if (sq == 0)
+                {  //white knight on a8
+                    if ((e.Board.Pawns[1] & (BitMask.Mask[8] | BitMask.Mask[10])) > 0)
+                        eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+
+                }
+                else if (sq == 15) //white knight on h7
+                {
+                    if ((e.Board.Pawns[1] & BitMask.Mask[14]) > 0 &&
+                        (e.Board.Pawns[1] & (BitMask.Mask[23] | BitMask.Mask[21])) > 0)
+                        eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+                else if (sq == 08) //white knight on a7
+                {
+                    if ((e.Board.Pawns[1] & BitMask.Mask[9]) > 0 &&
+                        (e.Board.Pawns[1] & (BitMask.Mask[16] | BitMask.Mask[18])) > 0)
+                        eval[0] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+
+            }
+            else
+            {
+                if (sq == 63) // black knight on h1
+                {
+                    if ((e.Board.Pawns[0] & (BitMask.Mask[53] | BitMask.Mask[55])) > 0)
+                        eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+                else if (sq == 56)
+                { //black knight on a1
+                    if ((e.Board.Pawns[0] & (BitMask.Mask[48] | BitMask.Mask[50])) > 0)
+                        eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+                else if (sq == 55) //black knight on h2
+                {
+                    if ((e.Board.Pawns[0] & BitMask.Mask[54]) > 0 &&
+                         (e.Board.Pawns[0] & (BitMask.Mask[45] | BitMask.Mask[47])) > 0)
+                        eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+                }
+                else if (sq == 48)//black knight on a2
+                {
+                    if ((e.Board.Pawns[0] & BitMask.Mask[49]) > 0 &&
+                        (e.Board.Pawns[0] & (BitMask.Mask[40] | BitMask.Mask[42])) > 0)
+                        eval[1] -= PieceValues[(int)Piece.Knight] / 2; //this trap costs us half a knight
+
+                }
+            }
         }
 
         static bool EvaluateDraw(Board b)
