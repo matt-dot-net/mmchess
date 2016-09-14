@@ -61,9 +61,8 @@ namespace mmchess
                  var nodes = Perft(newBoard, depth - 1);
 
                  m.Nodes += nodes;
-
-                 Console.WriteLine(String.Format("{0}: {1}", m.Move.ToAlegbraicNotation(newBoard), nodes));
                  newBoard.UnMakeMove();
+                 Console.WriteLine(String.Format("{0}: {1}", m.Move.ToAlegbraicNotation(newBoard), nodes));
              });
             Console.WriteLine("Moves: {0}", legalMoves.Count);
             Console.WriteLine("Total: {0}", legalMoves.Sum(x => x.Nodes));
