@@ -19,10 +19,7 @@ namespace mmchess{
 
         private void CopyBaseProperties(Move m)
         {
-            this.From = m.From;
-            this.To = m.To;
-            this.Bits = m.Bits;
-            this.Promotion = m.Promotion;
+            this.Value=m.Value;
         }
     }
 }
