@@ -17,7 +17,9 @@ namespace mmchess
         GameState MyGameState { get; set; }
         Action Interrupt { get; set; }
         Move[,] Killers = new Move[MAX_DEPTH, 2];
+        int [,] HistoryHeuristic = new int[6,64];
         public int CurrentDrawScore { get; set; }
+        
 
         List<Move> RootMoves{get; set;}
         public AlphaBeta()
@@ -90,7 +92,7 @@ namespace mmchess
                         //  put recaptures of the last moved piece ahead of others 
                 }
 
-                //now winning and event captures
+                //now winning and even captures
                 if(Evaluator.PieceValueOnSquare(MyBoard, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
                     return LvaMvv(m);
                 else
@@ -99,18 +101,19 @@ namespace mmchess
                     return int.MinValue + LvaMvv(m);
                 }
 
-                 
             }
             else
             {
                 //these happen before losing captures
                 if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
-                    return 1;
+                    return 10000;
                 else if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
-                    return 2;
+                    return 9999;
+                else
+                    return HistoryHeuristic[(int)Move.GetPiece((MoveBits)m.Bits)-1,m.To];
             }
 
-            return 0;
+
         }
 
         private int LvaMvv(Move m)
@@ -245,7 +248,7 @@ namespace mmchess
 
                 if (score >= beta)
                 {
-                    //we want to try this move first next TimeUp
+                    //we want to try this move first next time
                     NewRootMove(m);
                     PvLength[0] = 1;
                     PrincipalVariation[0,0]=m;
@@ -260,6 +263,7 @@ namespace mmchess
                     // PV Node
                     //update the PV
                     UpdatePv(bestMove);
+                    TranspositionTable.Instance.Store(MyBoard.HashKey,m,depth,alpha,EntryType.PV); 
                 }
 
                 lastMove = m;
@@ -381,7 +385,7 @@ namespace mmchess
                     mateThreat == 0 && //no mate threat detected
                     nonCaptureMoves > 0) //start reducing after the winning captures
                 {
-                    if (depth > 3)
+                    if (depth >= 3)
                         lmr = movesSearched > 2 ? 2 : 1; // start reducing depth if we aren't finding anything useful
                     //FUTILITY PRUNING
                     else if (depth < 3 && alpha > -9900 && beta < 9900)
@@ -535,7 +539,7 @@ namespace mmchess
 
         void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
         {
-            UpdateKillers(m);
+            UpdateKillers(m,depth);
             Metrics.FailHigh++;
 
             if (entry != null && entry.MoveValue == m.Value)
@@ -548,18 +552,21 @@ namespace mmchess
             //update the transposition table
             //the move doesn't matter if it is a CUT node
             TranspositionTable.Instance.Store(
-                MyBoard.HashKey, null, depth, score, TranspositionTableEntry.EntryType.CUT);
+                MyBoard.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT);
         }
 
-        private void UpdateKillers(Move m)
+        private void UpdateKillers(Move m, int depth)
         {
-            if ((m.Bits & (byte)MoveBits.Capture) == 0)
-            {
-                if (Killers[Ply, 1] != null && Killers[Ply, 1].Value != m.Value)
-                    Killers[Ply, 0] = Killers[Ply, 1];
+            
+            if ((m.Bits & (byte)MoveBits.Capture) > 0)
+                return;
+            
+            if (Killers[Ply, 1] != null && Killers[Ply, 1].Value != m.Value)
+                Killers[Ply, 0] = Killers[Ply, 1];
 
-                Killers[Ply, 1] = m;
-            }
+            Killers[Ply, 1] = m;
+        
+            HistoryHeuristic[(int)Move.GetPieceFromMoveBits((MoveBits)m.Bits)-1,m.To] += depth * depth;
         }
     }
 }

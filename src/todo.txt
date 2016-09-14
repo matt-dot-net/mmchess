@@ -1,5 +1,5 @@
 
 //dumb:
 
-Checks/Promotions need to get sorted
-random value on unorderd moves (1-4)??
+maybe change stand pat delta to 2 bishops
+eval development - penalize blocked central pawns 

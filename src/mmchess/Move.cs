@@ -57,7 +57,6 @@ namespace mmchess
             if ((bits & MoveBits.Bishop) > 0)
                 return Piece.Bishop;
             if ((bits & MoveBits.Knight) > 0)
-
                 return Piece.Knight;
             if ((MoveBits.Queen & bits) > 0)
                 return Piece.Queen;
@@ -88,10 +87,7 @@ namespace mmchess
 
         public Move(Move m)
         {
-            From = m.From;
-            To = m.To;
-            Bits = m.Bits;
-            //Promotion=m.Promotion;
+            Value = m.Value;
         }
 
         public Move(uint value)

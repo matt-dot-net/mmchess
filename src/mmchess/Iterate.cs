@@ -40,9 +40,10 @@ namespace mmchess
                 metrics.NullMoveResearch,
                 metrics.MateThreats,
                 metrics.LMRResearch);
-            Console.WriteLine("HashTable: Collisions={0}, Hits={1}",
+            Console.WriteLine("HashTable: Collisions={0}, Hits={1}, FH%={2:0.0}",
                 TranspositionTable.Instance.Collisions,
-                TranspositionTable.Instance.Hits);
+                TranspositionTable.Instance.Hits,
+                100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1);
         }
 
         static TimeSpan GetThinkTimeSpan(GameState state)
@@ -62,15 +63,15 @@ namespace mmchess
                             (state.TimeControl.IncrementSeconds / 2)
                         );
                 case TimeControlType.NumberOfMoves:
-                    var moves = (state.GameBoard.History.Count / 2);
-                    if (moves > state.TimeControl.MovesInTimeControl)
+                    int moves = (state.GameBoard.History.Count / 2);
+                    if (moves >= state.TimeControl.MovesInTimeControl)
                     {
                         //find the remainder
                         int timeControlsReached = moves / state.TimeControl.MovesInTimeControl;
                         moves -= state.TimeControl.MovesInTimeControl * timeControlsReached;
                     }
                     var movesRemaining = state.TimeControl.MovesInTimeControl - moves;
-                    return TimeSpan.FromSeconds((state.MyClock.TotalSeconds-1) / movesRemaining);
+                    return TimeSpan.FromSeconds(state.MyClock.TotalSeconds / (movesRemaining+1));
                 default:
                     return TimeSpan.MaxValue;
             }
@@ -96,7 +97,7 @@ namespace mmchess
             Move bestMove = null;
             //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
             ab.Metrics.Depth = 0;
-            for (int i = 0; i < 64 && !state.TimeUp; i++)
+            for (int i = 0; i < AlphaBeta.MAX_DEPTH && !state.TimeUp; i++)
             {
                 int score;
                 int alphaRelax = 1, betaRelax = 1;
@@ -109,38 +110,37 @@ namespace mmchess
                 do
                 {
                     score = ab.SearchRoot(alpha, beta, i);
-
+                    if(!state.TimeUp)
+                        PrintSearchResult(state, startTime, ab, i, score);
                     if (score > alpha && score < beta)
                     {
-                        alpha = score;
                         bestMove=ab.PrincipalVariation[0,0];
+                        alpha = score;
                         break;
                     }
-
-                    if (score >= beta)
+                    else if (score >= beta)
                     {
-
                         beta = Math.Min(10000, beta + (33 * betaRelax));
                         betaRelax *= 4;
                     }
-
                     else if (score <= alpha)
                     {
+                        if(score == -10000)
+                            break;
                         alpha = Math.Max(-10000, alpha - (33 * alphaRelax));
                         alphaRelax *= 4;
                     }
+                    
 
-                } while (!state.TimeUp || bestMove == null);
+                } while (!state.TimeUp); //keep searching for a PV move until time is up
 
                 if (!state.TimeUp)
                 {
-                    PrintSearchResult(state, startTime, ab, i, score);
                     ab.Metrics.DepthNodes[i] = ab.Metrics.Nodes;
                     ab.Metrics.Depth = i;
                 }
 
-
-                if (i > 0 && Math.Abs(score) > 9900)
+                if (i > 0 && Math.Abs(score) > 9900) // stop if we have found mate
                     break;
             }
             PrintMetrics(ab.Metrics, DateTime.Now - startTime);
