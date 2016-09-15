@@ -6,6 +6,7 @@ namespace mmchess
     {
         public ulong Collisions{get;set;}
         public ulong Hits{get;set;}
+        public ulong Probes{get;set;}
         public ulong Stores{get;set;}
 
         public int SearchId{
@@ -15,7 +16,7 @@ namespace mmchess
   
         int SizeInBytes{
             get{
-                    return 128 * 1024 * 1024; // 64MB
+                    return 256 * 1024 * 1024; // 256MB
             }
         }
         TranspositionTableEntry[] TTable;
@@ -406,7 +407,7 @@ namespace mmchess
         }
 
         public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type){
-            
+            Stores++;
             var index = HashFunction(hashKey);
             var existing = TTable[index];
 
@@ -441,12 +442,13 @@ namespace mmchess
                 }
             }
 
-            Stores++;
+            
             TTable[index]=newEntry;
         }
 
         public TranspositionTableEntry Read(ulong hashKey){
             var e = TTable[HashFunction(hashKey)];
+            Probes++;
             if(e == null)
                 return null;              
             //verify lock

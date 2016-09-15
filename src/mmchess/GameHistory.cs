@@ -42,15 +42,13 @@ namespace mmchess{
 
         public bool DrawnByRepetition(ulong hashKey)
         {
-            int repeats=0;
             int lastIndex = 0;
             if(_pawnOrCapIndices.Count > 0)
                 lastIndex = _pawnOrCapIndices[_pawnOrCapIndices.Count-1];
             for(int i=_history.Count-1;i>=lastIndex;i--){
                 var m = _history[i];
                 if(m.HashKey == hashKey)
-                    if(++repeats == 3)
-                        return true;
+                     return true;
             }
             return false;
         }

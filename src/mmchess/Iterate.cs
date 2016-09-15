@@ -40,10 +40,10 @@ namespace mmchess
                 metrics.NullMoveResearch,
                 metrics.MateThreats,
                 metrics.LMRResearch);
-            Console.WriteLine("HashTable: Collisions={0}, Hits={1}, FH%={2:0.0}",
-                TranspositionTable.Instance.Collisions,
-                TranspositionTable.Instance.Hits,
-                100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1);
+            Console.WriteLine("HashTable: Collision%={0:0.0} FH%={1:0.0} Hit%={2:0.0}",
+                100*(double)TranspositionTable.Instance.Collisions/(double)TranspositionTable.Instance.Stores,
+                100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1,
+                100*(double)TranspositionTable.Instance.Hits/(double)TranspositionTable.Instance.Probes);
         }
 
         static TimeSpan GetThinkTimeSpan(GameState state)
