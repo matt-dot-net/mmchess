@@ -297,7 +297,7 @@ namespace mmchess
             var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
             int ext = inCheck ? 1 : 0;
 
-            if (MyGameState.GameBoard.History.IsGameDrawn(MyBoard.HashKey))
+            if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey))
                 return CurrentDrawScore;
 
             if ((Metrics.Nodes & 65535) == 65535)
@@ -316,8 +316,14 @@ namespace mmchess
             if (entry != null)
             {
                 //we have a hit from the TTable
-                if (entry.Depth > depth)
-                    return entry.Score;
+                if (entry.Depth > depth){
+                    if(entry.Type == (byte)EntryType.CUT && entry.Score >= beta)
+                        return beta;
+                    else if(entry.Type==(byte)EntryType.ALL && entry.Score <= alpha)
+                        return alpha;
+                    else if(entry.Type==(byte)EntryType.PV)
+                        return entry.Score;
+                }
             }
 
             int mateThreat = 0;
