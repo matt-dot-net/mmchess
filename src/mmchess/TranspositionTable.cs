@@ -4,7 +4,6 @@ namespace mmchess
 {
     public class TranspositionTable
     {
-        public ulong Collisions{get;set;}
         public ulong Hits{get;set;}
         public ulong Probes{get;set;}
         public ulong Stores{get;set;}
@@ -399,13 +398,6 @@ namespace mmchess
             return key & KeyMask;
         }
 
-        uint CalculateLock(ulong hashKey){
-            uint entrylock = (uint)(hashKey>>32)        // top of the hashKey value
-                                        ^                  //XOR 
-                             (uint)(hashKey & 0xFFFFFFFF); // with bottom of the hashkey 
-            return entrylock;
-        }
-
         public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type){
             Stores++;
             var index = HashFunction(hashKey);
@@ -420,28 +412,25 @@ namespace mmchess
             if(m != null)
                 newEntry.MoveValue =m.Value;
 
-            newEntry.Lock = CalculateLock(hashKey);
-            if(existing != null){
-                //verify lock
-                if(newEntry.Lock != existing.Lock)
+            newEntry.Lock =  newEntry.Value ^ hashKey;
+
+            //check that a result is already present at this index, and decide if we should replace
+            //if it matches the current position, go ahead and overwrite.  If the 
+            //existing entry had been useful, we would not be here.
+
+            if(existing != null && existing.Lock != newEntry.Lock)
+            {
+                // replacement strategy is as follows:
+                //  prefer deeper results
+                //  but we can't keep results around forever just because they are deep
+                //  so we will remember the search (by age) and replace old data first 
+
+                if(existing.Age == newEntry.Age)
                 {
-                    //lock does not match so we have a collision
-                    //we need replacement strategy        
-                    //strategy is as follows:
-                    //  prefer deeper results
-                    //  but we can't keep results around forever just because they are deep
-                    //  so we will remember the search (by age) and not keep anything for more than 4 searches
-                    //  ultimately we will replace an entry regardless of age after four attempts 
-
-                    if(existing.Depth > depth) {
-                        if(existing.Age == newEntry.Age){
-                            Collisions++;    //only count a collision if we could not replace
-                            return; //the entry that's already here is better and new
-                        }
-                    }                
-                }
+                    if(existing.Depth > depth) 
+                        return; //the entry that's already here is better and new
+                }                                     
             }
-
             
             TTable[index]=newEntry;
         }
@@ -452,7 +441,7 @@ namespace mmchess
             if(e == null)
                 return null;              
             //verify lock
-            if(CalculateLock(hashKey) != e.Lock)
+            if((hashKey ^ e.Value) != e.Lock)
                 return null;
             Hits++;
             return e;
