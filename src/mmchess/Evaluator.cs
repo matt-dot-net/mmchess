@@ -369,7 +369,7 @@ namespace mmchess
 
         static bool EvaluateDraw(Board b)
         {
-            if (b.History.IsGameDrawn(b.HashKey))
+            if (b.History.IsPositionDrawn(b.HashKey))
                 return true;
 
             //if only the kings remain

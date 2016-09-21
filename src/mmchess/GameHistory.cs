@@ -39,16 +39,35 @@ namespace mmchess{
             return DrawnByRepetition(hashKey) || FiftyMoveRule();
         }
                         
-
+        public bool IsPositionDrawn(ulong hashKey){
+            return PositionRepeated(hashKey) || FiftyMoveRule();
+        }
         public bool DrawnByRepetition(ulong hashKey)
         {
             int lastIndex = 0;
-            if(_pawnOrCapIndices.Count > 0)
-                lastIndex = _pawnOrCapIndices[_pawnOrCapIndices.Count-1];
-            for(int i=_history.Count-1;i>=lastIndex;i--){
+            if (_pawnOrCapIndices.Count > 0)
+                lastIndex = _pawnOrCapIndices[_pawnOrCapIndices.Count - 1];
+            int repeats=0;
+            for (int i = _history.Count - 1; i >= lastIndex; i--)
+            {
                 var m = _history[i];
-                if(m.HashKey == hashKey)
-                     return true;
+                if (m.HashKey == hashKey)
+                    if(++repeats==3)
+                        return true;
+            }
+            return false;            
+        }
+
+        private bool PositionRepeated(ulong hashKey)
+        {
+            int lastIndex = 0;
+            if (_pawnOrCapIndices.Count > 0)
+                lastIndex = _pawnOrCapIndices[_pawnOrCapIndices.Count - 1];
+            for (int i = _history.Count - 1; i >= lastIndex; i--)
+            {
+                var m = _history[i];
+                if (m.HashKey == hashKey)
+                    return true;
             }
             return false;
         }
