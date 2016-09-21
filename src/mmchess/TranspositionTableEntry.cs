@@ -27,7 +27,7 @@ namespace mmchess{
         public ulong Value;
 
         [FieldOffset(8)]
-        public uint Lock;
+        public ulong Lock;
 
         public int Depth{get{
             return DepthAge & 63;
