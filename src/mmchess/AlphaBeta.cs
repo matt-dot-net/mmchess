@@ -157,7 +157,7 @@ namespace mmchess
             }
 
             var moves = MoveGenerator
-                .GenerateCapturesAndPromotions(MyBoard)
+                .GenerateCapturesAndPromotions(MyBoard,false)
                 .OrderByDescending((m) => OrderQuiesceMove(m));
 
             if (inCheck && moves.Count() == 0)

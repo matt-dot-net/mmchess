@@ -276,7 +276,7 @@ namespace mmchess
             return BishopAttacks(b, sq) | RookAttacks(b, sq);
         }
 
-        public static void GenerateEvasions(Board b, IList<Move> list)
+        public static void GenerateEvasions(Board b, IList<Move> list, bool fullPromo)
         {
 
             var xSideToMove = b.SideToMove ^ 1;
@@ -485,7 +485,7 @@ namespace mmchess
                         Bits = (byte)MoveBits.Pawn
                     };
                     if (toi < 8)
-                        GeneratePromotions(list, newMove);
+                        GeneratePromotions(list, newMove, fullPromo);
                     else
                         list.Add(newMove);
                 }
@@ -504,7 +504,7 @@ namespace mmchess
                         };
                         if (toi < 8)
 
-                            GeneratePromotions(list, newMove);
+                            GeneratePromotions(list, newMove, fullPromo);
                         else
                         {
                             list.Add(newMove);
@@ -521,7 +521,7 @@ namespace mmchess
                             Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
                         };
                         if (toi < 8)
-                            GeneratePromotions(list, newMove);
+                            GeneratePromotions(list, newMove, fullPromo);
 
                         else
                         {
@@ -578,7 +578,7 @@ namespace mmchess
                         Bits = (byte)MoveBits.Pawn
                     };
                     if (toi > 55)
-                        GeneratePromotions(list, newMove);
+                        GeneratePromotions(list, newMove,fullPromo);
                     else
                         list.Add(newMove);
                 }
@@ -599,7 +599,7 @@ namespace mmchess
                             Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
                         };
                         if (toi > 55)
-                            GeneratePromotions(list, newMove);
+                            GeneratePromotions(list, newMove,fullPromo);
                         else
                             list.Add(newMove);
                     }
@@ -613,7 +613,7 @@ namespace mmchess
                             Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
                         };
                         if (toi < 8)
-                            GeneratePromotions(list, newMove);
+                            GeneratePromotions(list, newMove, fullPromo);
 
                         else
                             list.Add(newMove);
@@ -623,14 +623,14 @@ namespace mmchess
             }
         }
 
-        public static IList<Move> GenerateCapturesAndPromotions(Board b)
+        public static IList<Move> GenerateCapturesAndPromotions(Board b, bool fullPromo=true)
         {
             int xside = b.SideToMove ^ 1;
             List<Move> list = new List<Move>();
 
             if (b.InCheck(b.SideToMove))
             {
-                GenerateEvasions(b, list);
+                GenerateEvasions(b, list, fullPromo);
                 return list;
             }
 
@@ -752,7 +752,7 @@ namespace mmchess
 
                         if ((b.Pieces[xside] & BitMask.Mask[to]) > 0)
                             m.Bits |= (byte)MoveBits.Capture;
-                        GeneratePromotions(list, m);
+                        GeneratePromotions(list, m, fullPromo);
                     }
                     else
                     {
@@ -791,14 +791,14 @@ namespace mmchess
 
         }
 
-        public static IList<Move> GenerateMoves(Board b)
+        public static IList<Move> GenerateMoves(Board b, bool fullPromo=true)
         {
 
             List<Move> list = new List<Move>();
 
             if (b.InCheck(b.SideToMove))
             {
-                GenerateEvasions(b, list);
+                GenerateEvasions(b, list,fullPromo);
                 return list;
             }
 
@@ -806,7 +806,7 @@ namespace mmchess
             GenerateRookMoves(b, list);
             GenerateBishopMoves(b, list);
             GenerateKnightMoves(b, list);
-            GeneratePawnMoves(b, list);
+            GeneratePawnMoves(b, list,fullPromo);
             GenerateKingMoves(b, list);
 
             return list;
@@ -943,7 +943,7 @@ namespace mmchess
             }
         }
 
-        static void GeneratePawnMoves(Board b, IList<Move> list)
+        static void GeneratePawnMoves(Board b, IList<Move> list, bool fullPromo)
         {
             ulong pawns = b.Pawns[b.SideToMove];
             ulong enemyPieces = b.Pieces[b.SideToMove ^ 1];
@@ -988,7 +988,7 @@ namespace mmchess
                     var rank = to.Rank();
                     if (rank == 7 || rank == 0) //promotion
                     {
-                        GeneratePromotions(list, m);
+                        GeneratePromotions(list, m, fullPromo);
                     }
                     else
                     {
@@ -998,9 +998,10 @@ namespace mmchess
             }
         }
 
-        private static void GeneratePromotions(IList<Move> list, Move m)
+        private static void GeneratePromotions(IList<Move> list, Move m, bool full)
         {
-            for (int i = 1; i < 5; i++)
+            int skip = full? 1:3; //hack to skip rook and bishop
+            for (int i=1; i < 5; i+=skip)
             {
                 var promoMove = new Move(m);
                 promoMove.Promotion = (byte)(Piece)i;

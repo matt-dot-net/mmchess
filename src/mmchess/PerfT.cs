@@ -16,7 +16,7 @@ namespace mmchess
         public static void PerftDivide(Board b, int depth)
         {
             var startTime = DateTime.Now;
-            var moves = MoveGenerator.GenerateMoves(b);
+            var moves = MoveGenerator.GenerateMoves(b,true);
             int total = 0;
             int i = 0;
             int moveCount = 0;
