@@ -14,7 +14,7 @@ namespace mmchess
         static readonly ulong[,] DiagLMoves = new ulong[64, 256];
         static readonly ulong[,] DiagRMoves = new ulong[64, 256];
 
-        static readonly int[,] Directions = new int[64, 64];
+        public static readonly int[,] Directions = new int[64, 64];
 
         static readonly byte[] diagnumsH8A1 = new byte[64]
         {
@@ -118,28 +118,28 @@ namespace mmchess
             switch (check_direction)
             {
                 case +1:
-                    target = _plus1dir[king_square - 1] ^ _plus1dir[checking_square];
+                    target = Plus1Dir[king_square - 1] ^ Plus1Dir[checking_square];
                     break;
                 case +7:
-                    target = _plus7dir[king_square - 7] ^ _plus7dir[checking_square];
+                    target = Plus7Dir[king_square - 7] ^ Plus7Dir[checking_square];
                     break;
                 case +8:
-                    target = _plus8dir[king_square - 8] ^ _plus8dir[checking_square];
+                    target = Plus8Dir[king_square - 8] ^ Plus8Dir[checking_square];
                     break;
                 case +9:
-                    target = _plus9dir[king_square - 9] ^ _plus9dir[checking_square];
+                    target = Plus9Dir[king_square - 9] ^ Plus9Dir[checking_square];
                     break;
                 case -1:
-                    target = _minus1dir[king_square + 1] ^ _minus1dir[checking_square];
+                    target = Minus1Dir[king_square + 1] ^ Minus1Dir[checking_square];
                     break;
                 case -7:
-                    target = _minus7dir[king_square + 7] ^ _minus7dir[checking_square];
+                    target = Minus7Dir[king_square + 7] ^ Minus7Dir[checking_square];
                     break;
                 case -8:
-                    target = _minus8dir[king_square + 8] ^ _minus8dir[checking_square];
+                    target = Minus8Dir[king_square + 8] ^ Minus8Dir[checking_square];
                     break;
                 case -9:
-                    target = _minus9dir[king_square + 9] ^ _minus9dir[checking_square];
+                    target = Minus9Dir[king_square + 9] ^ Minus9Dir[checking_square];
                     break;
                 default:
                     target = 0;
@@ -834,16 +834,16 @@ namespace mmchess
                     }
 
                     if ((diagnumsH8A1[j] == diagnumsH8A1[i]) && j < i)
-                        _minus7dir[i] |= BitMask.Mask[j];
+                        Minus7Dir[i] |= BitMask.Mask[j];
 
                     if ((diagnumsH8A1[j] == diagnumsH8A1[i]) && j > i)
-                        _plus7dir[i] |= BitMask.Mask[j];
+                        Plus7Dir[i] |= BitMask.Mask[j];
 
                     if ((diagnumsA8H1[j] == diagnumsA8H1[i]) && j < i)
-                        _minus9dir[i] |= BitMask.Mask[j];
+                        Minus9Dir[i] |= BitMask.Mask[j];
 
                     if ((diagnumsA8H1[j] == diagnumsA8H1[i]) && j > i)
-                        _plus9dir[i] |= BitMask.Mask[j];
+                        Plus9Dir[i] |= BitMask.Mask[j];
 
                     if (diagnumsA8H1[i] == diagnumsA8H1[j])
                     {
@@ -1322,43 +1322,43 @@ namespace mmchess
             }
         }
 
-        static readonly ulong[] _plus1dir = new ulong[64];
-        static readonly ulong[] _plus7dir = new ulong[64];
-        static readonly ulong[] _plus9dir = new ulong[64];
-        static readonly ulong[] _plus8dir = new ulong[64];
-        static readonly ulong[] _minus1dir = new ulong[64];
-        static readonly ulong[] _minus7dir = new ulong[64];
-        static readonly ulong[] _minus8dir = new ulong[64];
-        static readonly ulong[] _minus9dir = new ulong[64];
+        public static readonly ulong[] Plus1Dir = new ulong[64];
+        public static readonly ulong[] Plus7Dir = new ulong[64];
+        public static readonly ulong[] Plus9Dir = new ulong[64];
+        public static readonly ulong[] Plus8Dir = new ulong[64];
+        public static readonly ulong[] Minus1Dir = new ulong[64];
+        public static readonly ulong[] Minus7Dir = new ulong[64];
+        public static readonly ulong[] Minus8Dir = new ulong[64];
+        public static readonly ulong[] Minus9Dir = new ulong[64];
         static void InitInterposeSqs()
         {
             for (int i = 0; i < 64; i++)
             {
-                _plus1dir[i] = _plus7dir[i] = _plus8dir[i] = _plus9dir[i] =
-                    _minus1dir[i] = _minus7dir[i] = _minus8dir[i] = _minus9dir[i] = 0;
+                Plus1Dir[i] = Plus7Dir[i] = Plus8Dir[i] = Plus9Dir[i] =
+                    Minus1Dir[i] = Minus7Dir[i] = Minus8Dir[i] = Minus9Dir[i] = 0;
                 int j;
                 for (j = i + 8; j <= 63; j += 8)
-                    _plus8dir[i] |= BitMask.Mask[j];
+                    Plus8Dir[i] |= BitMask.Mask[j];
 
                 for (j = i - 8; j >= 0; j -= 8)
-                    _minus8dir[i] |= BitMask.Mask[j];
+                    Minus8Dir[i] |= BitMask.Mask[j];
 
                 for (j = i + 1; j <= (i.Rank() * 8) + 7; j++)
-                    _plus1dir[i] |= BitMask.Mask[j];
+                    Plus1Dir[i] |= BitMask.Mask[j];
 
                 for (j = i - 1; j > (i.Rank() * 8) - 1; j--)
-                    _minus1dir[i] |= BitMask.Mask[j];
+                    Minus1Dir[i] |= BitMask.Mask[j];
 
                 for (j = 0; j < 64; j++)
                 {
                     if (diagnumsA8H1[i] == diagnumsA8H1[j] && j < i)
-                        _minus9dir[i] |= BitMask.Mask[j];
+                        Minus9Dir[i] |= BitMask.Mask[j];
                     if (diagnumsA8H1[i] == diagnumsA8H1[j] && j > i)
-                        _plus9dir[i] |= BitMask.Mask[j];
+                        Plus9Dir[i] |= BitMask.Mask[j];
                     if (diagnumsH8A1[i] == diagnumsH8A1[j] && j < i)
-                        _minus7dir[i] |= BitMask.Mask[j];
+                        Minus7Dir[i] |= BitMask.Mask[j];
                     if (diagnumsH8A1[i] == diagnumsH8A1[j] && j > i)
-                        _plus7dir[i] |= BitMask.Mask[j];
+                        Plus7Dir[i] |= BitMask.Mask[j];
                 }
             }
         }
