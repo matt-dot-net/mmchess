@@ -119,6 +119,10 @@ namespace mmchess
                     }
                     else if (score >= beta)
                     {
+                        bestMove=ab.PrincipalVariation[0,0];
+                        if(score == 10000)
+                            break;
+                        
                         beta = Math.Min(10000, beta + (33 * betaRelax));
                         betaRelax *= 4;
                     }
@@ -139,7 +143,7 @@ namespace mmchess
                     ab.Metrics.Depth = i;
                 }
 
-                if (i > 0 && Math.Abs(score) > 9900) // stop if we have found mate
+                if (Math.Abs(score) > 9900) // stop if we have found mate
                     break;
             }
             PrintMetrics(ab.Metrics, DateTime.Now - startTime);

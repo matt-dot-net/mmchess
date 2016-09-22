@@ -261,7 +261,7 @@ namespace mmchess
 
         }
 
-        public bool MakeMove(Move m)
+        public bool MakeMove(Move m, bool checkLegal=true)
         {
             var hm = new HistoryMove(HashKey, m);
             hm.EnPassant = EnPassant;
@@ -304,7 +304,7 @@ namespace mmchess
             History.Add(hm);
 
             //make sure we are legal
-            if (InCheck(SideToMove ^ 1))
+            if (checkLegal && InCheck(SideToMove ^ 1))
             {
                 UnMakeMove();
                 return false;
@@ -341,7 +341,6 @@ namespace mmchess
         {
             if ((m.Bits & (byte)MoveBits.Capture) == 0)
                 return;
-
 
             //find the captured piece
             var xside = SideToMove ^ 1;
@@ -391,7 +390,11 @@ namespace mmchess
                 return;
             }
             else if ((King[xside] & BitMask.Mask[m.To]) > 0)
-                throw new InvalidOperationException("Cannot capture the king");
+            {
+                p=Piece.King;
+                King[xside] ^= BitMask.Mask[m.To];
+                hm.CapturedPiece = MoveBits.King;
+            }
 
             AllPieces ^= BitMask.Mask[sq];
             Pieces[xside] ^= BitMask.Mask[sq];
@@ -549,6 +552,10 @@ namespace mmchess
             {
                 Queens[xside] |= BitMask.Mask[m.To];
                 p = Piece.Queen;
+            }
+            else if (m.CapturedPiece == MoveBits.King){
+                King[xside] |= BitMask.Mask[m.To];
+                p=Piece.King;
             }
             AllPieces ^= BitMask.Mask[sq];
             Pieces[xside] ^= BitMask.Mask[sq];

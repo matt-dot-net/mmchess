@@ -41,17 +41,6 @@ namespace mmchess
 
         int OrderQuiesceMove(Move m)
         {
-            if ((m.Bits & (byte)MoveBits.Capture) > 0)
-            {
-                //first let's focus on the last moved piece.
-                var count = MyBoard.History.Count;
-                if(count > 0)
-                { // there was a previous move
-                    if(m.To == MyBoard.History[count-1].To)
-                        return 2*LvaMvv(m);
-                        //  put recaptures of the last moved piece ahead of others 
-                }
-            } 
             return LvaMvv(m);
         }
 
@@ -160,21 +149,19 @@ namespace mmchess
                 .GenerateCapturesAndPromotions(MyBoard,false)
                 .OrderByDescending((m) => OrderQuiesceMove(m));
 
-            if (inCheck && moves.Count() == 0)
-                return -10000 + Ply;
-
             foreach (var m in moves)
             {
-                if (!inCheck &&
-                    (m.Bits & (byte)MoveBits.Capture) == 1 && //is a capture
-                    LvaMvv(m) < 0 && //if it looks like a losing capture
-                    MyBoard.History.Count > 0 &&
-                    m.To != MyBoard.History[MyBoard.History.Count - 1].To)// and not a recapture
+                if(StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
+                    continue;
+                MyBoard.MakeMove(m,false);
+                Ply++;
+
+                if(MyBoard.History.LastMove().CapturedPiece == MoveBits.King)
                 {
-                    continue;
+                    TakeBack();
+                    return beta;
                 }
-                if (!Make(m))
-                    continue;
+
                 if (Ply >= MAX_DEPTH)
                 {
                     TakeBack();
@@ -308,7 +295,7 @@ namespace mmchess
             }
 
             Move bestMove = null;
-            if (depth <= 0)
+            if (depth+ext <= 0)
                 return Quiesce(alpha, beta);
 
             //first let's look for a transposition
