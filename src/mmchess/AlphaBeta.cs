@@ -329,7 +329,7 @@ namespace mmchess
                 var nullReductionDepth = depth > 6 ? 4 : 3;
                 int nmScore;
                 if (depth - nullReductionDepth - 1 > 0)
-                    nmScore = Search(-beta, 1 - beta, depth - nullReductionDepth - 1);
+                    nmScore = -Search(-beta, 1 - beta, depth - nullReductionDepth - 1);
                 else
                     nmScore = -Quiesce(-beta, 1 - beta);
                 UnmakeNullMove();
