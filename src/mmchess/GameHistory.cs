@@ -6,6 +6,9 @@ namespace mmchess{
         List<HistoryMove> _history;
         List<int> _pawnOrCapIndices = new List<int>();
 
+        public HistoryMove LastMove(){
+            return _history[_history.Count-1];
+        }
         public int Count{
             get{
                 return _history.Count;
