@@ -576,6 +576,7 @@ namespace mmchess
                     }
                 }
 
+                //passed pawns
                 var p = pawns;
                 while (p > 0)
                 {
