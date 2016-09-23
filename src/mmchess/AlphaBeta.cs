@@ -72,22 +72,16 @@ namespace mmchess
 
             if ((m.Bits & (byte)MoveBits.Capture) > 0)
             {
-                //first let's focus on the last moved piece.
-                var count = MyBoard.History.Count;
-                if(count > 0)
-                { // there was a previous move
-                    if(m.To == MyBoard.History[count-1].To)
-                        return 2*LvaMvv(m);
-                        //  put recaptures of the last moved piece ahead of others 
-                }
 
-                //now winning and even captures
+                //winning and even captures
                 if(Evaluator.PieceValueOnSquare(MyBoard, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
                     return LvaMvv(m);
                 else
                 {
-                    //losing captures
-                    return int.MinValue + LvaMvv(m);
+                    //verify that it is actually losing with SEE
+                    if(StaticExchange.Eval(MyBoard,m, MyBoard.SideToMove) >= 0)
+                        return LvaMvv(m); 
+                    return int.MinValue + LvaMvv(m);//losing captures at the bottom
                 }
 
             }
@@ -153,6 +147,7 @@ namespace mmchess
                 if((BitMask.Mask[m.To] & (MyBoard.King[0]|MyBoard.King[1])) > 0)
                     return beta;
 
+                //if SEE says this is a losing capture, we prune it
                 if(StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
                     continue;
                 MyBoard.MakeMove(m,false);
