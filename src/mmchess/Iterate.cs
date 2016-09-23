@@ -109,17 +109,17 @@ namespace mmchess
                 do
                 {
                     score = ab.SearchRoot(alpha, beta, i);
+                    bestMove=ab.PrincipalVariation[0,0];
+                    
                     if(!state.TimeUp)
                         PrintSearchResult(state, startTime, ab, i, score);
                     if (score > alpha && score < beta)
                     {
-                        bestMove=ab.PrincipalVariation[0,0];
                         alpha = score;
                         break;
                     }
                     else if (score >= beta)
                     {
-                        bestMove=ab.PrincipalVariation[0,0];
                         if(score == 10000)
                             break;
                         
@@ -133,8 +133,6 @@ namespace mmchess
                         alpha = Math.Max(-10000, alpha - (33 * alphaRelax));
                         alphaRelax *= 4;
                     }
-                    
-
                 } while (!state.TimeUp); //keep searching for a PV move until time is up
 
                 if (!state.TimeUp)
