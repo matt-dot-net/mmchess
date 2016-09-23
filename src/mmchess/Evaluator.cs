@@ -31,6 +31,7 @@ namespace mmchess
         const int OpenFileInFrontOfCastledKingPenalty = -50;
         const int KingUnderAttack = -150;
         const int PassedPawnBonus = 20;
+        const int BlockedPawnPenalty = -8;
         static readonly ulong kingside = Board.FileMask[7] | Board.FileMask[6] | Board.FileMask[5];
         static readonly ulong queenside = Board.FileMask[0] | Board.FileMask[1] | Board.FileMask[2];
 
@@ -576,19 +577,27 @@ namespace mmchess
                     }
                 }
 
-                //passed pawns
+                //individual pawns
                 var p = pawns;
                 while (p > 0)
                 {
                     var pawnsq = p.BitScanForward();
                     p ^= BitMask.Mask[pawnsq];
-
+                    //passed pawns
                     if ((PassedPawnMask[side, pawnsq] & opponentPawns) == 0)
                     {
                         var distanceMultiplier = side == 1 ? pawnsq.Rank() : 8 - pawnsq.Rank();
                         eval[side] +=
                             PassedPawnBonus * distanceMultiplier;
                     }
+
+                    //blocked pawns
+                    if(side==0 && pawnsq > 7)
+                        if((b.AllPieces & BitMask.Mask[pawnsq-8])>0)
+                            eval[side] += BlockedPawnPenalty;
+                    else if (side==1 && pawnsq < 56)
+                        if((b.AllPieces & BitMask.Mask[pawnsq+8])>0)
+                            eval[side] += BlockedPawnPenalty;
                 }
             }
 
