@@ -128,39 +128,35 @@ namespace mmchess
                 if (MyGameState.TimeUp)
                     return alpha;
             }
-
+            int score = Evaluator.Evaluate(MyBoard,alpha,beta);
+            if(score > alpha)
+                alpha = score;
             //attemp to stand pat (don't search if eval tells us we are in a good position)
             var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
             if (!inCheck)
             {
-                int standPat = Evaluator.Evaluate(MyBoard,alpha,beta);
-                if (standPat >= beta)
+                if (score >= beta)
                     return beta;
 
                 //Don't bother searching if we are evaluating at less than a Queen
-                if (standPat < alpha - Evaluator.PieceValues[(int)Piece.Queen])
+                if (score < alpha - Evaluator.PieceValues[(int)Piece.Queen])
                     return alpha;
 
-                if (alpha < standPat)
-                    alpha = standPat;
             }
 
             var moves = MoveGenerator
                 .GenerateCapturesAndPromotions(MyBoard,false)
                 .OrderByDescending((m) => OrderQuiesceMove(m));
-
+            
             foreach (var m in moves)
             {
+                if((BitMask.Mask[m.To] & (MyBoard.King[0]|MyBoard.King[1])) > 0)
+                    return beta;
+
                 if(StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
                     continue;
                 MyBoard.MakeMove(m,false);
                 Ply++;
-
-                if(MyBoard.History.LastMove().CapturedPiece == MoveBits.King)
-                {
-                    TakeBack();
-                    return beta;
-                }
 
                 if (Ply >= MAX_DEPTH)
                 {
@@ -168,7 +164,7 @@ namespace mmchess
                     return Evaluator.Evaluate(MyBoard, -10000,10000);
                 }
 
-                int score = -Quiesce(-beta, -alpha);
+                score = -Quiesce(-beta, -alpha);
                 TakeBack();
                 if (score >= beta)
                     return beta;
