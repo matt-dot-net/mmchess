@@ -233,7 +233,6 @@ namespace mmchess
                     return score;
                 }
 
-
                 if (score > alpha)
                 {
                     alpha = score;
@@ -481,8 +480,8 @@ namespace mmchess
                 MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
             }
             Ply--;
-            if(MyBoard.SideToMove == 1)
-                MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
+
+            MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
             MyBoard.SideToMove ^= 1;
         }
 
@@ -491,8 +490,7 @@ namespace mmchess
             var nullMove = new HistoryMove(MyBoard.HashKey, null);
 
             MyBoard.SideToMove ^= 1;
-            if(MyBoard.SideToMove == 1)
-                MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
+            MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
 
             Ply++;
             if (MyBoard.EnPassant > 0)
