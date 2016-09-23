@@ -150,30 +150,30 @@ namespace mmchess
                 output += 'N';
                 var sqs = MoveGenerator.KnightMoves[To] & b.Knights[b.SideToMove];
                 if ((sqs).Count() > 1)
-                {
                     output += FileOrRank(b, bits);
-
-                }
             }
             else if (bits == MoveBits.Bishop)
             {
                 output += 'B';
+                var sqs = MoveGenerator.BishopAttacks(b, To) & b.Bishops[b.SideToMove];
+                if (sqs.Count() > 1)
+                    output += FileOrRank(b, bits);                
             }
             else if (bits == MoveBits.Rook)
             {
                 output += 'R';
                 var sqs = MoveGenerator.RookAttacks(b, To) & b.Rooks[b.SideToMove];
                 if (sqs.Count() > 1)
-                {
                     output += FileOrRank(b, bits);
-                }
+                
             }
             else if (bits == MoveBits.Queen)
             {
                 var sqs = MoveGenerator.QueenAttacks(b, To) & b.Queens[b.SideToMove];
-                if (sqs.Count() > 1)
-                    output += Board.SquareNames[From];
                 output += 'Q';
+                if (sqs.Count() > 1)
+                    output += FileOrRank(b,bits);
+                
             }
             else if (bits == MoveBits.King)
             {
