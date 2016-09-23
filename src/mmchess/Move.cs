@@ -298,18 +298,18 @@ namespace mmchess
                     //Promotion
                     if (moveString[4] == '=')
                     {
-                        switch (moveString[5])
+                        switch (moveString[5].ToString().ToUpper())
                         {
-                            case 'Q':
+                            case "Q":
                                 promotion = Piece.Queen;
                                 break;
-                            case 'R':
+                            case "R":
                                 promotion = Piece.Rook;
                                 break;
-                            case 'B':
+                            case "B":
                                 promotion = Piece.Bishop;
                                 break;
-                            case 'N':
+                            case "N":
                                 promotion = Piece.Knight;
                                 break;
                         }
