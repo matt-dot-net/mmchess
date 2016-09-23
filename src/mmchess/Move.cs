@@ -329,6 +329,9 @@ namespace mmchess
 
                 bits |= MoveBits.Capture;
             }
+            else if((bits & MoveBits.Pawn)>0 && BitMask.Mask[toIndex]==b.EnPassant)
+                bits |= MoveBits.Capture;
+            
 
             return new Move
             {
