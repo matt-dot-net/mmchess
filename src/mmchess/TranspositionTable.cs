@@ -15,7 +15,7 @@ namespace mmchess
   
         int SizeInBytes{
             get{
-                    return 256 * 1024 * 1024; // 256MB
+                    return 2 * 268435456; // 512MB split between two tables
             }
         }
         TranspositionTableEntry[] TTable;
@@ -45,6 +45,7 @@ namespace mmchess
             for(int i=0;KeyMask+1 < itemCount;i++)
                 KeyMask |= (ulong)1<<i;
             
+            KeyMask &= 0xFFFFFFFFFFFFFFFE;// we are saving every other entry to use as a bucket for an 'always store' move 
         }
 
         public void NextSearchId(){
@@ -414,6 +415,9 @@ namespace mmchess
 
             newEntry.Lock =  newEntry.Value ^ hashKey;
 
+            //we will always store the entry in the second bucket
+            TTable[index+1] = new TranspositionTableEntry(newEntry);
+
             //check that a result is already present at this index, and decide if we should replace
             //if it matches the current position, go ahead and overwrite.  If the 
             //existing entry had been useful, we would not be here.
@@ -433,18 +437,28 @@ namespace mmchess
             }
             
             TTable[index]=newEntry;
+
+            
         }
 
         public TranspositionTableEntry Read(ulong hashKey){
-            var e = TTable[HashFunction(hashKey)];
+            var index = HashFunction(hashKey);
+            var e = TTable[index];
+            var e2 = TTable[index+1];
             Probes++;
-            if(e == null)
-                return null;              
+        
             //verify lock
-            if((hashKey ^ e.Value) != e.Lock)
-                return null;
-            Hits++;
-            return e;
+            if(e != null && (hashKey ^ e.Value) == e.Lock)
+            {
+                Hits++;
+                return e;
+            }
+            else if(e2 != null && (hashKey ^ e2.Value)== e2.Lock)
+            {
+                Hits++;
+                return e2;
+            }
+            return null;
         }
     }
 }

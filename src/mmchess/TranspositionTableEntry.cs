@@ -47,5 +47,18 @@ namespace mmchess{
                 DepthAge |= (byte)((value & 3) << 6);// shift in the age 
             }
         }
+
+        public TranspositionTableEntry(TranspositionTableEntry copy){
+            if(null == copy)
+                return;
+            this.Value= copy.Value;
+            this.Lock= copy.Lock;
+        }
+
+        public TranspositionTableEntry(){
+            
+        }
+
+
     }
 }
