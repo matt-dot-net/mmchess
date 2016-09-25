@@ -116,6 +116,12 @@ namespace mmchess
             Metrics.Nodes++;
             Metrics.QNodes++;
 
+            if (Ply >= MAX_DEPTH)
+            {
+                TakeBack();
+                return Evaluator.Evaluate(MyBoard,-10000,10000);
+            }
+
             if ((Metrics.Nodes & 65535) == 65535)
             {
                 Interrupt();
@@ -152,12 +158,6 @@ namespace mmchess
                     continue;
                 MyBoard.MakeMove(m,false);
                 Ply++;
-
-                if (Ply >= MAX_DEPTH)
-                {
-                    TakeBack();
-                    return Evaluator.Evaluate(MyBoard, -10000,10000);
-                }
 
                 score = -Quiesce(-beta, -alpha);
                 TakeBack();
@@ -277,6 +277,12 @@ namespace mmchess
             if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey))
                 return CurrentDrawScore;
 
+            if (Ply >= MAX_DEPTH)
+            {
+                TakeBack();
+                return Evaluator.Evaluate(MyBoard,-10000,10000);
+            }
+
             if ((Metrics.Nodes & 65535) == 65535)
             {
                 Interrupt();
@@ -349,11 +355,6 @@ namespace mmchess
                 int score;
                 if (!Make(m))
                     continue;
-                if (Ply >= MAX_DEPTH)
-                {
-                    TakeBack();
-                    return Evaluator.Evaluate(MyBoard,-10000,10000);
-                }
 
                 var justGaveCheck = MyBoard.InCheck(MyBoard.SideToMove);
                 var capture = ((m.Bits & (byte)MoveBits.Capture) != 0);
