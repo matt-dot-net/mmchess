@@ -234,9 +234,9 @@ namespace mmchess
                     //open file bonus
                     if (e.PawnScore.Files[side, sq.File()] == 0)
                     {
-                        eval[side] += RookOnOpenFileBonus;
+                        eval[side] += RookOnOpenFileBonus/2;
                         if (e.PawnScore.Files[xside, sq.File()] == 0)
-                            eval[side] += RookOnOpenFileBonus; // we'll get this bonus twice if the file is completely open
+                            eval[side] = RookOnOpenFileBonus;
                     }
 
                     //rooks on the seventh (or eigth)
