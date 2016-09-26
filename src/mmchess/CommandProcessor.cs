@@ -333,11 +333,11 @@ namespace mmchess
                         }
                         tests++;
                         if (fail)
-                            Console.WriteLine("FAIL");
+                            Console.WriteLine("FAIL {0}/{1}",successes,tests);
                         else
                         {
                             successes++;
-                            Console.WriteLine("SUCCESS!");
+                            Console.WriteLine("SUCCESS! {0}/{1}",successes,tests);
                         }
                     } while (!String.IsNullOrEmpty(line) && !quit);
                 }
