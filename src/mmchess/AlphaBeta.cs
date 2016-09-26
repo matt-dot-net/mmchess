@@ -339,9 +339,7 @@ namespace mmchess
                     TranspositionTable.Instance.Store(MyBoard.HashKey, null, depth, nmScore, EntryType.CUT);
                     return nmScore;
                 }
-
             }
-
 
             var moves = MoveGenerator
                 .GenerateMoves(MyBoard)
@@ -361,15 +359,16 @@ namespace mmchess
                 if (!capture && (entry==null || entry.MoveValue!=m.Value)) // don't count the hash move as a non-capture
                     ++nonCaptureMoves;                                     // while it might not be a capture, the point 
                                                                            // here is to start counting after generated captures
-
+                var passedpawnpush = (m.Bits & (byte)MoveBits.Pawn) > 0 && (Evaluator.PassedPawnMask[MyBoard.SideToMove^1,m.To] & MyBoard.Pawns[MyBoard.SideToMove]) == 0;                                               
                 //LATE MOVE REDUCTIONS
                 if (ext == 0 && //no extension
                     !inCheck && //i am not in check at this node
                     !justGaveCheck && //the move we just made does not check the opponent
                     mateThreat == 0 && //no mate threat detected
+                    !passedpawnpush && //do not reduce/prune passed pawn pushes
                     nonCaptureMoves > 0) //start reducing after the winning captures
                 {
-                    if (depth >= 3)
+                    if (depth > 2)
                         lmr = movesSearched > 2 ? 2 : 1; // start reducing depth if we aren't finding anything useful
                     //FUTILITY PRUNING
                     else if (depth < 3 && alpha > -9900 && beta < 9900)
