@@ -108,7 +108,7 @@ namespace mmchess
             }
        };
 
-        static ulong[,] PassedPawnMask = new ulong[2, 64];
+        public static ulong[,] PassedPawnMask = new ulong[2, 64];
 
         static Evaluator()
         {
@@ -303,6 +303,10 @@ namespace mmchess
                           (e.Board.Pawns[0] & BitMask.Mask[42]) > 0)
                             eval[side] -= PieceValues[(int)Piece.Bishop] / 3;
                     }
+
+                    //mobility score
+                    var mobilitySquares = MoveGenerator.BishopAttacks(e.Board,sq);
+                    eval[side]+=mobilitySquares.Count();
                 }
 
             }
