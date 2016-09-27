@@ -299,12 +299,13 @@ namespace mmchess
             if (entry != null)
             {
                 //we have a hit from the TTable
-                if (entry.Depth > depth){
+                if (entry.Depth >= depth){
                     if(entry.Type == (byte)EntryType.CUT && entry.Score >= beta)
                         return beta;
                     else if(entry.Type==(byte)EntryType.ALL && entry.Score <= alpha)
                         return alpha;
                     else if(entry.Type==(byte)EntryType.PV)
+                        UpdatePv(new Move(entry.MoveValue));
                         return entry.Score;
                 }
             }
