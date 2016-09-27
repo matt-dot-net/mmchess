@@ -36,13 +36,14 @@ namespace mmchess
             if(!((m.Bits & (byte)MoveBits.Pawn)>0 && Math.Abs(m.From-m.To)==8))
                 attackers[stm] ^= BitMask.Mask[m.From];
 
-            //make a pass over the attackers to find the lowest valued piece
             while (attackers[mystm] > 0)
             {
                 var tempAttackers = attackers[mystm];
                 var leastValuable = int.MaxValue;
                 int leastValSq = -1;
                 bool promote,promoting=false;
+
+                //make a pass over the attackers to find the lowest valued piece
                 while (tempAttackers > 0)
                 {
                     promote=false;
