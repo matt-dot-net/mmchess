@@ -17,7 +17,7 @@ namespace mmchess
         GameState MyGameState { get; set; }
         Action Interrupt { get; set; }
         Move[,] Killers = new Move[MAX_DEPTH, 2];
-        int [,] HistoryHeuristic = new int[6,64];
+        //int [,] HistoryHeuristic = new int[6,64];
         public int CurrentDrawScore { get; set; }
         
 
@@ -89,14 +89,12 @@ namespace mmchess
             {
                 //these happen before losing captures
                 if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
-                    return 10000;
+                    return 2; 
                 else if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
-                    return 9999;
-                else
-                    return HistoryHeuristic[(int)Move.GetPiece((MoveBits)m.Bits)-1,m.To];
+                    return 1;
             }
 
-
+            return 0;
         }
 
         private int LvaMvv(Move m)
@@ -548,7 +546,7 @@ namespace mmchess
 
             Killers[Ply, 1] = m;
         
-            HistoryHeuristic[(int)Move.GetPieceFromMoveBits((MoveBits)m.Bits)-1,m.To] += depth * depth;
+//            HistoryHeuristic[(int)Move.GetPieceFromMoveBits((MoveBits)m.Bits)-1,m.To] += depth * depth;
         }
     }
 }
