@@ -293,28 +293,27 @@ namespace mmchess
                 }
                 bits |= MoveBits.Pawn;
 
-                if (moveString.Length == 6)
+                if (moveString.Length>4)
                 {
-                    //Promotion
-                    if (moveString[4] == '=')
+                    switch (moveString[4].ToString().ToUpper())
                     {
-                        switch (moveString[5].ToString().ToUpper())
-                        {
-                            case "Q":
-                                promotion = Piece.Queen;
-                                break;
-                            case "R":
-                                promotion = Piece.Rook;
-                                break;
-                            case "B":
-                                promotion = Piece.Bishop;
-                                break;
-                            case "N":
-                                promotion = Piece.Knight;
-                                break;
-                        }
+                        case "Q":
+                            promotion = Piece.Queen;
+                            break;
+                        case "R":
+                            promotion = Piece.Rook;
+                            break;
+                        case "B":
+                            promotion = Piece.Bishop;
+                            break;
+                        case "N":
+                            promotion = Piece.Knight;
+                            break;
                     }
+
                 }
+                
+
             }
             else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
                 bits |= MoveBits.King;
