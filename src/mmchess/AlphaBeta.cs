@@ -303,7 +303,6 @@ namespace mmchess
                     else if(entry.Type==(byte)EntryType.ALL && entry.Score <= alpha)
                         return alpha;
                     else if(entry.Type==(byte)EntryType.PV)
-                        UpdatePv(new Move(entry.MoveValue));
                         return entry.Score;
                 }
             }
