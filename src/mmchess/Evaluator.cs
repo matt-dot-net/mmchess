@@ -4,6 +4,12 @@ namespace mmchess
 
     public static class Evaluator
     {
+        enum GamePhase{
+            Opening,
+            MiddleGame,
+            EndGame
+        };
+
         public static readonly int[] PieceValues = new int[7]{
             0,  //empty
             300, //knight
@@ -108,6 +114,30 @@ namespace mmchess
             }
        };
 
+       static readonly Int16[,] KingEndgame = new Int16[2,64]
+       {
+            {
+             -25, 32, 32, 32, 32, 32, 32,-25,
+             -25, 32, 32, 32, 32, 32, 32,-25,
+             -25, 24, 24, 24, 24, 24, 24,-25,
+             -25, 16, 16, 16, 16, 16, 16,-25,
+             -25,-25, 08, 16, 16, 08,-25,-25,
+             -25,-25,-10, 08, 08,-10,-25,-25,
+             -25,-25,-25,-25,-25,-25,-25,-25,
+             -40,-40,-40,-40,-40,-40,-40,-40
+            },
+            {
+            -40,-40,-40,-40,-40,-40,-40,-40,
+            -25,-25,-25,-25,-25,-25,-25,-25,
+            -25,-25,-10, 08, 08,-10,-25,-25,
+            -25,-25, 08, 16, 16, 08,-25,-25,
+            -25, 16, 16, 16, 16, 16, 16,-25,
+            -25, 24, 24, 24, 24, 24, 24,-25,
+            -25, 32, 32, 32, 32, 32, 32,-25,
+            -25, 32, 32, 32, 32, 32, 32,-25,
+            }
+       };
+
         public static ulong[,] PassedPawnMask = new ulong[2, 64];
 
         static Evaluator()
@@ -167,12 +197,20 @@ namespace mmchess
 
         }
 
+        static GamePhase CalculateGamePhase(Board b){
+            if(b.CastleStatus>0)
+                return GamePhase.Opening;
+            else if(b.PieceCount(b.SideToMove) >=2 && b.PieceCount(b.SideToMove^1) >=2)
+                return GamePhase.MiddleGame;
+            return GamePhase.EndGame;
+        }
+
         //evaluate returns a score that is from the perspective
         //of the side to move.
         public static int Evaluate(Board b,int alpha, int beta)
         {
             int eval = 0;
-
+            var gamePhase = CalculateGamePhase(b);
             if (EvaluateDraw(b))
                 return 0;
             var e = new Evaluation(b);
@@ -181,16 +219,31 @@ namespace mmchess
             //attempt a lazy exit
             if(eval <= alpha-300 || eval >= beta+300)
                 return eval;
-            
-            eval += EvaluateDevelopment(b);
 
             e.PawnScore= EvaluatePawns(b);
             eval += e.PawnScore.Eval;
+            if(gamePhase != GamePhase.EndGame)
+            {
+                eval += EvaluateDevelopment(b);
+                eval += EvaluateKingSafety(b, e.PawnScore);
+                eval += EvaluatePieces(e);
+            }
+            else{
+                eval += EvaluateKingEndGame(b);
+            }
 
-            eval += EvaluateKingSafety(b, e.PawnScore);
-            eval += EvaluatePieces(e);
 
             return eval;
+        }
+
+        static int EvaluateKingEndGame(Board b){
+            int [] eval = new int[2];
+            for(int i=0;i<2;i++){
+                var sq= b.King[i].BitScanForward();
+                eval[i] = KingEndgame[i,sq];
+            }
+
+            return eval[b.SideToMove]-eval[b.SideToMove^1];
         }
 
         static int EvaluatePieces(Evaluation e)
