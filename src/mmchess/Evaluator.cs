@@ -4,7 +4,8 @@ namespace mmchess
 
     public static class Evaluator
     {
-        enum GamePhase{
+        enum GamePhase
+        {
             Opening,
             MiddleGame,
             EndGame
@@ -114,8 +115,8 @@ namespace mmchess
             }
        };
 
-       static readonly Int16[,] KingEndgame = new Int16[2,64]
-       {
+        static readonly Int16[,] KingEndgame = new Int16[2, 64]
+        {
             {
              -25, 32, 32, 32, 32, 32, 32,-25,
              -25, 32, 32, 32, 32, 32, 32,-25,
@@ -136,7 +137,7 @@ namespace mmchess
             -25, 32, 32, 32, 32, 32, 32,-25,
             -25, 32, 32, 32, 32, 32, 32,-25,
             }
-       };
+        };
 
         public static ulong[,] PassedPawnMask = new ulong[2, 64];
 
@@ -197,38 +198,77 @@ namespace mmchess
 
         }
 
-        static GamePhase CalculateGamePhase(Board b){
-            if(b.CastleStatus>0)
+        static GamePhase CalculateGamePhase(Board b)
+        {
+            if (b.CastleStatus > 0)
                 return GamePhase.Opening;
-            else if(b.PieceCount(b.SideToMove) >=2 && b.PieceCount(b.SideToMove^1) >=2)
+            else if (b.PieceCount(b.SideToMove) >= 2 && b.PieceCount(b.SideToMove ^ 1) >= 2)
                 return GamePhase.MiddleGame;
             return GamePhase.EndGame;
         }
 
+        static int EvaluateWinners(Board b, Evaluation e)
+        {
+            int canWin=3;
+
+            //if there is major material then everyone can win
+            if(e.Majors[0]>0 && e.Majors[1] > 0)
+                return canWin;
+            for(int i=0;i<2;i++)
+            {
+                var opp = i^1;
+                //a major piece means i can win
+                if(e.Majors[i]>0)
+                    continue;
+
+                if(b.Pawns[i]==0)
+                {
+                    //if I have no pawns, i need two minors
+                    if(e.Minors[i] < 2){
+                        canWin &= 1<<opp;
+                        continue;
+                    }
+                }    
+            }
+
+            return canWin;
+
+        }
+
         //evaluate returns a score that is from the perspective
         //of the side to move.
-        public static int Evaluate(Board b,int alpha, int beta)
+        public static int Evaluate(Board b, int alpha, int beta)
         {
             int eval = 0;
             var gamePhase = CalculateGamePhase(b);
-            if (EvaluateDraw(b))
-                return 0;
+            
             var e = new Evaluation(b);
             eval = e.Material;
 
+            if(b.History.IsPositionDrawn(b.HashKey))
+                return 0;
+
+            var canWin = EvaluateWinners(b,e);
+            if(b.SideToMove == 0 && (canWin&2)==0)
+                return 0;
+            if(b.SideToMove == 1 && (canWin&1)==0)
+                return 0;
+            
+
             //attempt a lazy exit
-            if(eval <= alpha-300 || eval >= beta+300)
+            if (eval <= alpha - 300 || eval >= beta + 300)
                 return eval;
 
-            e.PawnScore= EvaluatePawns(b);
+            e.PawnScore = EvaluatePawns(b);
             eval += e.PawnScore.Eval;
-            if(gamePhase != GamePhase.EndGame)
+            if (gamePhase != GamePhase.EndGame)
             {
                 eval += EvaluateDevelopment(b);
                 eval += EvaluateKingSafety(b, e.PawnScore);
                 eval += EvaluatePieces(e);
             }
-            else{
+            else
+            {
                 eval += EvaluateKingEndGame(b);
             }
 
@@ -236,14 +276,16 @@ namespace mmchess
             return eval;
         }
 
-        static int EvaluateKingEndGame(Board b){
-            int [] eval = new int[2];
-            for(int i=0;i<2;i++){
-                var sq= b.King[i].BitScanForward();
-                eval[i] = KingEndgame[i,sq];
+        static int EvaluateKingEndGame(Board b)
+        {
+            int[] eval = new int[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var sq = b.King[i].BitScanForward();
+                eval[i] = KingEndgame[i, sq];
             }
 
-            return eval[b.SideToMove]-eval[b.SideToMove^1];
+            return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
         }
 
         static int EvaluatePieces(Evaluation e)
@@ -287,7 +329,7 @@ namespace mmchess
                     //open file bonus
                     if (e.PawnScore.Files[side, sq.File()] == 0)
                     {
-                        eval[side] += RookOnOpenFileBonus/2;
+                        eval[side] += RookOnOpenFileBonus / 2;
                         if (e.PawnScore.Files[xside, sq.File()] == 0)
                             eval[side] = RookOnOpenFileBonus;
                     }
@@ -307,9 +349,9 @@ namespace mmchess
                     knights ^= BitMask.Mask[sq];
 
                     //only looking for forward knights
-                    if(side==0 && sq.Rank()>3)
+                    if (side == 0 && sq.Rank() > 3)
                         continue;
-                    else if (side==1 && sq.Rank()<3)
+                    else if (side == 1 && sq.Rank() < 3)
                         continue;
 
                     //look for knights on outposts
@@ -318,9 +360,9 @@ namespace mmchess
                         //knight is defended by a pawn
                         //use the passed pawn lookup - minus the file to see if
                         //we have an ouput
-                        if ((PassedPawnMask[side, sq] & ~Board.FileMask[sq.File()] & e.Board.Pawns[xside]) == 0)                        
+                        if ((PassedPawnMask[side, sq] & ~Board.FileMask[sq.File()] & e.Board.Pawns[xside]) == 0)
                             eval[side] += KnightOnOutpostBonus;
-                        
+
                     }
 
                     EvalTrappedKnights(e, eval, side, sq);
@@ -358,8 +400,8 @@ namespace mmchess
                     }
 
                     //mobility score
-                    var mobilitySquares = MoveGenerator.BishopAttacks(e.Board,sq);
-                    eval[side]+=mobilitySquares.Count();
+                    var mobilitySquares = MoveGenerator.BishopAttacks(e.Board, sq);
+                    eval[side] += mobilitySquares.Count();
                 }
 
             }
@@ -423,32 +465,6 @@ namespace mmchess
 
                 }
             }
-        }
-
-        static bool EvaluateDraw(Board b)
-        {
-            if (b.History.IsPositionDrawn(b.HashKey))
-                return true;
-
-            //if only the kings remain
-            if (b.AllPieces.Count() == 2)
-                return true;
-
-            //if there are no pawns
-            if ((b.Pawns[0] | b.Pawns[1]) == 0)
-            {
-
-                if ((b.Rooks[0] | b.Rooks[1] | b.Queens[0] | b.Queens[1]) > 0)
-                    return false;
-
-                if ((b.Knights[0] | b.Knights[1] | b.Bishops[0] | b.Bishops[1]).Count() == 1)
-                    return true;
-            }
-            else
-            {
-                //todo calculate if king is in front of pawn...
-            }
-            return false;
         }
 
         static int EvaluateDevelopment(Board b)
@@ -649,12 +665,12 @@ namespace mmchess
                     }
 
                     //blocked pawns
-                    if(side==0 && pawnsq > 7)
-                        if((b.AllPieces & BitMask.Mask[pawnsq-8])>0)
+                    if (side == 0 && pawnsq > 7)
+                        if ((b.AllPieces & BitMask.Mask[pawnsq - 8]) > 0)
                             eval[side] += BlockedPawnPenalty;
-                    else if (side==1 && pawnsq < 56)
-                        if((b.AllPieces & BitMask.Mask[pawnsq+8])>0)
-                            eval[side] += BlockedPawnPenalty;
+                        else if (side == 1 && pawnsq < 56)
+                            if ((b.AllPieces & BitMask.Mask[pawnsq + 8]) > 0)
+                                eval[side] += BlockedPawnPenalty;
                 }
             }
 
