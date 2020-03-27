@@ -201,7 +201,8 @@ namespace mmchess
                     state.GameBoard = new Board(); return;
                 }
 
-                state.GameBoard = Board.ParseFenString(cmd.Arguments[1]);
+                var fenString = string.Join(' ',cmd.Arguments,1,cmd.Arguments.Length-1);
+                state.GameBoard = Board.ParseFenString(fenString);
             }
             else if (cmd.Value == CommandVal.PERFT)
             {
