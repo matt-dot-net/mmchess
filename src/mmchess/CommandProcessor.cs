@@ -265,6 +265,11 @@ namespace mmchess
         static void EpdTest(Command cmd)
         {
             int tests = 0, successes = 0;
+            if(cmd.Arguments.Length < 2)
+            {
+                Console.Error.WriteLine("Missing parameter filename");
+                return;
+            }
             try
             {
 
