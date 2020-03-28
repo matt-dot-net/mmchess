@@ -426,18 +426,12 @@ namespace mmchess
             if(existing != null && existing.Lock != newEntry.Lock)
             {
                 // replacement strategy is as follows:
-                //  prefer PV nodes
                 //  prefer deeper results
                 //  but we can't keep results around forever just because they are deep
                 //  so we will remember the search (by age) and replace old data first 
 
                 if(existing.Age == newEntry.Age)
                 {
-                    //don't replace PV nodes with non-PV nodes
-                    if (existing.Type == (byte)TranspositionTableEntry.EntryType.PV && 
-                        type != TranspositionTableEntry.EntryType.PV)
-                        return; //we prefer the existing PV node over the non-pv node, regardless of depth
-
                     if(existing.Depth > depth)
                         return; //the entry that's already here is better and new
                 }                                     
