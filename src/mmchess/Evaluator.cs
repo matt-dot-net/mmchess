@@ -225,7 +225,7 @@ public static class Evaluator
             {
                 //if I have no pawns, i need two minors
                 if(e.Minors[i] < 2){
-                    canWin &= 1<<opp;
+                    canWin &= ~(1<<opp);
                     continue;
                 }
             }    
@@ -331,7 +331,7 @@ public static class Evaluator
                 {
                     eval[side] += RookOnOpenFileBonus / 2;
                     if (e.PawnScore.Files[xside, sq.File()] == 0)
-                        eval[side] = RookOnOpenFileBonus;
+                        eval[side] += RookOnOpenFileBonus;
                 }
 
                 //rooks on the seventh (or eigth)
@@ -666,11 +666,15 @@ public static class Evaluator
 
                 //blocked pawns
                 if (side == 0 && pawnsq > 7)
+                {
                     if ((b.AllPieces & BitMask.Mask[pawnsq - 8]) > 0)
                         eval[side] += BlockedPawnPenalty;
-                    else if (side == 1 && pawnsq < 56)
-                        if ((b.AllPieces & BitMask.Mask[pawnsq + 8]) > 0)
-                            eval[side] += BlockedPawnPenalty;
+                }
+                else if (side == 1 && pawnsq < 56)
+                {
+                    if ((b.AllPieces & BitMask.Mask[pawnsq + 8]) > 0)
+                        eval[side] += BlockedPawnPenalty;
+                }
             }
         }
 
