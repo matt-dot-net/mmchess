@@ -120,15 +120,15 @@ public static class Iterate
                 }
                 else if (score >= beta)
                 {
-                    if(score == 10000)
+                    if(Math.Abs(score) > 9900) // mate score found - no need to keep widening the window
                         break;
-                    
+
                     beta = Math.Min(10000, beta + (33 * betaRelax));
                     betaRelax *= 4;
                 }
                 else if (score <= alpha)
                 {
-                    if(score == -10000)
+                    if(Math.Abs(score) > 9900) // mate score found - no need to keep widening the window
                         break;
                     alpha = Math.Max(-10000, alpha - (33 * alphaRelax));
                     alphaRelax *= 4;

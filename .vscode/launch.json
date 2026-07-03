@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}\\src\\mmchess\\bin\\Debug\\netcoreapp2.1\\mmchess.dll",
+            "program": "${workspaceRoot}\\src\\mmchess\\bin\\Debug\\net10.0\\mmchess.dll",
             "args": [],
             "cwd": "${workspaceRoot}\\src\\mmchess",
             "externalConsole": true,
