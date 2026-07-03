@@ -307,15 +307,8 @@ public static class CommandParser
                     gameState.GameBoard = Board.ParseFenString(line);
                     var found = Iterate.DoIterate(gameState, () =>
                     {
-                        bool waitForLine = false;
-                        if (Console.IsInputRedirected)
-                            waitForLine = (Console.In.Peek() != -1);
-                        else if (Console.KeyAvailable)
-                            waitForLine = true;
-
-                        if (waitForLine)
+                        if (ConsoleInputQueue.TryReadLine(out var input))
                         {
-                            var input = Console.ReadLine();
                             cmd = CommandParser.ParseCommand(input);
                             if (cmd.Value == CommandVal.Quit)
                             {

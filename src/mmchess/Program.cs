@@ -6,6 +6,8 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        ConsoleInputQueue.Start();
+
         var gameState = new GameState();
         gameState.GameBoard = new Board();
 
@@ -13,7 +15,10 @@ public class Program
 
         while (cmd == null || cmd.Value != CommandVal.Quit)
         {
-            var input = Console.ReadLine();
+            var input = ConsoleInputQueue.ReadLine();
+            if (input == null)
+                break; // stdin closed
+
             cmd = CommandParser.ParseCommand(input);
             CommandParser.DoCommand(cmd, gameState);
 
@@ -21,19 +26,10 @@ public class Program
             {
                 var myMove = Iterate.DoIterate(gameState, () =>
                 {
-
-                    bool waitForLine = false;
-                    if (Console.IsInputRedirected)
-                        waitForLine = (Console.In.Peek() != -1);
-                    else if (Console.KeyAvailable)
-                        waitForLine = true;
-
-                    if (waitForLine)
+                    if (ConsoleInputQueue.TryReadLine(out var line))
                     {
-                        input = Console.ReadLine();
-                        cmd = CommandParser.ParseCommand(input);
+                        cmd = CommandParser.ParseCommand(line);
                         CommandParser.DoCommand(cmd, gameState);
-
                     }
                 });
 
