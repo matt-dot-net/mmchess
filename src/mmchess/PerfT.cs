@@ -7,7 +7,7 @@ namespace mmchess;
 class PerfTMove
 {
     public Move Move { get; set; }
-    public int Nodes { get; set; }
+    public long Nodes { get; set; }
 };
 
 public static class PerfT
@@ -17,7 +17,7 @@ public static class PerfT
     {
         var startTime = DateTime.Now;
         var moves = MoveGenerator.GenerateMoves(b,true);
-        int total = 0;
+        long total = 0;
         int i = 0;
         int moveCount = 0;
         foreach (var m in moves)
@@ -70,9 +70,9 @@ public static class PerfT
         Console.WriteLine("Completed in {0}ms", (endTime - startTime).TotalMilliseconds);
     }
 
-    static int Perft(Board b, int depth)
+    static long Perft(Board b, int depth)
     {
-        int nodes = 0;
+        long nodes = 0;
 
         if (depth == 0)
             return 1;

@@ -218,6 +218,15 @@ public static class CommandParser
                 if (cmd.Arguments[i].ToLower() == "parallel")
                     parallel = true;
             }
+
+            if (depth < 1)
+            {
+                Console.Error.WriteLine("Usage: perft <depth> [parallel]");
+                Console.Error.WriteLine("  <depth>    number of plies to search (required, integer >= 1)");
+                Console.Error.WriteLine("  parallel   optional - split root moves across threads");
+                return;
+            }
+
             if (parallel)
                 PerfT.PerftDivideParallel(state.GameBoard, depth);
             else
