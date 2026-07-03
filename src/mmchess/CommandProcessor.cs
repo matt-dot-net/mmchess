@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace mmchess;
@@ -48,7 +49,11 @@ public class Command
 
 public static class CommandParser
 {
-    const String VersionNumber = "0.1";
+    static readonly String VersionNumber =
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion
+        ?? "unknown";
 
 
     public static Command ParseCommand(string input)
@@ -183,13 +188,13 @@ public static class CommandParser
         else if (cmd.Value == CommandVal.Uci)
         {
             state.UsingGui = true;
-            Console.WriteLine("id name mmchess {0}");
-            Console.WriteLine("author Matt McKnight");
+            Console.WriteLine("id name mmchess {0}", VersionNumber);
+            Console.WriteLine("id author Matt McKnight");
             Console.WriteLine("uciok");
         }
         else if (cmd.Value == CommandVal.Protover)
         {
-            Console.WriteLine("feature setboard=1 reuse=1 myname=\"mmchess\" done=1");
+            Console.WriteLine("feature setboard=1 reuse=1 myname=\"mmchess {0}\" done=1", VersionNumber);
         }
         else if (cmd.Value == CommandVal.IsReady)
         {
