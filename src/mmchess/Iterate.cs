@@ -150,7 +150,7 @@ public static class Iterate
 
     private static void PrintSearchResult(GameState state, DateTime startTime, AlphaBeta ab, int i, int score)
     {
-        Console.Write("{0}\t{1}\t{2:0}\t{3}\t", i, score,
+        Console.Write("{0} {1} {2:0} {3} ", i, score,
             (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
         PrintPV(state.GameBoard, ab);
         Console.WriteLine();
