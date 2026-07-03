@@ -43,8 +43,8 @@ public class TranspositionTableEntry{
     public int Age {
         get{ return DepthAge>>6;}
         set {
-            Depth &= 63; // clear current Age
-            DepthAge |= (byte)((value & 3) << 6);// shift in the age 
+            DepthAge &= 0x3F; // clear current age bits, preserve depth in the bottom 6 bits
+            DepthAge |= (byte)((value & 3) << 6);// shift in the new age
         }
     }
 
