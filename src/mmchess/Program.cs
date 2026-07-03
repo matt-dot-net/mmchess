@@ -1,52 +1,51 @@
 using System;
 
-namespace mmchess
+namespace mmchess;
+
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        var gameState = new GameState();
+        gameState.GameBoard = new Board();
+
+        Command cmd = null;
+
+        while (cmd == null || cmd.Value != CommandVal.Quit)
         {
-            var gameState = new GameState();
-            gameState.GameBoard = new Board();
+            var input = Console.ReadLine();
+            cmd = CommandParser.ParseCommand(input);
+            CommandParser.DoCommand(cmd, gameState);
 
-            Command cmd = null;
-
-            while (cmd == null || cmd.Value != CommandVal.Quit)
+            if (gameState.IsMyTurn)
             {
-                var input = Console.ReadLine();
-                cmd = CommandParser.ParseCommand(input);
-                CommandParser.DoCommand(cmd, gameState);
-
-                if (gameState.IsMyTurn)
+                var myMove = Iterate.DoIterate(gameState, () =>
                 {
-                    var myMove = Iterate.DoIterate(gameState, () =>
+
+                    bool waitForLine = false;
+                    if (Console.IsInputRedirected)
+                        waitForLine = (Console.In.Peek() != -1);
+                    else if (Console.KeyAvailable)
+                        waitForLine = true;
+
+                    if (waitForLine)
                     {
+                        input = Console.ReadLine();
+                        cmd = CommandParser.ParseCommand(input);
+                        CommandParser.DoCommand(cmd, gameState);
 
-                        bool waitForLine = false;
-                        if (Console.IsInputRedirected)
-                            waitForLine = (Console.In.Peek() != -1);
-                        else if (Console.KeyAvailable)
-                            waitForLine = true;
-
-                        if (waitForLine)
-                        {
-                            input = Console.ReadLine();
-                            cmd = CommandParser.ParseCommand(input);
-                            CommandParser.DoCommand(cmd, gameState);
-
-                        }
-                    });
-
-                    if (myMove != null)
-                    {
-                        Console.WriteLine("move {0}", myMove.ToAlegbraicNotation(gameState.GameBoard));
-                        gameState.GameBoard.MakeMove(myMove);
                     }
+                });
+
+                if (myMove != null)
+                {
+                    Console.WriteLine("move {0}", myMove.ToAlegbraicNotation(gameState.GameBoard));
+                    gameState.GameBoard.MakeMove(myMove);
                 }
             }
         }
-
-
-
     }
+
+
+
 }
