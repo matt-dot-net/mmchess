@@ -30,7 +30,14 @@ public static class StaticExchange
 
         //add in any material taken on the first capture
         if((m.Bits & (byte)MoveBits.Capture)>0)
-            score+=Evaluator.PieceValueOnSquare(b,m.To);
+        {
+            //en passant: the captured pawn isn't on m.To (that square is empty),
+            //so PieceValueOnSquare would wrongly credit 0 instead of a pawn
+            if((m.Bits & (byte)MoveBits.Pawn)>0 && (BitMask.Mask[m.To] & b.EnPassant)>0)
+                score+=Evaluator.PieceValues[(int)Piece.Pawn];
+            else
+                score+=Evaluator.PieceValueOnSquare(b,m.To);
+        }
 
         //remove the first Move, unless this was a straight pawn push
         if(!((m.Bits & (byte)MoveBits.Pawn)>0 && Math.Abs(m.From-m.To)==8))
