@@ -281,7 +281,6 @@ public class MoveGenerator
 
         var xSideToMove = b.SideToMove ^ 1;
         var kingSq = b.King[b.SideToMove].BitScanForward();
-        var xkingSq = b.King[xSideToMove].BitScanForward();
         var attackers = Attacks(b, kingSq) & b.Pieces[xSideToMove];
         var checkers = attackers.Count();
         int check_direction1 = 0, check_direction2 = 0;
@@ -295,11 +294,12 @@ public class MoveGenerator
                 check_direction1 = Directions[checking_sq, kingSq];
             target = InterposeSquares(check_direction1, kingSq, checking_sq);
             target |= attackers;
-            target |= BitMask.Mask[xkingSq];
         }
         else
         {
-            target = BitMask.Mask[xkingSq];
+            // double check: only king moves can resolve it, so no
+            // non-king piece has any valid target square
+            target = 0;
             checking_sq = attackers.BitScanForward();
             if ((BitMask.Mask[checking_sq] & b.Pawns[xSideToMove]) == 0)
                 check_direction1 = Directions[checking_sq, kingSq];
@@ -310,7 +310,7 @@ public class MoveGenerator
         }
 
         var fromi = kingSq;
-        ulong moves = MoveGenerator.KingMoves[fromi] & ~b.Pieces[b.SideToMove];
+        ulong moves = KingMoves[fromi] & ~b.Pieces[b.SideToMove];
         while (moves > 0)
         {
             var toi = moves.BitScanForward();

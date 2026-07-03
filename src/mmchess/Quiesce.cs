@@ -27,12 +27,13 @@ public partial class AlphaBeta
                 return alpha;
         }
         int score = Evaluator.Evaluate(MyBoard,alpha,beta);
-        if(score > alpha)
-            alpha = score;
-        //attemp to stand pat (don't search if eval tells us we are in a good position)
+        //attempt to stand pat (don't search if eval tells us we are in a good position)
+        //only valid when not in check - you can't "pass" and decline to respond to check
         var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
         if (!inCheck)
         {
+            if(score > alpha)
+                alpha = score;
             if (score >= beta)
                 return beta;
 
