@@ -52,7 +52,8 @@ public static class PerfT
         }
 
 
-        Parallel.ForEach(legalMoves, (m) =>
+        Parallel.ForEach(legalMoves, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+         (m) =>
          {
              Board newBoard = new Board(b);
              if (!newBoard.MakeMove(m.Move))
