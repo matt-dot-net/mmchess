@@ -399,14 +399,40 @@ public class TranspositionTable
         return key & KeyMask;
     }
 
-    public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type){
+    public const int MateThreshold = 9900;
+
+    // Mate scores are ply-relative (e.g. -10000 + Ply), so they can't be reused as-is
+    // once stored: the same position may be reached again via a different path at a
+    // different ply-from-root. ValueToTT normalizes a mate score to be relative to the
+    // node doing the storing (subtracting out that node's ply); ValueFromTT re-applies
+    // the ply of whichever node later reads it back, so the mate distance stays correct
+    // regardless of how the position was reached.
+    public static int ValueToTT(int score, int ply)
+    {
+        if (score > MateThreshold)
+            return score + ply;
+        if (score < -MateThreshold)
+            return score - ply;
+        return score;
+    }
+
+    public static int ValueFromTT(int score, int ply)
+    {
+        if (score > MateThreshold)
+            return score - ply;
+        if (score < -MateThreshold)
+            return score + ply;
+        return score;
+    }
+
+    public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type, int ply){
         Stores++;
         var index = HashFunction(hashKey);
         var existing = TTable[index];
 
         var newEntry = new TranspositionTableEntry{
             Type = (byte)type,
-            Score = (Int16)score,
+            Score = (Int16)ValueToTT(score, ply),
             Depth=depth,
             Age=SearchId
         };
