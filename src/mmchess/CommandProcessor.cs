@@ -285,6 +285,7 @@ public static class CommandParser
                 bool quit = false;
 
                 var gameState = new GameState();
+                gameState.ShowThinking = true;
                 gameState.TimeControl = new TimeControl
                 {
                     Type = TimeControlType.FixedTimePerMove,
