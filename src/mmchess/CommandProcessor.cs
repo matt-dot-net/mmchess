@@ -20,6 +20,7 @@ public enum CommandVal
     Post,
     NoPost,
     Hard,
+    Easy,
     Position,
     PERFT,
     Quit,
@@ -100,9 +101,11 @@ public static class CommandParser
                 cmd.Value == CommandVal.Rejected ||
 
                 cmd.Value == CommandVal.Random ||
-                 cmd.Value == CommandVal.Hard)
+                 cmd.Value == CommandVal.Hard ||
+                 cmd.Value == CommandVal.Easy)
         {
             //noop
+            //we don't ponder, so hard/easy are both no-ops
 
         }
         else if (cmd.Value == CommandVal.Post)

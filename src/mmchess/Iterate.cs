@@ -22,25 +22,25 @@ public static class Iterate
             else
                 ebf = bf;
         }
-        Console.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3:0}, EBF({4})={5:0.00}",
+        Console.Error.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3:0}, EBF({4})={5:0.00}",
             metrics.Nodes,
             metrics.QNodes,
             100 * (double)metrics.QNodes / ((double)metrics.Nodes + 1),
             (metrics.Nodes / 1000 / searchTime.TotalSeconds),
             metrics.Depth,
             ebf);
-        Console.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
+        Console.Error.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
             100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
             100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1),
             metrics.FPrune,
             metrics.EFPrune);
-        Console.WriteLine("NullMoveTries={0} NullMove%={1:0.0}, NMResearch={2}, MateThreats={3}, LMRResearch={4}",
+        Console.Error.WriteLine("NullMoveTries={0} NullMove%={1:0.0}, NMResearch={2}, MateThreats={3}, LMRResearch={4}",
             metrics.NullMoveTries,
             100 * (double)metrics.NullMoveFailHigh / ((double)metrics.NullMoveTries + 1),
             metrics.NullMoveResearch,
             metrics.MateThreats,
             metrics.LMRResearch);
-        Console.WriteLine("HashTable: FH%={0:0.0} Hit%={1:0.0}",
+        Console.Error.WriteLine("HashTable: FH%={0:0.0} Hit%={1:0.0}",
             100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1,
             100*(double)TranspositionTable.Instance.Hits/(double)TranspositionTable.Instance.Probes);
     }
@@ -111,7 +111,7 @@ public static class Iterate
                 score = ab.SearchRoot(alpha, beta, i);
                 bestMove=ab.PrincipalVariation[0,0];
                 
-                if(!state.TimeUp)
+                if(!state.TimeUp && state.ShowThinking)
                     PrintSearchResult(state, startTime, ab, i, score);
                 if (score > alpha && score < beta)
                 {
