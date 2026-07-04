@@ -81,6 +81,7 @@ public partial class AlphaBeta
             .OrderByDescending((m) => OrderQuiesceMove(m, inCheck));
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;
+        bool anyMoveTried = false;
 
         foreach (var m in moves)
         {
@@ -90,6 +91,8 @@ public partial class AlphaBeta
             //if SEE says this is a losing capture, we prune it
             if(StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
                 continue;
+
+            anyMoveTried = true;
             MyBoard.MakeMove(m,false);
             Ply++;
 
@@ -101,6 +104,16 @@ public partial class AlphaBeta
                 alpha = score;
 
         }
+
+        //if we're in check and never found a legal evasion to even try, this is
+        //checkmate - without this, we'd silently fall through to "return alpha",
+        //returning whatever bound happened to be passed in rather than a real,
+        //ply-adjusted mate score, which can corrupt scores propagated back up
+        //through the whole search (see: engine emitting no move at all in a
+        //genuinely lost-but-not-yet-detected position)
+        if (inCheck && !anyMoveTried)
+            return -10000 + Ply;
+
         return alpha;
 
     }

@@ -10,17 +10,18 @@ public class QuiesceTests
         // overwhelming material edge (two extra rooks). The extra rooks sit
         // on file a / ranks 5-6 so they can't reach any interpose/capture
         // square themselves - they exist purely to bias the static eval.
-        // If Quiesce lets that eval raise alpha ("stand pat") while in
-        // check, it will return that large positive material score here
-        // instead of leaving alpha untouched, since there are no legal
-        // evasions to search.
+        // If Quiesce let that eval raise alpha ("stand pat") while in check,
+        // or fell back to just returning the passed-in alpha instead of
+        // properly detecting mate, it would return something reflecting the
+        // material edge (or the arbitrary alpha bound) instead of the real,
+        // ply-adjusted mate score.
         var board = Board.ParseFenString("3R3k/5ppp/r7/r7/8/8/8/4K3 b - - 0 1");
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
 
         var result = ab.Quiesce(-5000, 5000);
 
-        Assert.Equal(-5000, result);
+        Assert.Equal(-10000, result); // mate detected at Ply=0 -> -10000+0
     }
 
     [Fact]
