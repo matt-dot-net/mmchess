@@ -367,8 +367,11 @@ public static class CommandParser
 
         Console.WriteLine();
         Console.WriteLine("Bench: {0} positions at depth {1}", positions, depth);
-        Console.WriteLine("Nodes={0}, QNodes={1}, Knps={2:0}",
-            aggregate.Nodes, aggregate.QNodes, aggregate.Nodes / 1000.0 / sw.Elapsed.TotalSeconds);
+        Console.WriteLine("Nodes={0}, QNodes={1}, Elapsed={2:0.000}s, Knps={3:0}",
+            aggregate.Nodes,
+            aggregate.QNodes,
+            sw.Elapsed.TotalSeconds,
+            aggregate.Nodes / 1000.0 / sw.Elapsed.TotalSeconds);
         Console.WriteLine("FirstMoveFH%={0:0.00}, KillerFH%={1:0.00}, TTFH%={2:0.00}, FailHigh={3}",
             100.0 * aggregate.FirstMoveFailHigh / (aggregate.FailHigh + 1),
             100.0 * aggregate.KillerFailHigh / (aggregate.FailHigh + 1),
