@@ -15,6 +15,7 @@ public enum CommandVal
     Black,
     White,
     Force,
+    Result,
     New,
     Random,
     IsReady,
@@ -84,8 +85,12 @@ public static class CommandParser
         {
 
         }
-        else if (cmd.Value == CommandVal.Force)
+        else if (cmd.Value == CommandVal.Force || cmd.Value == CommandVal.Result)
         {
+            //the game is over (or the GUI wants us to stop moving on our own) -
+            //without this, an unrecognized "result ..." falls through to
+            //MoveInput, fails to parse, and leaves ComputerSide untouched, so
+            //we can end up emitting an unsolicited move after the game already ended
             state.ComputerSide = -1;
         }
         else if (cmd.Value == CommandVal.Time)

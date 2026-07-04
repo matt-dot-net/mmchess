@@ -22,4 +22,22 @@ public class QuiesceTests
 
         Assert.Equal(-5000, result);
     }
+
+    [Fact]
+    public void QuiesceFallsBackToStaticEvalWhenCheckChaseDepthCapReached()
+    {
+        // Black king h8 is in check from the rook on a8, but has two legal
+        // king-flight evasions (g7 and h7 are both unattacked). If the check
+        // chase has already gone on for MaxCheckChaseDepth plies, Quiesce
+        // should stop searching those evasions and just return the static
+        // eval directly, rather than recursing further.
+        var board = Board.ParseFenString("R6k/8/8/8/8/8/8/4K3 b - - 0 1");
+        var state = new GameState { GameBoard = board };
+        var ab = new AlphaBeta(state, () => { });
+
+        var expectedStaticEval = Evaluator.Evaluate(board, -5000, 5000);
+        var result = ab.Quiesce(-5000, 5000, AlphaBeta.MaxCheckChaseDepth);
+
+        Assert.Equal(expectedStaticEval, result);
+    }
 }
