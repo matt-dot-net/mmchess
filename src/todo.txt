@@ -1,5 +1,0 @@
-
-//dumb:
-
-maybe change stand pat delta to 2 bishops
-eval development - penalize blocked central pawns 

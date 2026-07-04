@@ -39,6 +39,8 @@ public static class Evaluator
     const int KingUnderAttack = -150;
     const int PassedPawnBonus = 20;
     const int BlockedPawnPenalty = -8;
+    const int BlockedCentralPawnPenalty = -20;
+    const int RookNotDevelopedPenalty = -15;
     static readonly ulong kingside = Board.FileMask[7] | Board.FileMask[6] | Board.FileMask[5];
     static readonly ulong queenside = Board.FileMask[0] | Board.FileMask[1] | Board.FileMask[2];
 
@@ -493,12 +495,46 @@ public static class Evaluator
                 eval[side] += BishopDevelopment[side, sq];
             }
 
+            //a rook still sitting on its original corner square hasn't
+            //developed yet - distinct from (and not fully covered by) the
+            //open-file/7th-rank bonuses in EvaluatePieces, which just don't
+            //reward it rather than actively penalizing it
+            pieces = b.Rooks[side];
+            while (pieces > 0)
+            {
+                var sq = pieces.BitScanForward();
+                pieces ^= BitMask.Mask[sq];
+
+                bool onHomeCorner = side == 0
+                    ? (sq == 56 || sq == 63)  // a1, h1
+                    : (sq == 0 || sq == 7);   // a8, h8
+                if (onHomeCorner)
+                    eval[side] += RookNotDevelopedPenalty;
+            }
+
             pieces = b.Pawns[side];
             while (pieces > 0)
             {
                 var sq = pieces.BitScanForward();
                 pieces ^= BitMask.Mask[sq];
                 eval[side] += PawnDevelopment[side, sq];
+
+                //a blocked d/e pawn costs more than a blocked wing pawn - it's
+                //not just a stuck pawn, it's lost central space and a cramped
+                //position for whichever minor pieces wanted to develop through
+                //there. This is on top of the generic BlockedPawnPenalty
+                //(EvaluateBlockedPawns), which still applies regardless of
+                //file - this only adds the extra central-specific cost, and
+                //only during Opening/MiddleGame (EvaluateDevelopment is
+                //skipped entirely in EndGame, where it matters far less).
+                var file = sq.File();
+                if (file == 3 || file == 4)
+                {
+                    if (side == 0 && sq > 7 && (b.AllPieces & BitMask.Mask[sq - 8]) > 0)
+                        eval[side] += BlockedCentralPawnPenalty;
+                    else if (side == 1 && sq < 56 && (b.AllPieces & BitMask.Mask[sq + 8]) > 0)
+                        eval[side] += BlockedCentralPawnPenalty;
+                }
             }
 
 
