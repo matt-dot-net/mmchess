@@ -96,3 +96,58 @@ run is itself a good correctness sanity check - if the pawn hash had a
 caching bug that leaked stale values into eval, it would almost certainly
 have perturbed some fail-high/pruning decision somewhere and changed the
 node count.
+
+## 2026-07-04 - aspiration widening: fail-soft jump (`Iterate.WidenBeta`/`WidenAlpha`)
+
+Refactored the root aspiration re-search widening out of `DoIterate` into
+testable helpers and made it jump straight past the returned fail-soft score
+(`max(beta + 33*relax, score + 33)`, mirrored for alpha) instead of walking
+the fixed `33 * 4^n` ladder out one full re-search at a time when the true
+score lands far outside the window.
+
+**New baseline note:** current HEAD (post blocked-central-pawn/unmoved-rook
+eval penalties) benches at **12,959,969** nodes, not the 13,287,674 of the
+pawn-hash entry above - the eval commit did shift search behavior, so future
+comparisons at depth 7 should use the number below.
+
+```
+bench wac.epd 7   (before, HEAD)
+Bench: 300 positions at depth 7
+Nodes=12959969, QNodes=8146215, Knps=1233
+FirstMoveFH%=94.64, KillerFH%=17.30, TTFH%=24.62, FailHigh=1209280
+NullMoveTries=265664, NullMoveFH%=60.51, MateThreats=274, LMRResearch=2537, FPrune=2322901, EFPrune=458391
+
+bench wac.epd 7   (after, fail-soft jump)
+Bench: 300 positions at depth 7
+Nodes=12959969, QNodes=8146215, Knps=1227
+FirstMoveFH%=94.64, KillerFH%=17.30, TTFH%=24.62, FailHigh=1209280
+NullMoveTries=265664, NullMoveFH%=60.51, MateThreats=274, LMRResearch=2537, FPrune=2322901, EFPrune=458391
+```
+
+**Byte-identical - the jump path never fires on wac.epd at depth 7, and the
+reason is structural:** `AlphaBeta.Search` is fail-soft on beta cutoffs
+(`return score`) but fail-hard on the low side (the ALL-node path returns
+the original `alpha`, and TT CUT/ALL hits clamp to `beta`/`alpha` too). A
+root fail high means the root's child failed low, and a fail-hard fail-low
+returns exactly `-beta` - so the root sees `score == beta` on essentially
+every fail high, and `max(beta + step, beta + 33)` is just the old fixed
+step. The only ways a true score can leak past a root bound today are a
+root child that is immediately mated/stalemated or an immediate repetition
+draw scored outside the window - rare, and absent from this bench run.
+
+Keeping the change anyway: it is strictly never worse, it covers those rare
+real-game cases (e.g. finding a saving repetition while losing no longer
+walks the window up in 3-4 re-searches), and it makes the widening correct
+in advance if `Search` ever becomes properly fail-soft on the low side -
+which is the actual follow-up that would give this teeth (it changes what
+ALL nodes store in the TT, so it needs its own careful pass + self-play).
+
+**Two benching pitfalls found while measuring this (both burned this
+session):** (1) `dotnet build src/mmchess -c Release` writes to
+`bin/Release/net10.0/`, **not** `bin/Release/net10.0/win-x64/` - the csproj
+only lists `RuntimeIdentifiers` (plural allowed-list); the `win-x64` folder
+is only refreshed by `-r win-x64` builds and had a stale binary from before
+the eval commit, which produced a convincing-looking but bogus identical
+A/B pair on the first attempt. (2) Check the freshness of the exact
+`mmchess.dll` you're running (`ls -l` its timestamp vs the source edit)
+before trusting any bench number.

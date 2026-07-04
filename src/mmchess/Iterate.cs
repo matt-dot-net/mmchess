@@ -5,6 +5,24 @@ namespace mmchess;
 
 public static class Iterate
 {
+    public const int ASPIRATION_WINDOW = 33;
+
+    //widen the aspiration bounds after a root fail high/low. SearchRoot is
+    //fail-soft on a beta cutoff, so `score` can sit far above beta - jump
+    //straight past it instead of walking the fixed 33*relax steps out one
+    //re-search at a time. (Fail low is fail-hard - SearchRoot returns alpha
+    //unchanged - so the score term is a no-op there today; kept symmetric in
+    //case the root ever becomes fail-soft on the low side.)
+    public static int WidenBeta(int beta, int relax, int score)
+    {
+        return Math.Min(10000, Math.Max(beta + (ASPIRATION_WINDOW * relax), score + ASPIRATION_WINDOW));
+    }
+
+    public static int WidenAlpha(int alpha, int relax, int score)
+    {
+        return Math.Max(-10000, Math.Min(alpha - (ASPIRATION_WINDOW * relax), score - ASPIRATION_WINDOW));
+    }
+
     static void PrintMetrics(AlphaBetaMetrics metrics, TimeSpan searchTime)
     {
         //prevent index out of bounds.
@@ -109,8 +127,8 @@ public static class Iterate
             int alphaRelax = 1, betaRelax = 1;
             if (i > 0)
             {
-                beta = alpha + 33;
-                alpha = alpha - 33;
+                beta = alpha + ASPIRATION_WINDOW;
+                alpha = alpha - ASPIRATION_WINDOW;
             }
 
             do
@@ -130,14 +148,14 @@ public static class Iterate
                     if(score == 10000)
                         break;
 
-                    beta = Math.Min(10000, beta + (33 * betaRelax));
+                    beta = WidenBeta(beta, betaRelax, score);
                     betaRelax *= 4;
                 }
                 else if (score <= alpha)
                 {
                     if(score == -10000)
                         break;
-                    alpha = Math.Max(-10000, alpha - (33 * alphaRelax));
+                    alpha = WidenAlpha(alpha, alphaRelax, score);
                     alphaRelax *= 4;
                 }
             } while (!state.TimeUp); //keep searching for a PV move until time is up
