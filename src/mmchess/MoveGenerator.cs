@@ -623,7 +623,12 @@ public class MoveGenerator
         }
     }
 
-    public static IList<Move> GenerateCapturesAndPromotions(Board b, bool fullPromo=true)
+    // Move set for quiescence search: when NOT in check, this generates 
+    // captures and promotions only. When IN check, it returns
+    // the FULL legal evasion set instead (king flight, blocks, and captures of
+    // the checker - not just captures), since quiescence can't just stand pat
+    // and ignore a check the way it can ignore a quiet position.
+    public static IList<Move> GenerateQuiescenceMoves(Board b, bool fullPromo=true)
     {
         int xside = b.SideToMove ^ 1;
         List<Move> list = new List<Move>();

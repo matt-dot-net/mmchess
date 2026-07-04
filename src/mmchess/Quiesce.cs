@@ -6,9 +6,27 @@ public partial class AlphaBeta
 {
     public const int MaxCheckChaseDepth = 6;
 
-    int OrderQuiesceMove(Move m)
+    // "Non-capture" means something different depending on check status:
+    // - Not in check: GenerateQuiescenceMoves only ever returns captures,
+    //   plus quiet (non-capturing) promotion pushes - those still deserve
+    //   LvaMvv's promotion-value ordering, same as always.
+    // - In check: non-captures are real evasions (king flight or blocks), which
+    //   LvaMvv doesn't meaningfully order at all (it'd rank them by the moving
+    //   piece's own value, an accident of an empty destination square scoring 0).
+    //   Order captures - including capturing the checking piece - first by
+    //   LvaMvv, then king flight, then blocking moves last.
+    int OrderQuiesceMove(Move m, bool inCheck)
     {
-        return LvaMvv(m);
+        if ((m.Bits & (byte)MoveBits.Capture) != 0)
+            return 200_000 + LvaMvv(m);
+
+        if (!inCheck)
+            return LvaMvv(m); // quiet promotion push - still rank by what it promotes to
+
+        if ((m.Bits & (byte)MoveBits.King) != 0)
+            return 100_000;
+
+        return 0;
     }
 
     // checkChaseDepth counts consecutive quiescence plies spent resolving an
@@ -59,8 +77,8 @@ public partial class AlphaBeta
         }
 
         var moves = MoveGenerator
-            .GenerateCapturesAndPromotions(MyBoard,false)
-            .OrderByDescending((m) => OrderQuiesceMove(m));
+            .GenerateQuiescenceMoves(MyBoard,false)
+            .OrderByDescending((m) => OrderQuiesceMove(m, inCheck));
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;
 
