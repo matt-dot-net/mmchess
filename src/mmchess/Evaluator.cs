@@ -614,10 +614,15 @@ public static class Evaluator
         return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
     }
 
-    static PawnScore EvaluatePawns(Board b)
+    // Pure pawn-structure score (doubled/passed pawns, per-file occupancy) -
+    // a function of pawn placement only, so it's safe to cache by
+    // Board.PawnHashKey. Deliberately excludes blocked-pawn status (see
+    // EvaluateBlockedPawns) since that depends on Board.AllPieces, which can
+    // change without any pawn moving. Eval is White-relative (White minus
+    // Black); EvaluatePawns below converts to side-to-move-relative.
+    static PawnScore EvaluatePawnStructure(Board b)
     {
         int[] eval = new int[2];
-        var fileMask = Board.FileMask;
         var returnVal = new PawnScore();
         for (int side = 0; side < 2; side++)
         {
@@ -663,8 +668,29 @@ public static class Evaluator
                     eval[side] +=
                         PassedPawnBonus * distanceMultiplier;
                 }
+            }
+        }
 
-                //blocked pawns
+        returnVal.Eval = eval[0] - eval[1];
+        return returnVal;
+    }
+
+    // Not cacheable: whether a pawn is blocked depends on any piece (not
+    // just pawns) sitting on the square ahead of it, so this has to be
+    // recomputed every call rather than reused from the pawn hash table.
+    // Cheap regardless - just a per-pawn bit check. Returns a White-relative
+    // (White minus Black) score, same convention as EvaluatePawnStructure.
+    static int EvaluateBlockedPawns(Board b)
+    {
+        int[] eval = new int[2];
+        for (int side = 0; side < 2; side++)
+        {
+            var p = b.Pawns[side];
+            while (p > 0)
+            {
+                var pawnsq = p.BitScanForward();
+                p ^= BitMask.Mask[pawnsq];
+
                 if (side == 0 && pawnsq > 7)
                 {
                     if ((b.AllPieces & BitMask.Mask[pawnsq - 8]) > 0)
@@ -677,8 +703,27 @@ public static class Evaluator
                 }
             }
         }
+        return eval[0] - eval[1];
+    }
 
-        returnVal.Eval = eval[b.SideToMove] - eval[b.SideToMove ^ 1];
-        return returnVal;
+    static PawnScore EvaluatePawns(Board b)
+    {
+        var structure = PawnHashTable.Instance.Probe(b.PawnHashKey);
+        if (structure == null)
+        {
+            structure = EvaluatePawnStructure(b);
+            PawnHashTable.Instance.Store(b.PawnHashKey, structure);
+        }
+
+        var whiteRelativeEval = structure.Eval + EvaluateBlockedPawns(b);
+
+        //don't mutate the cached entry - build a fresh result using its
+        //(immutable once stored) Files data plus our own side-to-move-
+        //relative Eval combining the cached and always-fresh components
+        return new PawnScore
+        {
+            Files = structure.Files,
+            Eval = b.SideToMove == 0 ? whiteRelativeEval : -whiteRelativeEval
+        };
     }
 }

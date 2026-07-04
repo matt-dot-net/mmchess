@@ -6,11 +6,18 @@ namespace mmchess.Test;
 
 public class IterateOutputTests
 {
+    // ShowThinking=true makes DoIterate write to *both* streams (per-depth
+    // PV lines to stdout, the metrics dump to stderr) - redirecting only the
+    // one a given test cares about still lets the other leak straight to the
+    // real console, so both helpers swap both streams and discard whichever
+    // one isn't being asserted on.
     static string CaptureStdOut(GameState state)
     {
         var originalOut = Console.Out;
+        var originalError = Console.Error;
         var capturedOut = new StringWriter();
         Console.SetOut(capturedOut);
+        Console.SetError(new StringWriter());
         try
         {
             Iterate.DoIterate(state, () => { });
@@ -18,8 +25,28 @@ public class IterateOutputTests
         finally
         {
             Console.SetOut(originalOut);
+            Console.SetError(originalError);
         }
         return capturedOut.ToString();
+    }
+
+    static string CaptureStdErr(GameState state)
+    {
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        var capturedError = new StringWriter();
+        Console.SetOut(new StringWriter());
+        Console.SetError(capturedError);
+        try
+        {
+            Iterate.DoIterate(state, () => { });
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+        return capturedError.ToString();
     }
 
     [Fact]
@@ -83,5 +110,52 @@ public class IterateOutputTests
         Assert.DoesNotContain("FirstMoveFH%", output);
         Assert.DoesNotContain("NullMoveTries", output);
         Assert.DoesNotContain("HashTable:", output);
+    }
+
+    [Fact]
+    public void DoIterateWritesNothingToStdErrWhenNotShowingThinking()
+    {
+        // The post-search metrics dump (Nodes=, FirstMoveFH%, etc.) goes to
+        // stderr rather than stdout, but it used to print unconditionally on
+        // every DoIterate call regardless of ShowThinking - including from
+        // every test in the suite that exercises DoIterate, cluttering test
+        // output. Gate it the same way the rest of the "thinking" output
+        // already is.
+        var state = new GameState
+        {
+            ComputerSide = 0,
+            ShowThinking = false,
+            TimeControl = new TimeControl
+            {
+                Type = TimeControlType.FixedTimePerMove,
+                FixedTimePerSearchSeconds = 1
+            }
+        };
+
+        var output = CaptureStdErr(state);
+
+        Assert.Equal(string.Empty, output);
+    }
+
+    [Fact]
+    public void DoIterateWritesMetricsToStdErrWhenShowingThinking()
+    {
+        // Companion to the test above: confirm the gate suppresses metrics
+        // when ShowThinking is off without silently dropping them altogether
+        // - epdtest and interactive "post" mode still rely on seeing them.
+        var state = new GameState
+        {
+            ComputerSide = 0,
+            ShowThinking = true,
+            TimeControl = new TimeControl
+            {
+                Type = TimeControlType.FixedTimePerMove,
+                FixedTimePerSearchSeconds = 1
+            }
+        };
+
+        var output = CaptureStdErr(state);
+
+        Assert.Contains("Nodes=", output);
     }
 }

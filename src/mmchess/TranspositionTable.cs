@@ -390,7 +390,28 @@ public class TranspositionTable
                 subpieces ^= BitMask.Mask[sq];
 
                 hashKey ^= HashKeys[side,(int)Piece.Pawn-1,sq];
-            }                
+            }
+        }
+        return hashKey;
+    }
+
+    // Pawn-placement-only hash, reusing the same per-square pawn keys as the
+    // main position hash (an independent XOR accumulation over a subset of
+    // squares is fine for a separate table's key - it doesn't need its own
+    // random key set). Deliberately excludes side-to-move, castling, and en
+    // passant: none of those affect pawn structure itself.
+    public static ulong GetPawnHashKeyForPosition(Board b)
+    {
+        ulong hashKey = 0;
+        for (int side = 0; side < 2; side++)
+        {
+            ulong pawns = b.Pawns[side];
+            while (pawns > 0)
+            {
+                int sq = pawns.BitScanForward();
+                pawns ^= BitMask.Mask[sq];
+                hashKey ^= HashKeys[side, (int)Piece.Pawn - 1, sq];
+            }
         }
         return hashKey;
     }

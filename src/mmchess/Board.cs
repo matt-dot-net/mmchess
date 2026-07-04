@@ -32,6 +32,7 @@ public class Board
     public ulong EnPassant { get; set; }
     public int SideToMove { get; set; }
     public ulong HashKey { get; set; }
+    public ulong PawnHashKey {get;set;}
 
     public static readonly ulong[] FileMask = new ulong[8];
     public static readonly ulong[] RankMask = new ulong[8];
@@ -115,6 +116,7 @@ public class Board
             this.Pieces[i] = b.Pieces[i];
         }
         HashKey = b.HashKey;
+        PawnHashKey = b.PawnHashKey;
     }
 
     public Board()
@@ -159,6 +161,7 @@ public class Board
 
         BuildRotatedBoards(this);
         HashKey = TranspositionTable.GetHashKeyForPosition(this);
+        PawnHashKey = TranspositionTable.GetPawnHashKeyForPosition(this);
     }
 
     private static void BuildRotatedBoards(Board b)
@@ -355,6 +358,7 @@ public class Board
         //remove the Pawn
         HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn-1, m.To];
         HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)piece - 1, m.To];
+        PawnHashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn - 1, m.To];
     }
 
     void UpdateCapture(Move m, HistoryMove hm)
@@ -407,6 +411,7 @@ public class Board
             AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[epSq]];
             AllPiecesR90 ^= BitMask.Mask[Rotated90Map[epSq]];
             HashKey ^= TranspositionTable.HashKeys[xside, (int)Piece.Pawn - 1, epSq];
+            PawnHashKey ^= TranspositionTable.HashKeys[xside, (int)Piece.Pawn - 1, epSq];
             return;
         }
         else if ((King[xside] & BitMask.Mask[m.To]) > 0)
@@ -422,6 +427,8 @@ public class Board
         AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
         AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
         HashKey ^= TranspositionTable.HashKeys[xside, (int)p - 1, sq];
+        if (p == Piece.Pawn)
+            PawnHashKey ^= TranspositionTable.HashKeys[xside, (int)Piece.Pawn - 1, sq];
 
     }
 
@@ -438,6 +445,14 @@ public class Board
         AllPiecesR90 ^= (BitMask.Mask[Rotated90Map[m.From]] | BitMask.Mask[Rotated90Map[m.To]]);
         HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)p - 1, m.From];
         HashKey ^= TranspositionTable.HashKeys[SideToMove, (int)p - 1, m.To];
+        if (p == Piece.Pawn)
+        {
+            // for a promoting move, UpdatePromotion additionally re-toggles the
+            // "to" term below, cancelling it out - net effect is no pawn ends
+            // up at the promotion square, matching Pawns[] itself
+            PawnHashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn - 1, m.From];
+            PawnHashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn - 1, m.To];
+        }
 
     }
 
@@ -583,6 +598,8 @@ public class Board
         AllPiecesR45 ^= BitMask.Mask[RotatedR45Map[sq]];
         AllPiecesR90 ^= BitMask.Mask[Rotated90Map[sq]];
         HashKey ^= TranspositionTable.HashKeys[xside, (int)p - 1, sq];
+        if (p == Piece.Pawn)
+            PawnHashKey ^= TranspositionTable.HashKeys[xside, (int)Piece.Pawn - 1, sq];
     }
 
     private void UpdateBoards(Piece p, Move m, int sideToMove, ulong moveMask)
@@ -611,7 +628,7 @@ public class Board
         {
             b.Pieces[i] = b.Rooks[i] = b.Bishops[i] = b.Knights[i] = b.Queens[i] = b.King[i] = b.Pawns[i] = 0;
             b.CastleStatus = 0;
-            b.EnPassant = b.HashKey = 0;
+            b.EnPassant = b.HashKey = b.PawnHashKey = 0;
         }
 
         var groups = input.Split(' ');
@@ -728,6 +745,7 @@ public class Board
         //skip last two items
 
         b.HashKey = TranspositionTable.GetHashKeyForPosition(b);
+        b.PawnHashKey = TranspositionTable.GetPawnHashKeyForPosition(b);
         return b;
     }
 }

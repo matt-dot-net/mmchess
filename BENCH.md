@@ -74,3 +74,25 @@ warm hash table.
 fresh engine process (or restart between invocations) to get an
 uncontaminated number - chaining multiple `bench` calls in one session only
 warms the shared TT for whichever call goes second.
+
+## 2026-07-04 - pawn hash table (`PawnHashTable`, caches doubled/passed pawn score by `Board.PawnHashKey`)
+
+```
+bench wac.epd 7
+Bench: 300 positions at depth 7
+Nodes=13287674, QNodes=8322396, Knps=1256
+FirstMoveFH%=94.74, KillerFH%=17.15, TTFH%=24.90, FailHigh=1244808
+NullMoveTries=269143, NullMoveFH%=60.23, MateThreats=279, LMRResearch=2405, FPrune=2365510, EFPrune=456327
+```
+
+Every search-behavior number here is identical to the history-heuristic
+clean depth-7 run above (`Nodes`, `FirstMoveFH%`, `FailHigh`, `NullMoveTries`,
+`MateThreats`, ...) - expected, since the pawn hash table doesn't change any
+evaluation value or search decision, just skips recomputing the same
+structural pawn score twice. Only `Knps` moved (1199→1256, ~+4.7%), which is
+exactly the kind of change this feature should produce: pure throughput, zero
+effect on determinism. Identical node counts across a 300-position, ~13M-node
+run is itself a good correctness sanity check - if the pawn hash had a
+caching bug that leaked stale values into eval, it would almost certainly
+have perturbed some fail-high/pruning decision somewhere and changed the
+node count.

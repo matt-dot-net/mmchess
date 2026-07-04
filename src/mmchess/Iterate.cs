@@ -43,6 +43,8 @@ public static class Iterate
         Console.Error.WriteLine("HashTable: FH%={0:0.0} Hit%={1:0.0}",
             100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1,
             100*(double)TranspositionTable.Instance.Hits/(double)TranspositionTable.Instance.Probes);
+        Console.Error.WriteLine("PawnHashTable: Hit%={0:0.0}",
+            100*(double)PawnHashTable.Instance.Hits/(double)PawnHashTable.Instance.Probes);
     }
 
     static TimeSpan GetThinkTimeSpan(GameState state)
@@ -156,7 +158,8 @@ public static class Iterate
             if (state.TimeControl.Type == TimeControlType.FixedDepth && i >= state.DepthLimit)
                 break;
         }
-        PrintMetrics(ab.Metrics, DateTime.Now - startTime);
+        if (state.ShowThinking)
+            PrintMetrics(ab.Metrics, DateTime.Now - startTime);
         metrics = ab.Metrics;
         return bestMove;
     }
