@@ -201,7 +201,7 @@ public class Board
         if ((m.Bits & (byte)(MoveBits.King | MoveBits.Rook)) > 0)
         {
             //we've moved a king or a rook
-            if ((BitMask.Mask[m.From] & King[SideToMove]) > 0) //if we are moving the king        
+            if ((BitMask.Mask[m.From] & King[SideToMove]) > 0) //if we are moving the king
             {
                 //moved a king, wipe out castle status
                 CastleStatus &= (byte)(SideToMove == 1 ? 3 : 12);
@@ -213,6 +213,25 @@ public class Board
                 else
                     CastleStatus &= (byte)(m.From.File() == 7 ? 14 : 13);
             }
+        }
+    }
+
+    //if a rook gets captured on its home corner, the owning side's castling
+    //right for that side has to be revoked too - it never moved itself, so
+    //UpdateCastleStatus (which only looks at the mover's own king/rook) never
+    //catches this, and the engine would otherwise still consider O-O/O-O-O
+    //legal with no rook left to actually castle with
+    void UpdateCastleStatusForCapturedRook(Move m)
+    {
+        if ((m.Bits & (byte)MoveBits.Capture) == 0)
+            return;
+
+        switch (m.To)
+        {
+            case 0: CastleStatus &= 0xF7; break;  //a8 captured: clear black queenside (8)
+            case 7: CastleStatus &= 0xFB; break;  //h8 captured: clear black kingside (4)
+            case 56: CastleStatus &= 0xFD; break; //a1 captured: clear white queenside (2)
+            case 63: CastleStatus &= 0xFE; break; //h1 captured: clear white kingside (1)
         }
     }
 
@@ -272,11 +291,12 @@ public class Board
             MakeCastleMove(m);
 
         UpdateCastleStatus(m);
+        UpdateCastleStatusForCapturedRook(m);
         if(CastleStatus != hm.CastleStatus){
             HashKey ^= TranspositionTable.CastleStatusKey[hm.CastleStatus];
             HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
         }
-            
+
         UpdateCapture(m, hm);
         UpdateBitBoards(m);
 
