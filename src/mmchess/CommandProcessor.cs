@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -39,7 +40,8 @@ public enum CommandVal
     Accepted,
     Rejected,
     SD,
-    ST
+    ST,
+    Bench
 }
 public class Command
 {
@@ -271,6 +273,9 @@ public static class CommandParser
         else if (cmd.Value == CommandVal.EpdTest)
             EpdTest(cmd);
 
+        else if (cmd.Value == CommandVal.Bench)
+            Bench(cmd);
+
         else if (cmd.Value == CommandVal.SetBoard)
         {
             try
@@ -282,6 +287,98 @@ public static class CommandParser
                 Console.Error.WriteLine(ex.Message);
             }
         }
+    }
+
+    // Fixed-depth, no-wall-clock move-ordering benchmark: runs every position
+    // in an EPD/FEN file at the same search depth and reports aggregate
+    // fail-high metrics (FirstMoveFailHigh% above all - see AlphaBeta.cs
+    // Search's move loop). Unlike EpdTest, this isn't measuring "can we find
+    // the tactic in N seconds" (wall-clock time makes small deltas noise -
+    // depth is what's reproducible across runs/machines). Use this to A/B
+    // move-ordering changes: same file, same depth, compare FirstMoveFailHigh%
+    // and total node count before/after.
+    static void Bench(Command cmd)
+    {
+        if (cmd.Arguments.Length < 2)
+        {
+            Console.Error.WriteLine("Usage: bench <epdfile> [depth]");
+            return;
+        }
+
+        int depth = 7;
+        if (cmd.Arguments.Length >= 3 && !int.TryParse(cmd.Arguments[2], out depth))
+        {
+            Console.Error.WriteLine("Error: invalid depth {0}", cmd.Arguments[2]);
+            return;
+        }
+
+        var aggregate = new AlphaBetaMetrics();
+        int positions = 0;
+        var sw = Stopwatch.StartNew();
+
+        var originalError = Console.Error;
+        Console.SetError(TextWriter.Null); // suppress each position's per-search PrintMetrics noise
+        try
+        {
+            using var fs = new FileStream(cmd.Arguments[1], FileMode.Open);
+            var sr = new StreamReader(fs);
+            string line;
+            while ((line = sr.ReadLine()) != null)
+            {
+                if (String.IsNullOrWhiteSpace(line))
+                    continue;
+
+                var gameState = new GameState
+                {
+                    GameBoard = Board.ParseFenString(line),
+                    TimeControl = new TimeControl { Type = TimeControlType.FixedDepth },
+                    DepthLimit = depth
+                };
+
+                Iterate.DoIterate(gameState, () => { }, out var metrics);
+
+                aggregate.Nodes += metrics.Nodes;
+                aggregate.QNodes += metrics.QNodes;
+                aggregate.FailHigh += metrics.FailHigh;
+                aggregate.FirstMoveFailHigh += metrics.FirstMoveFailHigh;
+                aggregate.KillerFailHigh += metrics.KillerFailHigh;
+                aggregate.TTFailHigh += metrics.TTFailHigh;
+                aggregate.NullMoveTries += metrics.NullMoveTries;
+                aggregate.NullMoveFailHigh += metrics.NullMoveFailHigh;
+                aggregate.MateThreats += metrics.MateThreats;
+                aggregate.LMRResearch += metrics.LMRResearch;
+                aggregate.FPrune += metrics.FPrune;
+                aggregate.EFPrune += metrics.EFPrune;
+                positions++;
+            }
+        }
+        catch (FileNotFoundException fex)
+        {
+            Console.Error.WriteLine(fex.Message);
+            return;
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+
+        sw.Stop();
+
+        Console.WriteLine("Bench: {0} positions at depth {1}", positions, depth);
+        Console.WriteLine("Nodes={0}, QNodes={1}, Knps={2:0}",
+            aggregate.Nodes, aggregate.QNodes, aggregate.Nodes / 1000.0 / sw.Elapsed.TotalSeconds);
+        Console.WriteLine("FirstMoveFH%={0:0.00}, KillerFH%={1:0.00}, TTFH%={2:0.00}, FailHigh={3}",
+            100.0 * aggregate.FirstMoveFailHigh / (aggregate.FailHigh + 1),
+            100.0 * aggregate.KillerFailHigh / (aggregate.FailHigh + 1),
+            100.0 * aggregate.TTFailHigh / (aggregate.FailHigh + 1),
+            aggregate.FailHigh);
+        Console.WriteLine("NullMoveTries={0}, NullMoveFH%={1:0.00}, MateThreats={2}, LMRResearch={3}, FPrune={4}, EFPrune={5}",
+            aggregate.NullMoveTries,
+            100.0 * aggregate.NullMoveFailHigh / (aggregate.NullMoveTries + 1),
+            aggregate.MateThreats,
+            aggregate.LMRResearch,
+            aggregate.FPrune,
+            aggregate.EFPrune);
     }
 
     static void EpdTest(Command cmd)

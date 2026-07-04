@@ -78,6 +78,11 @@ public static class Iterate
 
     public static Move DoIterate(GameState state, Action interrupt)
     {
+        return DoIterate(state, interrupt, out _);
+    }
+
+    public static Move DoIterate(GameState state, Action interrupt, out AlphaBetaMetrics metrics)
+    {
         state.TimeUp = false;
         var startTime = DateTime.Now;
         var timeLimit = GetThinkTimeSpan(state);
@@ -143,8 +148,16 @@ public static class Iterate
 
             if (Math.Abs(score) > 9900) // stop if we have found mate
                 break;
+
+            //fixed-depth mode ("sd" command, benchmarking): stop once we've
+            //completed the requested depth instead of running to MAX_DEPTH -
+            //GetThinkTimeSpan returns TimeSpan.MaxValue for this mode, so
+            //nothing else would ever set state.TimeUp
+            if (state.TimeControl.Type == TimeControlType.FixedDepth && i >= state.DepthLimit)
+                break;
         }
         PrintMetrics(ab.Metrics, DateTime.Now - startTime);
+        metrics = ab.Metrics;
         return bestMove;
     }
 
