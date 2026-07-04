@@ -2,15 +2,18 @@
 
 Fixed-depth benchmark via the `bench <epdfile> [depth]` command (see
 `CommandProcessor.cs`). Runs every position in the file at a fixed search
-depth (no wall clock) and reports aggregate search-efficiency metrics -
-`FirstMoveFH%` above all, since that's the fraction of fail-highs found on
-the very first move tried at a node (higher = less wasted search from better
-move ordering).
+depth and reports aggregate search-efficiency metrics - `FirstMoveFH%` above
+all for move ordering, since that's the fraction of fail-highs found on the
+very first move tried at a node (higher = less wasted search from better move
+ordering).
 
 Compare entries at the **same depth** only - node counts aren't linearly
 comparable across depths, and Knps varies by machine. FirstMoveFH% and node
 counts should be reproducible across machines since search is deterministic
-and single-threaded.
+and single-threaded. When a change deliberately removes bad branches (for
+example legality-filtering qsearch captures), total nodes can go down while
+each node gets more expensive, so compare `Elapsed` first, then Knps and node
+count together.
 
 ## 2026-07-04 - baseline (post null-move mate-threat fix, pre history heuristic)
 

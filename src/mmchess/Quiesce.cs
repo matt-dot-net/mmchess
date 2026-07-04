@@ -96,8 +96,16 @@ public partial class AlphaBeta
             if(!inCheck && StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
                 continue;
 
+
+            if(inCheck) {
+                MyBoard.MakeMove(m,false);
+            }
+            else
+            {
+                if (!MyBoard.MakeMove(m,true))
+                    continue;
+            }
             anyMoveTried = true;
-            MyBoard.MakeMove(m,false);
             Ply++;
 
             score = -Quiesce(-beta, -alpha, nextCheckChaseDepth);
