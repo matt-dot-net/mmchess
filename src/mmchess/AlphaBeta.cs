@@ -273,6 +273,15 @@ public partial class AlphaBeta
                 TranspositionTable.Instance.Store(MyBoard.HashKey, null, depth, nmScore, EntryType.CUT, Ply);
                 return nmScore;
             }
+
+            //giving the opponent a free move let them find a mate score against
+            //us - that's a genuine mate threat, not just a quiet position, so
+            //don't let LMR/futility pruning skip past our defense below
+            if (nmScore <= -9900)
+            {
+                Metrics.MateThreats++;
+                mateThreat = 1;
+            }
         }
 
         var moves = MoveGenerator
