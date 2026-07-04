@@ -38,17 +38,12 @@ usable as an analysis tool rather than only a game player.
 
 # Search / performance bugs costing Elo
 
-## 1. MAX_DEPTH handling double-unmakes moves
-`Search` and `Quiesce` both call `TakeBack()` when `Ply >= MAX_DEPTH`, but
-their callers also take back after the recursive call. At the depth cap,
-return a static eval of the current board without unmaking.
-
-## 2. LMR reduction value leaks between moves
+## 1. LMR reduction value leaks between moves
 `lmr` is declared outside the move loop in `Search`, so once a late quiet move
 sets a reduction, later moves that should not be reduced can inherit it. Reset
 `lmr` to 0 inside each loop iteration before applying LMR conditions.
 
-## 3. Castling generation misses/permits bad queenside castles
+## 2. Castling generation misses/permits bad queenside castles
 `GenerateCastleMoves` uses `else if` for queenside castling, so queenside is
 skipped whenever kingside rights also exist. The black queenside attack check
 also tests white-side squares 59/58 instead of black-side squares 3/2.

@@ -43,7 +43,6 @@ public partial class AlphaBeta
 
         if (Ply >= MAX_DEPTH)
         {
-            TakeBack();
             return Evaluator.Evaluate(MyBoard,-10000,10000);
         }
 

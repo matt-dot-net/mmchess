@@ -210,18 +210,17 @@ public partial class AlphaBeta
     {
 
         Metrics.Nodes++;
+        if (Ply >= MAX_DEPTH)
+        {
+            return Evaluator.Evaluate(MyBoard,-10000,10000);
+        }
+
         PvLength[Ply] = Ply;
         var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
         int ext = inCheck ? 1 : 0;
 
         if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey))
             return CurrentDrawScore;
-
-        if (Ply >= MAX_DEPTH)
-        {
-            TakeBack();
-            return Evaluator.Evaluate(MyBoard,-10000,10000);
-        }
 
         if ((Metrics.Nodes & 65535) == 65535)
         {
