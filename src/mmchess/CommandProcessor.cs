@@ -356,9 +356,6 @@ public static class CommandParser
                 aggregate.FPrune += metrics.FPrune;
                 aggregate.EFPrune += metrics.EFPrune;
                 positions++;
-
-                Console.Write('.');
-                Console.Out.Flush();
             }
         }
         finally
