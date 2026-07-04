@@ -17,7 +17,12 @@ public partial class AlphaBeta
     GameState MyGameState { get; set; }
     Action Interrupt { get; set; }
     Move[,] Killers = new Move[MAX_DEPTH, 2];
-    //int [,] HistoryHeuristic = new int[6,64];
+    // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
+    // ply, where side-to-move already alternates implicitly along one line
+    // of play), history accumulates across the whole tree, where the same
+    // ply can be reached by either side across different branches - so side
+    // has to be its own index here to keep White's and Black's stats apart.
+    int[,,] HistoryHeuristic = new int[2, 6, 64];
     public int CurrentDrawScore { get; set; }
     
 
@@ -57,39 +62,41 @@ public partial class AlphaBeta
 
     }
 
-    int OrderMove(Move m, TranspositionTableEntry entry)
+    // Returns (tier, score): moves are sorted by tier first, then score
+    // within that tier - avoids needing every tier's numeric range to be
+    // hand-verified against every other tier's (a single combined int score
+    // would need history's accumulated counts to never grow large enough to
+    // spill into the killer/capture ranges above it).
+    (int Tier, int Score) OrderMove(Move m, TranspositionTableEntry entry)
     {
-        if (entry != null)
-        {
-            if (m.Value == entry.MoveValue)
-                return int.MaxValue;// search this move first
-        }
+        if (entry != null && m.Value == entry.MoveValue)
+            return (4, 0); // search this move first
 
         if ((m.Bits & (byte)MoveBits.Capture) > 0)
         {
 
             //winning and even captures
             if(Evaluator.PieceValueOnSquare(MyBoard, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
-                return LvaMvv(m);
+                return (3, LvaMvv(m));
             else
             {
                 //verify that it is actually losing with SEE
                 if(StaticExchange.Eval(MyBoard,m, MyBoard.SideToMove) >= 0)
-                    return LvaMvv(m); 
-                return int.MinValue + LvaMvv(m);//losing captures at the bottom
+                    return (3, LvaMvv(m));
+                return (0, LvaMvv(m));//losing captures at the bottom
             }
 
         }
         else
         {
-            //these happen before losing captures
+            //killers come before history-ordered quiets
             if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
-                return 2; 
-            else if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
-                return 1;
-        }
+                return (2, 1);
+            if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
+                return (2, 0);
 
-        return 0;
+            return (1, HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To]);
+        }
     }
 
     private int LvaMvv(Move m)
@@ -464,7 +471,7 @@ public partial class AlphaBeta
 
     void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
     {
-        UpdateKillers(m,depth);
+        UpdateHeuristics(m,depth);
         Metrics.FailHigh++;
 
         if (entry != null && entry.MoveValue == m.Value)
@@ -480,17 +487,17 @@ public partial class AlphaBeta
             MyBoard.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT, Ply);
     }
 
-    private void UpdateKillers(Move m, int depth)
+    private void UpdateHeuristics(Move m, int depth)
     {
-        
+
         if ((m.Bits & (byte)MoveBits.Capture) > 0)
             return;
-        
+
+        HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To] += depth * depth;
+
         if (Killers[Ply, 1] != null && Killers[Ply, 1].Value != m.Value)
             Killers[Ply, 0] = Killers[Ply, 1];
 
         Killers[Ply, 1] = m;
-    
-//            HistoryHeuristic[(int)Move.GetPieceFromMoveBits((MoveBits)m.Bits)-1,m.To] += depth * depth;
     }
 }

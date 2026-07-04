@@ -312,6 +312,12 @@ public static class CommandParser
             return;
         }
 
+        if (!File.Exists(cmd.Arguments[1]))
+        {
+            Console.Error.WriteLine("Error: file not found: {0}", cmd.Arguments[1]);
+            return;
+        }
+
         var aggregate = new AlphaBetaMetrics();
         int positions = 0;
         var sw = Stopwatch.StartNew();
@@ -350,12 +356,10 @@ public static class CommandParser
                 aggregate.FPrune += metrics.FPrune;
                 aggregate.EFPrune += metrics.EFPrune;
                 positions++;
+
+                Console.Write('.');
+                Console.Out.Flush();
             }
-        }
-        catch (FileNotFoundException fex)
-        {
-            Console.Error.WriteLine(fex.Message);
-            return;
         }
         finally
         {
@@ -364,6 +368,7 @@ public static class CommandParser
 
         sw.Stop();
 
+        Console.WriteLine();
         Console.WriteLine("Bench: {0} positions at depth {1}", positions, depth);
         Console.WriteLine("Nodes={0}, QNodes={1}, Knps={2:0}",
             aggregate.Nodes, aggregate.QNodes, aggregate.Nodes / 1000.0 / sw.Elapsed.TotalSeconds);
