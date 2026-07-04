@@ -88,8 +88,12 @@ public partial class AlphaBeta
             if((BitMask.Mask[m.To] & (MyBoard.King[0]|MyBoard.King[1])) > 0)
                 return beta;
 
-            //if SEE says this is a losing capture, we prune it
-            if(StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
+            //if SEE says this is a losing capture, we prune it - but only when
+            //not in check: every legal evasion has to be considered when
+            //responding to check, since none of them can be skipped as "not
+            //worth it" - the alternative (not responding) isn't legal at all,
+            //and a bad trade is always better than being checkmated
+            if(!inCheck && StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
                 continue;
 
             anyMoveTried = true;
