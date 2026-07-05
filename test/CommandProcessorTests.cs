@@ -1,8 +1,125 @@
+using System;
+using System.IO;
 using Xunit;
 namespace mmchess.Test;
 
 public class CommandProcessorTests
 {
+    // cutechess-cli treats any engine output starting with "Illegal move"
+    // as a formal claim that the opponent's last move was illegal, and
+    // adjudicates the game AGAINST us when the claim is false. So only
+    // input shaped like a coordinate move may ever reach the MoveInput /
+    // "Illegal Move" path; everything else must be a known command or the
+    // xboard-spec "Error (unknown command)" reply.
+
+    [Fact]
+    public void MoveNowCommandIsNotTreatedAsMove()
+    {
+        // xboard "?" = move now; cutechess sends it around adjudications
+        var cmd = CommandParser.ParseCommand("?");
+        Assert.Equal(CommandVal.MoveNow, cmd.Value);
+    }
+
+    [Fact]
+    public void DrawOfferIsNotTreatedAsMove()
+    {
+        var cmd = CommandParser.ParseCommand("draw");
+        Assert.Equal(CommandVal.Draw, cmd.Value);
+    }
+
+    [Theory]
+    [InlineData("ping 1")]
+    [InlineData("xyzzy")]
+    [InlineData("e2e4x")] // move-ish but not a legal coordinate move shape
+    public void UnrecognizedInputParsesAsUnknownNotMove(string input)
+    {
+        var cmd = CommandParser.ParseCommand(input);
+        Assert.Equal(CommandVal.Unknown, cmd.Value);
+    }
+
+    [Theory]
+    [InlineData("e2e4")]
+    [InlineData("g7g8q")]
+    [InlineData("e1g1")]
+    public void CoordinateMovesStillParseAsMoveInput(string input)
+    {
+        var cmd = CommandParser.ParseCommand(input);
+        Assert.Equal(CommandVal.MoveInput, cmd.Value);
+    }
+
+    [Theory]
+    [InlineData("?")]
+    [InlineData("draw")]
+    [InlineData("ping 1")]
+    public void NonMoveInputNeverPrintsIllegalMove(string input)
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand(input), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.DoesNotContain("Illegal Move", stdout.ToString());
+    }
+
+    [Fact]
+    public void IllegalCoordinateMoveIsRejectedNotPlayed()
+    {
+        // e2e5 is move-shaped but not a legal move; ParseMove used to build
+        // it anyway and MakeMove trusted it, silently desyncing the board.
+        var state = new GameState { GameBoard = new Board() };
+        var hashBefore = state.GameBoard.HashKey;
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("e2e5"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("Illegal Move", stdout.ToString());
+        Assert.Equal(hashBefore, state.GameBoard.HashKey);
+    }
+
+    [Fact]
+    public void LegalCoordinateMoveIsPlayed()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        CommandParser.DoCommand(CommandParser.ParseCommand("e2e4"), state);
+
+        Assert.Equal(1, state.GameBoard.SideToMove);
+    }
+
+    [Fact]
+    public void UnknownCommandGetsXboardErrorReply()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("xyzzy"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("Error (unknown command): xyzzy", stdout.ToString());
+    }
+
     [Fact]
     public void ResultCommandParsesAsResultNotMoveInput()
     {

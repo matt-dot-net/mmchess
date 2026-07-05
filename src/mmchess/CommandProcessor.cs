@@ -41,7 +41,10 @@ public enum CommandVal
     Rejected,
     SD,
     ST,
-    Bench
+    Bench,
+    MoveNow,
+    Draw,
+    Unknown
 }
 public class Command
 {
@@ -59,6 +62,11 @@ public static class CommandParser
         ?? "unknown";
 
 
+    //coordinate-notation move with optional promotion piece - the only
+    //shape Move.ParseMove understands
+    static readonly Regex MoveShape =
+        new Regex("^[a-h][1-8][a-h][1-8][qrbn]?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public static Command ParseCommand(string input)
     {
         CommandVal cmd;
@@ -66,9 +74,17 @@ public static class CommandParser
         input = buffer[0];
         if(String.IsNullOrEmpty(input))
             return new Command { Value=CommandVal.NoOp};
+        if (input == "?") //xboard "move now" - not an enum-nameable token
+            return new Command { Value = CommandVal.MoveNow, Arguments = buffer };
         if (Enum.TryParse(input, true, out cmd))
             return new Command { Value = cmd, Arguments = buffer };
-        return new Command { Value = CommandVal.MoveInput, Arguments = new string[] { input } };
+        if (MoveShape.IsMatch(input))
+            return new Command { Value = CommandVal.MoveInput, Arguments = new string[] { input } };
+
+        //anything else must NOT fall through to move parsing: printing
+        //"Illegal Move" for a non-move reads to cutechess as a (false)
+        //illegal-move claim and forfeits the game by adjudication
+        return new Command { Value = CommandVal.Unknown, Arguments = buffer };
     }
 
     public static void DoCommand(Command cmd, GameState state)
@@ -114,11 +130,21 @@ public static class CommandParser
 
                 cmd.Value == CommandVal.Random ||
                  cmd.Value == CommandVal.Hard ||
-                 cmd.Value == CommandVal.Easy)
+                 cmd.Value == CommandVal.Easy ||
+                 cmd.Value == CommandVal.MoveNow ||
+                 cmd.Value == CommandVal.Draw)
         {
             //noop
             //we don't ponder, so hard/easy are both no-ops
+            //MoveNow ("?"): we search synchronously, so by the time we read
+            //it the move is already out - nothing to interrupt
+            //Draw: ignoring a draw offer declines it
 
+        }
+        else if (cmd.Value == CommandVal.Unknown)
+        {
+            //xboard-spec reply; harmless to GUIs, keeps a diagnostic trail
+            Console.WriteLine("Error (unknown command): {0}", cmd.Arguments[0]);
         }
         else if (cmd.Value == CommandVal.Post)
         {
@@ -251,8 +277,25 @@ public static class CommandParser
         }
         else if (cmd.Value == CommandVal.MoveInput)
         {
+            //ParseMove only decodes from/to/promotion - match it against
+            //the generated moves so move-shaped-but-illegal input (e.g.
+            //e2e5) can't slip through MakeMove and desync the board, and
+            //so castle/en-passant bits come from the generator
             var m = Move.ParseMove(state.GameBoard, cmd.Arguments[0]);
-            if (m == null || !state.GameBoard.MakeMove(m))
+            Move legal = null;
+            if (m != null)
+            {
+                foreach (var g in MoveGenerator.GenerateMoves(state.GameBoard))
+                {
+                    if (g.From == m.From && g.To == m.To && g.Promotion == m.Promotion)
+                    {
+                        legal = g;
+                        break;
+                    }
+                }
+            }
+
+            if (legal == null || !state.GameBoard.MakeMove(legal))
             {
                 Console.WriteLine("Illegal Move: {0}", cmd.Arguments[0]);
                 return;
