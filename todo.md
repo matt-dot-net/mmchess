@@ -45,6 +45,10 @@ into the texel-tuning task (#5).
 Report the top N lines and support infinite analysis, making the engine
 usable as an analysis tool rather than only a game player.
 
+## 8. One-legal move no search at root
+
+## 9. Tune hashtable size / make configurable
+
 # Search / performance bugs costing Elo
 
 ## 1. LMR reduction value leaks between moves
