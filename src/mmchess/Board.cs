@@ -29,6 +29,27 @@ public class Board
     public ulong Minors(int stm){
         return Knights[stm] | Bishops[stm];
     }
+
+    //dead position: no sequence of legal moves can mate either side.
+    //K v K, K+minor v K, and KB v KB with same-colored bishops. KNN v K
+    //is excluded - mate can't be forced but a helpmate exists, so it is
+    //not a draw by rule; eval's winnability capping handles it instead.
+    public bool IsInsufficientMaterial(){
+        if ((Pawns[0] | Pawns[1]) != 0)
+            return false;
+        if ((Rooks[0] | Rooks[1] | Queens[0] | Queens[1]) != 0)
+            return false;
+
+        var minorCount = (Minors(0) | Minors(1)).Count();
+        if (minorCount <= 1)
+            return true;
+
+        if (minorCount == 2 && Bishops[0] != 0 && Bishops[1] != 0)
+            return Bishops[0].BitScanForward().IsLightSquare() ==
+                   Bishops[1].BitScanForward().IsLightSquare();
+
+        return false;
+    }
     public ulong EnPassant { get; set; }
     public int SideToMove { get; set; }
     public ulong HashKey { get; set; }

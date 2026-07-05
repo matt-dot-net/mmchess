@@ -143,8 +143,20 @@ public static class Evaluator
 
     public static ulong[,] PassedPawnMask = new ulong[2, 64];
 
+    //Chebyshev distance to the nearest of d4/e4/d5/e5 (0..3)
+    static readonly int[] CenterDistance = new int[64];
+
     static Evaluator()
     {
+        for (int sq = 0; sq < 64; sq++)
+        {
+            CenterDistance[sq] = Math.Min(
+                Math.Min(SquareExtensions.KingDistance(sq, 27),   //d5
+                         SquareExtensions.KingDistance(sq, 28)),  //e5
+                Math.Min(SquareExtensions.KingDistance(sq, 35),   //d4
+                         SquareExtensions.KingDistance(sq, 36))); //e4
+        }
+
         //white pawns
         for (int sq = 8; sq < 56; sq++)
         {
@@ -230,6 +242,50 @@ public static class Evaluator
         return canWin;
     }
 
+    //KB+rook-pawn(s) vs bare king where the bishop doesn't control the
+    //promotion corner and the defending king is in or next to it - a
+    //classic fortress the attacker cannot break
+    static bool IsWrongRookPawnDraw(Board b, Evaluation e, int side)
+    {
+        int xside = side ^ 1;
+        if (e.Majors[side] > 0 || b.Knights[side] != 0)
+            return false;
+        if (b.Bishops[side].Count() != 1 || b.Pawns[side] == 0)
+            return false;
+        //only claim the fortress against a bare king
+        if (b.PieceCount(xside) > 0 || b.Pawns[xside] != 0)
+            return false;
+
+        int file;
+        if ((b.Pawns[side] & ~Board.FileMask[0]) == 0)
+            file = 0;
+        else if ((b.Pawns[side] & ~Board.FileMask[7]) == 0)
+            file = 7;
+        else
+            return false;
+
+        //promotion corner: rank 8 (squares 0-7) for white, rank 1 for black
+        int corner = side == 0 ? file : 56 + file;
+        if (b.Bishops[side].BitScanForward().IsLightSquare() == corner.IsLightSquare())
+            return false; //right bishop - it controls the corner
+
+        return SquareExtensions.KingDistance(b.King[xside].BitScanForward(), corner) <= 1;
+    }
+
+    //pure opposite-colored-bishop ending: one bishop each on opposite
+    //colors and no other pieces - notoriously drawish even pawns down
+    static bool IsOppositeBishopEnding(Board b, Evaluation e)
+    {
+        if (e.Majors[0] > 0 || e.Majors[1] > 0)
+            return false;
+        if (b.Knights[0] != 0 || b.Knights[1] != 0)
+            return false;
+        if (b.Bishops[0].Count() != 1 || b.Bishops[1].Count() != 1)
+            return false;
+        return b.Bishops[0].BitScanForward().IsLightSquare() !=
+               b.Bishops[1].BitScanForward().IsLightSquare();
+    }
+
     //a side that cannot mate can do no better than draw (cap at 0);
     //a side whose opponent cannot mate can never lose (floor at 0)
     static int ApplyWinnability(int eval, int canWin, int sideToMove)
@@ -255,10 +311,14 @@ public static class Evaluator
             return 0;
 
         var canWin = EvaluateWinners(b,e);
+        for (int i = 0; i < 2; i++)
+            if ((canWin & (1 << i)) != 0 && IsWrongRookPawnDraw(b, e, i))
+                canWin &= ~(1 << i);
+        var ocb = IsOppositeBishopEnding(b, e);
 
-        //attempt a lazy exit (on the capped material score, so a side
-        //that cannot win never lazy-exits with a winning score)
-        var lazy = ApplyWinnability(eval, canWin, b.SideToMove);
+        //attempt a lazy exit (on the scaled+capped material score, so a
+        //side that cannot win never lazy-exits with a winning score)
+        var lazy = ApplyWinnability(ocb ? eval / 2 : eval, canWin, b.SideToMove);
         if (lazy <= alpha - 300 || lazy >= beta + 300)
             return lazy;
 
@@ -272,11 +332,55 @@ public static class Evaluator
         }
         else
         {
-            eval += EvaluateKingEndGame(b);
+            //a bare king facing mating material: score the conversion
+            //(edge-driving + king proximity) instead of the static PST
+            int winner = -1;
+            if (b.Pawns[1] == 0 && b.PieceCount(1) == 0 && (canWin & 1) != 0)
+                winner = 0;
+            else if (b.Pawns[0] == 0 && b.PieceCount(0) == 0 && (canWin & 2) != 0)
+                winner = 1;
+
+            if (winner >= 0)
+            {
+                var conv = EvaluateMateConversion(b, winner);
+                eval += b.SideToMove == winner ? conv : -conv;
+            }
+            else
+                eval += EvaluateKingEndGame(b);
         }
 
+        if (ocb)
+            eval /= 2;
 
         return ApplyWinnability(eval, canWin, b.SideToMove);
+    }
+
+    //winner-relative score for converting a won bare-king ending: drive
+    //the defender to the edge (or to a corner of the bishop's color when
+    //mating with B+N) and bring the winning king up close
+    static int EvaluateMateConversion(Board b, int winner)
+    {
+        int loser = winner ^ 1;
+        var wk = b.King[winner].BitScanForward();
+        var lk = b.King[loser].BitScanForward();
+
+        var score = 20 * CenterDistance[lk]
+                  + 10 * (7 - SquareExtensions.KingDistance(wk, lk));
+
+        //KBN: mate can only be delivered in a corner of the bishop's color
+        if (b.Majors(winner) == 0 && b.Pawns[winner] == 0 &&
+            b.Bishops[winner].Count() == 1 && b.Knights[winner].Count() == 1)
+        {
+            var dark = !b.Bishops[winner].BitScanForward().IsLightSquare();
+            int cornerA = dark ? 7 : 0;   //h8 : a8
+            int cornerB = dark ? 56 : 63; //a1 : h1
+            var cornerDist = Math.Min(
+                SquareExtensions.KingDistance(lk, cornerA),
+                SquareExtensions.KingDistance(lk, cornerB));
+            score += 20 * (7 - cornerDist);
+        }
+
+        return score;
     }
 
     static int EvaluateKingEndGame(Board b)

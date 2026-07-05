@@ -128,7 +128,8 @@ public partial class AlphaBeta
     {
         PvLength[0]=0;
 
-        if (MyGameState.GameBoard.History.IsGameDrawn(MyBoard.HashKey))
+        if (MyGameState.GameBoard.History.IsGameDrawn(MyBoard.HashKey) ||
+            MyBoard.IsInsufficientMaterial())
             return CurrentDrawScore;
 
         if(RootMoves == null){
@@ -219,7 +220,8 @@ public partial class AlphaBeta
         var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
         int ext = inCheck ? 1 : 0;
 
-        if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey))
+        if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey) ||
+            MyBoard.IsInsufficientMaterial())
             return CurrentDrawScore;
 
         if ((Metrics.Nodes & 65535) == 65535)

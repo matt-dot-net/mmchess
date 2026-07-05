@@ -28,15 +28,18 @@ incremental updates in Make/UnmakeMove, which is where all top engines get
 their strength today.
 
 ## 6. Endgame knowledge: winnability detection and draw scaling
-Treat "can this side actually win?" as a first-class eval concept, assuming
-every opponent plays like a computer (no swindling — e.g. KN vs KP is at
-best a draw for the knight side and should never evaluate as better).
-Extend the existing `EvaluateWinners` canWin logic to cover insufficient
-material (KNN vs K), cap the score at a draw for a side that cannot win
-instead of hard-returning 0, scale down known-drawish configurations
-(wrong-rook-pawn, opposite-colored bishops), and add drive-to-corner logic
-for basic mates (KQ/KR/KBB/KBN) so won endings actually convert without
-tablebases.
+Mostly DONE (2026-07-05): winnability caps in `Evaluate` (a side that can't
+mate is capped at draw, incl. KNN; a side whose opponent can't mate is
+floored at draw — fixed the bug where KR vs K scored 0 with the bare-king
+side to move), wrong-rook-pawn fortress and opposite-colored-bishop scaling,
+`Board.IsInsufficientMaterial` wired into the search draw checks, and
+drive-to-corner mate-conversion eval (edge-driving + king proximity +
+KBN corner color). Covered by WinnabilityTests, EndgameScalingTests,
+InsufficientMaterialTests, MateConversionTests, EndgameConversionTests.
+
+Remaining: self-play match vs baseline to confirm strength; the conversion
+term weights (20/10/20) and the OCB 50% scale are untuned guesses — fold
+into the texel-tuning task (#5).
 
 ## 7. MultiPV + analysis mode
 Report the top N lines and support infinite analysis, making the engine

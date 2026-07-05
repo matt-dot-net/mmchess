@@ -23,4 +23,16 @@ public static class SquareExtensions
     {
         return Math.Abs(b.File() - a.File());
     }
+
+    //a8 (square 0) is a light square; color alternates with rank+file parity
+    public static bool IsLightSquare(this int square)
+    {
+        return ((square.Rank() + square.File()) & 1) == 0;
+    }
+
+    //Chebyshev distance - the number of king moves between two squares
+    public static int KingDistance(int a, int b)
+    {
+        return Math.Max(Math.Abs(b.File() - a.File()), Math.Abs(b.Rank() - a.Rank()));
+    }
 }
