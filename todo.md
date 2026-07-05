@@ -36,12 +36,41 @@ basic mates so won endings actually convert without tablebases.
 Report the top N lines and support infinite analysis, making the engine
 usable as an analysis tool rather than only a game player.
 
+## 8. Evaluating Drawn Positions or Positions where win is or is not possible.
+Example: KN vs KP.  Are we trying to swindle?  I think we should be working as if 
+every opponent is a computer not a human.  
+
 # Search / performance bugs costing Elo
 
 ## 1. LMR reduction value leaks between moves
 `lmr` is declared outside the move loop in `Search`, so once a late quiet move
 sets a reduction, later moves that should not be reduced can inherit it. Reset
 `lmr` to 0 inside each loop iteration before applying LMR conditions.
+
+Experiment status: patch lives on branch `lmr-leak`, but do not commit it to
+main at this time. The patch is semantically cleaner, but it materially slows
+the search and did not show a clear strength gain in a small match.
+
+Bench result for `lmr-leak`:
+
+```
+bench wac.epd 7
+Bench: 300 positions at depth 7
+Nodes=15238486, QNodes=9500837, Elapsed=12.511s, Knps=1218
+FirstMoveFH%=95.49, KillerFH%=17.41, TTFH%=24.84, FailHigh=1493262
+NullMoveTries=337988, NullMoveFH%=59.57, MateThreats=267, LMRResearch=2075, FPrune=2728805, EFPrune=879387
+```
+
+Compared with the qsearch-legality baseline
+(`Nodes=12912911, QNodes=8100831, Elapsed=10.843s`), this is about +18%
+nodes and +15% elapsed time. 50-game self-play against `mmchess 0.1.226`
+finished `17 - 19 - 14` for `lmr-leak` (`0.480`, Elo `-13.9 +/- 83.2`,
+LOS `36.9%`). That sample is too small to prove weakness, but it is enough
+to avoid treating the cleanup as an obvious Elo-positive bug fix.
+
+Possible follow-up: revisit LMR as a tuning task instead of a pure bug fix.
+Keep per-move reduction semantics, but tune which checks, captures, and
+passed-pawn pushes are fully exempt versus merely reduced less.
 
 ## 2. Castling generation misses/permits bad queenside castles
 `GenerateCastleMoves` uses `else if` for queenside castling, so queenside is
