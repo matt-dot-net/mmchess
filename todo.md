@@ -27,18 +27,20 @@ a labeled position set (texel tuning). Long term: an NNUE network with
 incremental updates in Make/UnmakeMove, which is where all top engines get
 their strength today.
 
-## 6. Endgame knowledge / scaling
-Recognize drawn material configurations (KB vs K, wrong-rook-pawn, opposite
-bishops), insufficient-material draws, and add drive-to-corner logic for
-basic mates so won endings actually convert without tablebases.
+## 6. Endgame knowledge: winnability detection and draw scaling
+Treat "can this side actually win?" as a first-class eval concept, assuming
+every opponent plays like a computer (no swindling — e.g. KN vs KP is at
+best a draw for the knight side and should never evaluate as better).
+Extend the existing `EvaluateWinners` canWin logic to cover insufficient
+material (KNN vs K), cap the score at a draw for a side that cannot win
+instead of hard-returning 0, scale down known-drawish configurations
+(wrong-rook-pawn, opposite-colored bishops), and add drive-to-corner logic
+for basic mates (KQ/KR/KBB/KBN) so won endings actually convert without
+tablebases.
 
 ## 7. MultiPV + analysis mode
 Report the top N lines and support infinite analysis, making the engine
 usable as an analysis tool rather than only a game player.
-
-## 8. Evaluating Drawn Positions or Positions where win is or is not possible.
-Example: KN vs KP.  Are we trying to swindle?  I think we should be working as if 
-every opponent is a computer not a human.  
 
 # Search / performance bugs costing Elo
 

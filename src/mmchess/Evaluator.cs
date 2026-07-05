@@ -209,32 +209,36 @@ public static class Evaluator
         return GamePhase.EndGame;
     }
 
+    //bit i of the result is set when side i has enough material to
+    //possibly deliver mate. A side with a pawn or a major can always win;
+    //without either it needs two minors that aren't both knights
+    //(KNN v K cannot force mate).
     static int EvaluateWinners(Board b, Evaluation e)
     {
-        int canWin=3;
+        int canWin = 3;
 
-        //if there is major material then everyone can win
-        if(e.Majors[0]>0 && e.Majors[1] > 0)
-            return canWin;
-        for(int i=0;i<2;i++)
+        for (int i = 0; i < 2; i++)
         {
-            var opp = i^1;
-            //a major piece means i can win
-            if(e.Majors[i]>0)
+            if (e.Majors[i] > 0 || b.Pawns[i] != 0)
                 continue;
 
-            if(b.Pawns[i]==0)
-            {
-                //if I have no pawns, i need two minors
-                if(e.Minors[i] < 2){
-                    canWin &= ~(1<<opp);
-                    continue;
-                }
-            }    
+            if (e.Minors[i] < 2 ||
+                (e.Minors[i] == 2 && b.Bishops[i] == 0))
+                canWin &= ~(1 << i);
         }
 
         return canWin;
+    }
 
+    //a side that cannot mate can do no better than draw (cap at 0);
+    //a side whose opponent cannot mate can never lose (floor at 0)
+    static int ApplyWinnability(int eval, int canWin, int sideToMove)
+    {
+        if ((canWin & (1 << sideToMove)) == 0)
+            eval = Math.Min(eval, 0);
+        if ((canWin & (1 << (sideToMove ^ 1))) == 0)
+            eval = Math.Max(eval, 0);
+        return eval;
     }
 
     //evaluate returns a score that is from the perspective
@@ -251,15 +255,12 @@ public static class Evaluator
             return 0;
 
         var canWin = EvaluateWinners(b,e);
-        if(b.SideToMove == 0 && (canWin&2)==0)
-            return 0;
-        if(b.SideToMove == 1 && (canWin&1)==0)
-            return 0;
-        
 
-        //attempt a lazy exit
-        if (eval <= alpha - 300 || eval >= beta + 300)
-            return eval;
+        //attempt a lazy exit (on the capped material score, so a side
+        //that cannot win never lazy-exits with a winning score)
+        var lazy = ApplyWinnability(eval, canWin, b.SideToMove);
+        if (lazy <= alpha - 300 || lazy >= beta + 300)
+            return lazy;
 
         e.PawnScore = EvaluatePawns(b);
         eval += e.PawnScore.Eval;
@@ -275,7 +276,7 @@ public static class Evaluator
         }
 
 
-        return eval;
+        return ApplyWinnability(eval, canWin, b.SideToMove);
     }
 
     static int EvaluateKingEndGame(Board b)
