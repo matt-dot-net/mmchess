@@ -1081,7 +1081,7 @@ public class MoveGenerator
 
 
         }
-        else if ((bits & 2) > 0)
+        if ((bits & 2) > 0)
         {
             //see if intermediate squares are blocked
             if (b.SideToMove == 0)
@@ -1100,7 +1100,7 @@ public class MoveGenerator
             else
             {
                 if (!((((BitMask.Mask[03] | BitMask.Mask[02] | BitMask.Mask[01]) & b.AllPieces) > 0) ||
-                    ((Attacks(b, 59) | Attacks(b, 58)) & b.Pieces[b.SideToMove ^ 1]) > 0))
+                    ((Attacks(b, 03) | Attacks(b, 02)) & b.Pieces[b.SideToMove ^ 1]) > 0))
                 {
                     list.Add(new Move
                     {

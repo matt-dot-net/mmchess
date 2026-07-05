@@ -37,4 +37,25 @@ public class MoveGeneratorTests{
         var result = MoveGenerator.GenerateMoves(testBoard);
         Assert.Equal(20,result.Count);
     }
+
+    [Fact]
+    public void GeneratesBothCastlingSidesWhenBothRightsExist()
+    {
+        var board = Board.ParseFenString("r3k2r/8/8/8/8/8/8/R3K2R b kq - 0 1");
+
+        var moves = MoveGenerator.GenerateMoves(board);
+
+        Assert.Contains(moves, m => m.From == 4 && m.To == 6);
+        Assert.Contains(moves, m => m.From == 4 && m.To == 2);
+    }
+
+    [Fact]
+    public void BlackQueensideCastleIsNotGeneratedThroughAttackedD8()
+    {
+        var board = Board.ParseFenString("r3k3/8/8/8/8/8/8/3R3K b q - 0 1");
+
+        var moves = MoveGenerator.GenerateMoves(board);
+
+        Assert.DoesNotContain(moves, m => m.From == 4 && m.To == 2);
+    }
 }

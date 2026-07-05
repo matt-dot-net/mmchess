@@ -71,8 +71,3 @@ to avoid treating the cleanup as an obvious Elo-positive bug fix.
 Possible follow-up: revisit LMR as a tuning task instead of a pure bug fix.
 Keep per-move reduction semantics, but tune which checks, captures, and
 passed-pawn pushes are fully exempt versus merely reduced less.
-
-## 2. Castling generation misses/permits bad queenside castles
-`GenerateCastleMoves` uses `else if` for queenside castling, so queenside is
-skipped whenever kingside rights also exist. The black queenside attack check
-also tests white-side squares 59/58 instead of black-side squares 3/2.
