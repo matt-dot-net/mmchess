@@ -22,7 +22,7 @@ public class EndgameConversionTests
         for (int ply = 0; ply < maxPlies; ply++)
         {
             var best = Iterate.DoIterate(state, () => { });
-            if (best == null)
+            if (best.IsNull)
                 break; //no legal move - game over
             Assert.True(state.GameBoard.MakeMove(best), "engine chose an illegal move");
         }

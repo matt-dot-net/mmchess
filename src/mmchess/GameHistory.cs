@@ -27,7 +27,7 @@ public class GameHistory
 
     public void Add(HistoryMove move){
         _history.Add(move);
-        if((move.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
+        if((move.Move.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
             _pawnOrCapIndices.Add(_history.Count-1);
     }
 
@@ -79,7 +79,7 @@ public class GameHistory
         var lastIndex = _history.Count-1;
         var m = _history[lastIndex];            
         _history.RemoveAt(lastIndex);
-        if((m.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
+        if((m.Move.Bits & (byte)(MoveBits.Capture | MoveBits.Pawn)) > 0)
             _pawnOrCapIndices.RemoveAt(_pawnOrCapIndices.Count-1);
         
     }

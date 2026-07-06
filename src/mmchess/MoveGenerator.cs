@@ -1025,7 +1025,7 @@ public class MoveGenerator
         int skip = full? 1:3; //hack to skip rook and bishop
         for (int i=1; i < 5; i+=skip)
         {
-            var promoMove = new Move(m);
+            var promoMove = m; // struct copy
             promoMove.Promotion = (byte)(Piece)i;
             list.Add(promoMove);
         }

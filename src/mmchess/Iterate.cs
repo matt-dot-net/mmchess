@@ -130,7 +130,7 @@ public static class Iterate
 
         int alpha = -10000;
         int beta = 10000;
-        Move bestMove = null;
+        Move bestMove = Move.Null;
         //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
         ab.Metrics.Depth = 0;
         for (int i = 0; i < AlphaBeta.MAX_DEPTH && !state.TimeUp; i++)

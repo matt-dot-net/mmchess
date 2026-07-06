@@ -64,7 +64,7 @@ public class BoardTests{
         foreach (var moveStr in moves)
         {
             var m = Move.ParseMove(board, moveStr);
-            Assert.True(m != null && board.MakeMove(m), $"move {moveStr} should have been legal");
+            Assert.True(!m.IsNull && board.MakeMove(m), $"move {moveStr} should have been legal");
         }
 
         var legalMoves = MoveGenerator.GenerateMoves(board);

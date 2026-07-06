@@ -48,7 +48,7 @@ public partial class AlphaBeta
     {
 
         //use the principal variation move first
-        if (PrincipalVariation[0, 0] != null && PrincipalVariation[0, 0].Value == m.Value)
+        if (!PrincipalVariation[0, 0].IsNull && PrincipalVariation[0, 0].Value == m.Value)
             return int.MaxValue;
 
         // otherwise we will use Qsearch to order the moves
@@ -90,9 +90,9 @@ public partial class AlphaBeta
         else
         {
             //killers come before history-ordered quiets
-            if (Killers[Ply, 0] != null && Killers[Ply, 0].Value == m.Value)
+            if (!Killers[Ply, 0].IsNull && Killers[Ply, 0].Value == m.Value)
                 return (2, 1);
-            if (Killers[Ply, 1] != null && Killers[Ply, 1].Value == m.Value)
+            if (!Killers[Ply, 1].IsNull && Killers[Ply, 1].Value == m.Value)
                 return (2, 0);
 
             return (1, HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To]);
@@ -140,7 +140,7 @@ public partial class AlphaBeta
         }
 
         int score;
-        Move bestMove = null, lastMove = null;
+        Move bestMove = Move.Null, lastMove = Move.Null;
         bool inCheck = MyBoard.InCheck(MyBoard.SideToMove);
         foreach (var m in RootMoves)
         {
@@ -148,7 +148,7 @@ public partial class AlphaBeta
                 continue;
 
             if (depth > 0){
-                if(bestMove == null)
+                if(bestMove.IsNull)
                     score = -Search(-beta, -alpha, depth-1);
                 else   {
                     score = -Search(-alpha-1,-alpha,depth-1);
@@ -188,7 +188,7 @@ public partial class AlphaBeta
         }
 
         //check for mate
-        if (lastMove == null)
+        if (lastMove.IsNull)
         {
             //we can't make a move. check for mate or stalemate.
             if (inCheck)
@@ -198,7 +198,7 @@ public partial class AlphaBeta
         }
 
 
-        if (bestMove != null)
+        if (!bestMove.IsNull)
         {
             if(bestMove != RootMoves[0]){
                 NewRootMove(bestMove);
@@ -231,7 +231,7 @@ public partial class AlphaBeta
                 return alpha;
         }
 
-        Move bestMove = null;
+        Move bestMove = Move.Null;
         if (depth+ext <= 0)
             return Quiesce(alpha, beta);
 
@@ -278,7 +278,7 @@ public partial class AlphaBeta
             if (nmScore >= beta)
             {
                 Metrics.NullMoveFailHigh++;
-                TranspositionTable.Instance.Store(MyBoard.HashKey, null, depth, nmScore, EntryType.CUT, Ply);
+                TranspositionTable.Instance.Store(MyBoard.HashKey, Move.Null, depth, nmScore, EntryType.CUT, Ply);
                 return nmScore;
             }
 
@@ -295,7 +295,7 @@ public partial class AlphaBeta
         var moves = MoveGenerator
             .GenerateMoves(MyBoard)
             .OrderByDescending((m) => OrderMove(m, hasEntry, entry));
-        Move lastMove = null;
+        Move lastMove = Move.Null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
 
         foreach (var m in moves)
@@ -341,7 +341,7 @@ public partial class AlphaBeta
             if (!fprune)
             {
                 //if we don't yet have a move, then search full window (PV Node)
-                if (bestMove == null)
+                if (bestMove.IsNull)
                     score = -Search(-beta, -alpha, depth - 1 - lmr + ext);
                 else //otherwise, use a zero window
                 {
@@ -377,7 +377,7 @@ public partial class AlphaBeta
             if (score >= beta)
             {
                 SearchFailHigh(m, score, depth, hasEntry, entry);
-                if (lastMove == null)
+                if (lastMove.IsNull)
                     Metrics.FirstMoveFailHigh++;
                 return score;
             }
@@ -398,7 +398,7 @@ public partial class AlphaBeta
         }
 
         //check for mate
-        if (lastMove == null)
+        if (lastMove.IsNull)
         {
             //we can't make a move. check for mate or stalemate.
             if (inCheck)
@@ -408,11 +408,11 @@ public partial class AlphaBeta
         }
 
 
-        if (bestMove == null)
+        if (bestMove.IsNull)
         {
             //ALL NODE
             TranspositionTable.Instance.Store(
-                MyBoard.HashKey, null, depth, alpha,
+                MyBoard.HashKey, Move.Null, depth, alpha,
                 TranspositionTableEntry.EntryType.ALL, Ply);
         }
 
@@ -438,7 +438,7 @@ public partial class AlphaBeta
 
     private void MakeNullMove()
     {
-        var nullMove = new HistoryMove(MyBoard.HashKey, null);
+        var nullMove = HistoryMove.NullMove(MyBoard.HashKey);
 
         MyBoard.SideToMove ^= 1;
         MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
@@ -478,8 +478,8 @@ public partial class AlphaBeta
         if (hasEntry && entry.MoveValue == m.Value)
             Metrics.TTFailHigh++;
 
-        else if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
-            (Killers[Ply, 1] != null && m.Value == Killers[Ply, 1].Value))
+        else if ((!Killers[Ply, 0].IsNull && m.Value == Killers[Ply, 0].Value) ||
+            (!Killers[Ply, 1].IsNull && m.Value == Killers[Ply, 1].Value))
             Metrics.KillerFailHigh++;
 
         //update the transposition table
@@ -496,7 +496,7 @@ public partial class AlphaBeta
 
         HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To] += depth * depth;
 
-        if (Killers[Ply, 1] != null && Killers[Ply, 1].Value != m.Value)
+        if (!Killers[Ply, 1].IsNull && Killers[Ply, 1].Value != m.Value)
             Killers[Ply, 0] = Killers[Ply, 1];
 
         Killers[Ply, 1] = m;

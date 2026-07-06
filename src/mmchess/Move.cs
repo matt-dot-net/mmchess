@@ -28,8 +28,19 @@ public enum Piece
     King = 6
 }
 [StructLayout(LayoutKind.Explicit, Size = 4)]
-public class Move
+public struct Move
 {
+    // "no move" sentinel. Move is a value type now (used to be a class), so a
+    // null reference is no longer available - a zeroed move (Value == 0, i.e.
+    // a1a1 with no piece bits) is never a real generated move, so it stands in
+    // for the old null.
+    public static readonly Move Null = default;
+    public bool IsNull => Value == 0;
+
+    public static bool operator ==(Move a, Move b) => a.Value == b.Value;
+    public static bool operator !=(Move a, Move b) => a.Value != b.Value;
+    public override bool Equals(object obj) => obj is Move m && m.Value == Value;
+    public override int GetHashCode() => (int)Value;
 
     public static Piece GetPiece(MoveBits bits)
     {
@@ -82,13 +93,6 @@ public class Move
     public byte Promotion;
     [FieldOffset(0)]
     public UInt32 Value;
-
-    public Move() { }
-
-    public Move(Move m)
-    {
-        Value = m.Value;
-    }
 
     public Move(uint value)
     {
@@ -257,7 +261,7 @@ public class Move
     public static Move ParseMove(Board b, string moveString)
     {
         if (moveString.Length < 4)
-            return null;
+            return Move.Null;
         var from = moveString.Substring(0, 2);
         var to = moveString.Substring(2, 2);
         int fromIndex = -1, toIndex = -1;
@@ -270,7 +274,7 @@ public class Move
         }
 
         if (fromIndex == -1 || toIndex == -1)
-            return null;
+            return Move.Null;
 
         MoveBits bits = 0;
         Piece promotion = 0;
@@ -289,7 +293,7 @@ public class Move
             {
                 if ((b.Pieces[b.SideToMove ^ 1] & BitMask.Mask[toIndex]) == 0 &&
                     BitMask.Mask[toIndex] != b.EnPassant)
-                    return null;
+                    return Move.Null;
             }
             bits |= MoveBits.Pawn;
 
@@ -318,13 +322,13 @@ public class Move
         else if ((b.King[b.SideToMove] & BitMask.Mask[fromIndex]) > 0)
             bits |= MoveBits.King;
         else
-            return null;
+            return Move.Null;
 
         if ((b.AllPieces & BitMask.Mask[toIndex]) > 0)
         {
             //let's make sure we are capturing the right Piece
             if ((b.Pieces[b.SideToMove] & BitMask.Mask[toIndex]) > 0)
-                return null;
+                return Move.Null;
 
             bits |= MoveBits.Capture;
         }

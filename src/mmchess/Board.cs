@@ -321,7 +321,7 @@ public class Board
             HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
         }
 
-        UpdateCapture(m, hm);
+        UpdateCapture(m, ref hm);
         UpdateBitBoards(m);
 
         if (m.Promotion > 0)
@@ -382,7 +382,7 @@ public class Board
         PawnHashKey ^= TranspositionTable.HashKeys[SideToMove, (int)Piece.Pawn - 1, m.To];
     }
 
-    void UpdateCapture(Move m, HistoryMove hm)
+    void UpdateCapture(Move m, ref HistoryMove hm)
     {
         if ((m.Bits & (byte)MoveBits.Capture) == 0)
             return;
@@ -483,6 +483,7 @@ public class Board
         if (index < 0)
             return;
         var m = History[index];
+        var mv = m.Move;
         HashKey ^= TranspositionTable.SideToMoveKey;
         SideToMove ^= 1;
 
@@ -490,13 +491,13 @@ public class Board
         if (m.CapturedPiece > 0)
             UnmakeCapture(m);
 
-        if ((m.Bits & (byte)MoveBits.King) > 0 && Math.Abs(m.From.File() - m.To.File()) == 2)
-            UnmakeCastleMove(m);
+        if ((mv.Bits & (byte)MoveBits.King) > 0 && Math.Abs(mv.From.File() - mv.To.File()) == 2)
+            UnmakeCastleMove(mv);
 
-        if (m.Promotion > 0)
-            UpdatePromotion(m);
+        if (mv.Promotion > 0)
+            UpdatePromotion(mv);
         if (EnPassant > 0)
-            HashKey ^= TranspositionTable.EnPassantFileKey[m.To.File()];
+            HashKey ^= TranspositionTable.EnPassantFileKey[mv.To.File()];
         EnPassant = m.EnPassant;
         if (EnPassant > 0)
         {
@@ -508,7 +509,7 @@ public class Board
             CastleStatus = m.CastleStatus;
             HashKey ^= TranspositionTable.CastleStatusKey[CastleStatus];
         }
-        UpdateBitBoards(m);
+        UpdateBitBoards(mv);
         History.RemoveLast();
     }
 
@@ -576,41 +577,42 @@ public class Board
     void UnmakeCapture(HistoryMove m)
     {
         var xside = SideToMove ^ 1;
-        int sq = m.To;
+        int to = m.Move.To;
+        int sq = to;
         Piece p = Piece.Empty;
         if (m.CapturedPiece == MoveBits.Pawn)
         {
             p = Piece.Pawn;
-            if (BitMask.Mask[m.To] == m.EnPassant)
+            if (BitMask.Mask[to] == m.EnPassant)
             {
-                sq = SideToMove == 0 ? m.To + 8 : m.To - 8;
+                sq = SideToMove == 0 ? to + 8 : to - 8;
                 Pawns[xside] |= BitMask.Mask[sq];
             }
             else
-                Pawns[xside] |= BitMask.Mask[m.To];
+                Pawns[xside] |= BitMask.Mask[to];
         }
         if (m.CapturedPiece == MoveBits.Knight)
         {
-            Knights[xside] |= BitMask.Mask[m.To];
+            Knights[xside] |= BitMask.Mask[to];
             p = Piece.Knight;
         }
         else if (m.CapturedPiece == MoveBits.Bishop)
         {
-            Bishops[xside] |= BitMask.Mask[m.To];
+            Bishops[xside] |= BitMask.Mask[to];
             p = Piece.Bishop;
         }
         else if (m.CapturedPiece == MoveBits.Rook)
         {
-            Rooks[xside] |= BitMask.Mask[m.To];
+            Rooks[xside] |= BitMask.Mask[to];
             p = Piece.Rook;
         }
         else if (m.CapturedPiece == MoveBits.Queen)
         {
-            Queens[xside] |= BitMask.Mask[m.To];
+            Queens[xside] |= BitMask.Mask[to];
             p = Piece.Queen;
         }
         else if (m.CapturedPiece == MoveBits.King){
-            King[xside] |= BitMask.Mask[m.To];
+            King[xside] |= BitMask.Mask[to];
             p=Piece.King;
         }
         AllPieces ^= BitMask.Mask[sq];

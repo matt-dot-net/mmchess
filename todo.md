@@ -77,18 +77,21 @@ search/movegen path - is present elsewhere and often hit far more often. Do
 these ONE AT A TIME so each shows up cleanly in an A/B tournament.
 
 ## 1. `Move` is a class wrapping a 4-byte uint (headline)
-`Move` (src/mmchess/Move.cs) is `[StructLayout(Size=4)] class` whose whole
-payload is one `uint Value`, yet it is a heap object. Every generated move is a
-`new Move()` (~20 sites in MoveGenerator.cs) and `GenerateMoves`/
-`GenerateQuiescenceMoves` also `new List<Move>()` per node - hundreds of
-millions of allocations per search. Likely a bigger win than the TT change since
-movegen frequency exceeds TT stores.
-Blockers/effort (larger, riskier refactor): `HistoryMove : Move` inheritance
-must be reworked (structs can't be a base class - embed a `Move` value + its own
-fields); pervasive `null` semantics need a sentinel (`Value == 0` = "no move" is
-safe - a1a1 is never legal) or `Move?` at absence sites (`ParseMove`, `bestMove
-== null`, `Killers[..] != null`). Cascades: killers, move lists, and HistoryMove
-all stop allocating once Move is a struct.
+DONE (2026-07-06): `Move` is now a `struct` with a `Move.Null` sentinel
+(`Value == 0`, never a real move) + `==`/`!=`/`Equals` operators replacing
+reference-null checks. `HistoryMove` is no longer a subclass (structs can't be a
+base type) - it's a struct composing a `Move Move` field plus its undo state,
+stored inline in the History list (no per-make heap alloc). `Board.UpdateCapture`
+now takes `ref HistoryMove` since the struct is mutated during make. All null
+sites converted (search killers/PV/bestMove, ParseMove returns `Move.Null`,
+command MoveInput). Every generated move (`new Move`) is now a stack value;
+move-list and killer/PV allocations are gone too.
+Correctness: full suite green (110), incl. HashKeyTests/PawnHashKeyTests
+make/unmake round-trips.
+Strength confirmed: +69.0 +/- 94.6 (28-18-5, LOS 93.0%, 51 games, 10s+0.1s),
+an incremental win stacked on top of the TT struct change (#9). No correctness
+regressions in play (symmetric mate-based results, no forfeits).
+Note the per-node `new List<Move>()` (#4) still remains.
 
 ## 2. Per-node LINQ OrderByDescending + capturing lambda (quick, independent)
 AlphaBeta.cs:297 (Search) and Quiesce.cs:80 (Quiesce) call

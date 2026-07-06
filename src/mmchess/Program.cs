@@ -33,7 +33,7 @@ public class Program
                     }
                 });
 
-                if (myMove != null)
+                if (!myMove.IsNull)
                 {
                     Console.WriteLine("move {0}", myMove.ToAlegbraicNotation(gameState.GameBoard));
                     gameState.GameBoard.MakeMove(myMove);

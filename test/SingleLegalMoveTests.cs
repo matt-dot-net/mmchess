@@ -19,7 +19,7 @@ public class SingleLegalMoveTests
 
         var move = Iterate.DoIterate(state, () => { }, out var metrics);
 
-        Assert.NotNull(move);
+        Assert.False(move.IsNull);
         Assert.Equal(56, (int)move.From); // a1
         Assert.Equal(48, (int)move.To);   // a2
         Assert.Equal(0ul, metrics.Nodes); // no search performed
@@ -39,7 +39,7 @@ public class SingleLegalMoveTests
 
         var move = Iterate.DoIterate(state, () => { }, out var metrics);
 
-        Assert.NotNull(move);
+        Assert.False(move.IsNull);
         Assert.Equal(3, metrics.Depth);
     }
 }

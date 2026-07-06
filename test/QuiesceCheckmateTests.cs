@@ -41,7 +41,7 @@ public class QuiesceCheckmateTests
 
         ab.SearchRoot(-10000, 10000, 0);
 
-        Assert.NotNull(ab.PrincipalVariation[0, 0]);
+        Assert.False(ab.PrincipalVariation[0, 0].IsNull);
         Assert.Equal(55, ab.PrincipalVariation[0, 0].From); // h2
         Assert.Equal(47, ab.PrincipalVariation[0, 0].To);   // h3
     }

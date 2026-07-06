@@ -286,8 +286,8 @@ public static class CommandParser
             //e2e5) can't slip through MakeMove and desync the board, and
             //so castle/en-passant bits come from the generator
             var m = Move.ParseMove(state.GameBoard, cmd.Arguments[0]);
-            Move legal = null;
-            if (m != null)
+            Move legal = Move.Null;
+            if (!m.IsNull)
             {
                 foreach (var g in MoveGenerator.GenerateMoves(state.GameBoard))
                 {
@@ -299,7 +299,7 @@ public static class CommandParser
                 }
             }
 
-            if (legal == null || !state.GameBoard.MakeMove(legal))
+            if (legal.IsNull || !state.GameBoard.MakeMove(legal))
             {
                 Console.WriteLine("Illegal Move: {0}", cmd.Arguments[0]);
                 return;

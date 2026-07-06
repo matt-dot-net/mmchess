@@ -492,7 +492,7 @@ public class TranspositionTable
             Depth=depth,
             Age=SearchId
         };
-        if(m != null)
+        if(!m.IsNull)
             newEntry.MoveValue =m.Value;
 
         newEntry.Lock =  newEntry.Value ^ hashKey;
