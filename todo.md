@@ -94,12 +94,18 @@ regressions in play (symmetric mate-based results, no forfeits).
 Note the per-node `new List<Move>()` (#4) still remains.
 
 ## 2. Per-node LINQ OrderByDescending + capturing lambda (quick, independent)
-AlphaBeta.cs:297 (Search) and Quiesce.cs:80 (Quiesce) call
-`.OrderByDescending(m => OrderMove(m, ...))` at every node/qnode - each allocates
-a closure (captures hasEntry/entry/inCheck), an OrderedEnumerable, a sort buffer,
-and an enumerator. Replace with: score each move into a small parallel array once
-and do an in-place insertion/selection sort. Self-contained, low-risk, and
-independently A/B-measurable. Recommended starting point.
+DONE (2026-07-06): `Search` and `Quiesce` no longer call
+`.OrderByDescending(...)` at every node/qnode. Both now score moves once into
+small parallel `Span<int>` buffers (stackalloc up to 256 moves, heap fallback
+above that) and use in-place stable insertion sort, preserving the old
+descending order and generator-order tie behavior without the LINQ closure,
+OrderedEnumerable, sort buffer, and enumerator allocations. Root move ordering
+still uses LINQ, but it is outside the per-node hot path.
+Correctness: full suite green (110).
+Bench baseline reset in BENCH.md after this change: `bench wac.epd 7`
+`Nodes=12889420, QNodes=8090156, Elapsed=9.512s, Knps=1355`;
+`bench wac.epd 10` `Nodes=72223971, QNodes=45134583, Elapsed=41.614s,
+Knps=1736`.
 
 ## 3. `new HistoryMove(...)` per MakeMove
 Board.cs:309 allocates a HistoryMove on every make. `History[]` is already
