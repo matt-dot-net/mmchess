@@ -108,9 +108,12 @@ Bench baseline reset in BENCH.md after this change: `bench wac.epd 7`
 Knps=1736`.
 
 ## 3. `new HistoryMove(...)` per MakeMove
-Board.cs:309 allocates a HistoryMove on every make. `History[]` is already
-ply-indexed, so making HistoryMove a struct in a preallocated array removes it.
-Folds naturally into #1.
+DONE (2026-07-06): `HistoryMove` was already converted to a struct as part of
+#1, so `new HistoryMove(...)` is no longer a per-make heap allocation. Finished
+the remaining hot-path piece by replacing `GameHistory`'s `List<HistoryMove>`
+and pawn/capture `List<int>` with preallocated stack-like arrays that grow only
+if an unusually long game/search exceeds the initial capacity. Make/unmake now
+pushes and pops inline history entries without `List<T>` capacity churn.
 
 ## 4. `new List<Move>()` per movegen call
 Tie to #1/#2: a reusable move buffer indexed by Ply removes the per-node list
