@@ -37,9 +37,12 @@ drive-to-corner mate-conversion eval (edge-driving + king proximity +
 KBN corner color). Covered by WinnabilityTests, EndgameScalingTests,
 InsufficientMaterialTests, MateConversionTests, EndgameConversionTests.
 
-Remaining: self-play match vs baseline to confirm strength; the conversion
-term weights (20/10/20) and the OCB 50% scale are untuned guesses — fold
-into the texel-tuning task (#5).
+Strength confirmed (2026-07-06): +41.9 Elo (90-66-44, LOS 97.3%, 200
+games) vs the parser-fixed baseline, after the pawn-ending mate-conversion
+hijack fix (commit 0dda47a).
+
+Remaining: the conversion term weights (20/10/20) and the OCB 50% scale
+are untuned guesses — fold into the texel-tuning task (#5).
 
 ## 7. MultiPV + analysis mode
 Report the top N lines and support infinite analysis, making the engine
