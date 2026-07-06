@@ -56,6 +56,61 @@ falls through to the normal path, which returns no move.) Covered by
 SingleLegalMoveTests.
 
 ## 9. Tune hashtable size / make configurable
+DONE (2026-07-06): configurable via xboard `memory N` (feature memory=1) and
+UCI `setoption name Hash value N` (advertised as `option name Hash type spin
+default 512 min 1 max 4096`), routed through `TranspositionTable.SetSize`/
+`Resize`. Also converted `TranspositionTableEntry` from a class to a struct so
+the table is a contiguous inline array (no per-entry heap object, no GC churn),
+which made `memory N` an honest N megabytes instead of the old nominal "512 MB"
+that grew to multiple GB. Default 512 MB. Covered by TranspositionTableTests +
+CommandProcessorTests.
+
+Strength confirmed: the struct conversion was a large A/B win on its own -
++134.5 Elo +/- 60.8 (74-29-19, LOS 100.0%, 122 games, 10s+0.1s) vs the
+class-entry baseline. This kicked off the runtime/allocation-perf audit below.
+
+# Runtime / allocation performance
+
+The class-to-struct win on the TT entry (#9) revealed that the same anti-pattern
+- small value-like data wrapped in heap `class` objects, allocated in the hot
+search/movegen path - is present elsewhere and often hit far more often. Do
+these ONE AT A TIME so each shows up cleanly in an A/B tournament.
+
+## 1. `Move` is a class wrapping a 4-byte uint (headline)
+`Move` (src/mmchess/Move.cs) is `[StructLayout(Size=4)] class` whose whole
+payload is one `uint Value`, yet it is a heap object. Every generated move is a
+`new Move()` (~20 sites in MoveGenerator.cs) and `GenerateMoves`/
+`GenerateQuiescenceMoves` also `new List<Move>()` per node - hundreds of
+millions of allocations per search. Likely a bigger win than the TT change since
+movegen frequency exceeds TT stores.
+Blockers/effort (larger, riskier refactor): `HistoryMove : Move` inheritance
+must be reworked (structs can't be a base class - embed a `Move` value + its own
+fields); pervasive `null` semantics need a sentinel (`Value == 0` = "no move" is
+safe - a1a1 is never legal) or `Move?` at absence sites (`ParseMove`, `bestMove
+== null`, `Killers[..] != null`). Cascades: killers, move lists, and HistoryMove
+all stop allocating once Move is a struct.
+
+## 2. Per-node LINQ OrderByDescending + capturing lambda (quick, independent)
+AlphaBeta.cs:297 (Search) and Quiesce.cs:80 (Quiesce) call
+`.OrderByDescending(m => OrderMove(m, ...))` at every node/qnode - each allocates
+a closure (captures hasEntry/entry/inCheck), an OrderedEnumerable, a sort buffer,
+and an enumerator. Replace with: score each move into a small parallel array once
+and do an in-place insertion/selection sort. Self-contained, low-risk, and
+independently A/B-measurable. Recommended starting point.
+
+## 3. `new HistoryMove(...)` per MakeMove
+Board.cs:309 allocates a HistoryMove on every make. `History[]` is already
+ply-indexed, so making HistoryMove a struct in a preallocated array removes it.
+Folds naturally into #1.
+
+## 4. `new List<Move>()` per movegen call
+Tie to #1/#2: a reusable move buffer indexed by Ply removes the per-node list
+allocation. Needs care - each ply/recursion level needs its own buffer.
+
+## 5. `PawnScore` is a class holding a ulong[2,8] array
+PawnScore.cs. Lower frequency (cached in the pawn hash) but each store allocates
+the object AND the 8x2 array. Smaller win; convert to a struct with inline
+storage.
 
 # Search / performance bugs costing Elo
 
