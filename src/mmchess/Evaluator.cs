@@ -332,13 +332,21 @@ public static class Evaluator
         }
         else
         {
-            //a bare king facing mating material: score the conversion
-            //(edge-driving + king proximity) instead of the static PST
+            //a bare king facing a PURE piece mate (no pawns anywhere): score
+            //the conversion (edge-driving + king proximity) instead of the
+            //static PST. With pawns on the board the win runs through
+            //promotion, not cornering - the drive term then gives bad
+            //guidance and, on the defending side, steers the lone king off
+            //its drawing squares (opposition/blockade), so fall back to the
+            //king PST there and let PawnScore drive the pawn.
             int winner = -1;
-            if (b.Pawns[1] == 0 && b.PieceCount(1) == 0 && (canWin & 1) != 0)
-                winner = 0;
-            else if (b.Pawns[0] == 0 && b.PieceCount(0) == 0 && (canWin & 2) != 0)
-                winner = 1;
+            if (b.Pawns[0] == 0 && b.Pawns[1] == 0)
+            {
+                if (b.PieceCount(1) == 0 && (canWin & 1) != 0)
+                    winner = 0;
+                else if (b.PieceCount(0) == 0 && (canWin & 2) != 0)
+                    winner = 1;
+            }
 
             if (winner >= 0)
             {

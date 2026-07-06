@@ -56,4 +56,35 @@ public class MateConversionTests
         Assert.True(edgeEval > centerEval,
             $"expected edge defender to score higher: edge={edgeEval}, center={centerEval}");
     }
+
+    [Fact]
+    public void PawnEnding_DoesNotApplyMateConversion()
+    {
+        // KP vs K: the winner has a pawn, so the win runs through promotion,
+        // not cornering - the drive-to-corner / king-proximity term must NOT
+        // fire here (it gives bad guidance and, on defense, steers the lone
+        // king off its drawing squares). b6 and g6 have identical KingEndgame
+        // PST values, so with the correct pawn-ending fallback these two
+        // positions must evaluate EQUALLY. The buggy mate-conversion path
+        // couples the two kings via its king-distance term (b6 is 3 from the
+        // black king, g6 is 2) and would score them differently.
+        var winnerKingB6 = Board.ParseFenString("4k3/8/1K6/8/4P3/8/8/8 w - - 0 1");
+        var winnerKingG6 = Board.ParseFenString("4k3/8/6K1/8/4P3/8/8/8 w - - 0 1");
+
+        Assert.Equal(Evaluator.Evaluate(winnerKingB6, Min, Max),
+                     Evaluator.Evaluate(winnerKingG6, Min, Max));
+    }
+
+    [Fact]
+    public void PawnlessPieceMate_StillCouplesKings()
+    {
+        // Guard the other side of the fix: with no pawns on the board the
+        // conversion term must still fire, so the same b6/g6 winning-king
+        // swap (KR vs K) DOES change the eval via king proximity.
+        var winnerKingB6 = Board.ParseFenString("4k3/8/1K6/8/8/8/8/7R w - - 0 1");
+        var winnerKingG6 = Board.ParseFenString("4k3/8/6K1/8/8/8/8/7R w - - 0 1");
+
+        Assert.NotEqual(Evaluator.Evaluate(winnerKingB6, Min, Max),
+                        Evaluator.Evaluate(winnerKingG6, Min, Max));
+    }
 }
