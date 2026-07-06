@@ -104,6 +104,18 @@ public static class Iterate
     public static Move DoIterate(GameState state, Action interrupt, out AlphaBetaMetrics metrics)
     {
         state.TimeUp = false;
+
+        //if the position is forced (exactly one legal move) there is nothing to
+        //decide - play it immediately without searching and without burning the
+        //clock. (Zero legal moves is mate/stalemate; fall through to the normal
+        //path, which returns no move.)
+        var rootMoves = MoveGenerator.GenerateLegalMoves(state.GameBoard);
+        if (rootMoves.Count == 1)
+        {
+            metrics = new AlphaBetaMetrics();
+            return rootMoves[0];
+        }
+
         var startTime = DateTime.Now;
         var timeLimit = GetThinkTimeSpan(state);
         AlphaBeta ab = new AlphaBeta(state, () =>

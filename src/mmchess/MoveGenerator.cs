@@ -817,6 +817,23 @@ public class MoveGenerator
         return list;
     }
 
+    // GenerateMoves is only pseudo-legal (MakeMove is what rejects a move that
+    // leaves our king in check), so filter through make/unmake to get the moves
+    // that are actually legal in this position.
+    public static IList<Move> GenerateLegalMoves(Board b)
+    {
+        var legal = new List<Move>();
+        foreach (var m in GenerateMoves(b))
+        {
+            if (b.MakeMove(m))
+            {
+                b.UnMakeMove();
+                legal.Add(m);
+            }
+        }
+        return legal;
+    }
+
     static void InitDirections()
     {
         for (int i = 0; i < 64; i++)

@@ -49,6 +49,11 @@ Report the top N lines and support infinite analysis, making the engine
 usable as an analysis tool rather than only a game player.
 
 ## 8. One-legal move no search at root
+DONE (2026-07-06): `Iterate.DoIterate` short-circuits when
+`MoveGenerator.GenerateLegalMoves` returns exactly one move - it plays that
+move immediately without searching or spending the clock. (Zero legal moves
+falls through to the normal path, which returns no move.) Covered by
+SingleLegalMoveTests.
 
 ## 9. Tune hashtable size / make configurable
 
