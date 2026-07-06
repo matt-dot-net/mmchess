@@ -2,8 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace mmchess;
-[StructLayout(LayoutKind.Explicit,Size=8)]
-public class TranspositionTableEntry{
+[StructLayout(LayoutKind.Explicit,Size=16)]
+public struct TranspositionTableEntry{
 
     public enum EntryType{
         PV=1,
@@ -11,7 +11,9 @@ public class TranspositionTableEntry{
         CUT=4
     }  ;
 
-    public const int SizeOf = 8;
+    // Value (offset 0) and Lock (offset 8) together occupy 16 bytes. As a
+    // struct the array stores these inline, so this is the real per-entry cost.
+    public const int SizeOf = 16;
 
     [FieldOffset(0)]
     public UInt32 MoveValue;
@@ -47,17 +49,5 @@ public class TranspositionTableEntry{
             DepthAge |= (byte)((value & 3) << 6);// shift in the new age
         }
     }
-
-    public TranspositionTableEntry(TranspositionTableEntry copy){
-        if(null == copy)
-            return;
-        this.Value= copy.Value;
-        this.Lock= copy.Lock;
-    }
-
-    public TranspositionTableEntry(){
-        
-    }
-
 
 }

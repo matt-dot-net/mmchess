@@ -44,6 +44,8 @@ public enum CommandVal
     Bench,
     MoveNow,
     Draw,
+    Memory,
+    SetOption,
     Unknown
 }
 public class Command
@@ -223,11 +225,13 @@ public static class CommandParser
             state.UsingGui = true;
             Console.WriteLine("id name mmchess {0}", VersionNumber);
             Console.WriteLine("id author Matt McKnight");
+            Console.WriteLine("option name Hash type spin default {0} min 1 max 4096",
+                TranspositionTable.DefaultSizeMb);
             Console.WriteLine("uciok");
         }
         else if (cmd.Value == CommandVal.Protover)
         {
-            Console.WriteLine("feature setboard=1 reuse=1 myname=\"mmchess {0}\" done=1", VersionNumber);
+            Console.WriteLine("feature setboard=1 reuse=1 memory=1 myname=\"mmchess {0}\" done=1", VersionNumber);
         }
         else if (cmd.Value == CommandVal.IsReady)
         {
@@ -311,6 +315,24 @@ public static class CommandParser
                 cmd.Value == CommandVal.Remove)
         {
             state.GameBoard.UnMakeMove();
+        }
+
+        else if (cmd.Value == CommandVal.Memory)
+        {
+            //xboard "memory N" - N megabytes for all hash tables. We size the
+            //transposition table to N; the pawn hash is small and fixed.
+            if (cmd.Arguments.Length < 2 || !int.TryParse(cmd.Arguments[1], out var mb))
+            {
+                Console.Error.WriteLine("Error: invalid memory {0}",
+                    cmd.Arguments.Length > 1 ? cmd.Arguments[1] : "");
+                return;
+            }
+            TranspositionTable.SetSize(mb);
+        }
+        else if (cmd.Value == CommandVal.SetOption)
+        {
+            //UCI "setoption name <id> value <x>" - only Hash is supported today
+            SetOption(cmd);
         }
 
         else if (cmd.Value == CommandVal.EpdTest)
@@ -427,6 +449,32 @@ public static class CommandParser
             aggregate.LMRResearch,
             aggregate.FPrune,
             aggregate.EFPrune);
+    }
+
+    // Parse "setoption name <id> value <x>". Tokens are case-insensitive for
+    // the keywords; the option name is whatever sits between "name" and
+    // "value". Only "Hash" (size in MB) is recognized; anything else is ignored.
+    static void SetOption(Command cmd)
+    {
+        var args = cmd.Arguments;
+        int nameIdx = -1, valueIdx = -1;
+        for (int i = 1; i < args.Length; i++)
+        {
+            if (args[i].Equals("name", StringComparison.OrdinalIgnoreCase))
+                nameIdx = i;
+            else if (args[i].Equals("value", StringComparison.OrdinalIgnoreCase))
+                valueIdx = i;
+        }
+
+        if (nameIdx < 0 || valueIdx <= nameIdx + 1 || valueIdx >= args.Length - 1)
+            return; // malformed - ignore silently, matching UCI's tolerance
+
+        var optionName = string.Join(' ', args, nameIdx + 1, valueIdx - nameIdx - 1);
+        if (optionName.Equals("Hash", StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(args[valueIdx + 1], out var mb))
+                TranspositionTable.SetSize(mb);
+        }
     }
 
     static void EpdTest(Command cmd)

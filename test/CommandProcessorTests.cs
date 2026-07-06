@@ -141,4 +141,38 @@ public class CommandProcessorTests
 
         Assert.Equal(-1, state.ComputerSide);
     }
+
+    [Fact]
+    public void MemoryCommandResizesHashTable()
+    {
+        try
+        {
+            CommandParser.DoCommand(
+                CommandParser.ParseCommand("memory 32"),
+                new GameState { GameBoard = new Board() });
+
+            Assert.Equal(32, TranspositionTable.Instance.SizeInMb);
+        }
+        finally
+        {
+            TranspositionTable.SetSize(TranspositionTable.DefaultSizeMb);
+        }
+    }
+
+    [Fact]
+    public void SetOptionHashResizesHashTable()
+    {
+        try
+        {
+            CommandParser.DoCommand(
+                CommandParser.ParseCommand("setoption name Hash value 48"),
+                new GameState { GameBoard = new Board() });
+
+            Assert.Equal(48, TranspositionTable.Instance.SizeInMb);
+        }
+        finally
+        {
+            TranspositionTable.SetSize(TranspositionTable.DefaultSizeMb);
+        }
+    }
 }

@@ -220,8 +220,8 @@ public static class Iterate
             if (hashKeys.Contains(b.HashKey))
                 break;
 
-            var entry = TranspositionTable.Instance.Read(b.HashKey);
-            if (entry == null || entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
+            if (!TranspositionTable.Instance.TryProbe(b.HashKey, out var entry) ||
+                entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
                 break;
             var m = new Move(entry.MoveValue);
             Console.Write("{0}(HT) ", m.ToAlegbraicNotation(b));

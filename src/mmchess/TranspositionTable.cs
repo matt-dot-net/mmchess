@@ -13,11 +13,17 @@ public class TranspositionTable
         private set;
     } //used for automatic aging.
 
-    int SizeInBytes{
-        get{
-                return 2 * 268435456; // 512MB split between two tables
-        }
-    }
+    public const int DefaultSizeMb = 512;
+    const int MinSizeMb = 1;
+    const int MaxSizeMb = 4096;
+
+    static int _requestedMb = DefaultSizeMb;
+
+    // Configured size of the table, in megabytes. EntryCapacity is the
+    // (power-of-two) number of TranspositionTableEntry slots actually allocated.
+    public int SizeInMb { get; private set; }
+    public long EntryCapacity => TTable.LongLength;
+
     TranspositionTableEntry[] TTable;
     ulong KeyMask;
 
@@ -38,14 +44,43 @@ public class TranspositionTable
     }
 
     TranspositionTable(){
+        Resize(_requestedMb);
+    }
 
-        ulong itemCount = (ulong)SizeInBytes/(ulong)TranspositionTableEntry.SizeOf;
-        TTable=new TranspositionTableEntry[itemCount];
+    // Set the desired hash size (in MB) for the transposition table. If the
+    // singleton already exists it is reallocated immediately (which clears the
+    // table); otherwise the size is remembered for when it is first built.
+    public static void SetSize(int mb){
+        mb = Math.Clamp(mb, MinSizeMb, MaxSizeMb);
+        lock(_lock){
+            _requestedMb = mb;
+            if(_instance != null)
+                _instance.Resize(mb);
+        }
+    }
 
+    // (Re)allocate the table to hold as many entries as fit in mb megabytes,
+    // floored to a power of two. Reserves the low bit of the index for the
+    // 'always store' bucket (see Store), so entries come in pairs.
+    public void Resize(int mb){
+        mb = Math.Clamp(mb, MinSizeMb, MaxSizeMb);
+        SizeInMb = mb;
+
+        ulong itemCount = ((ulong)mb * 1024UL * 1024UL) / (ulong)TranspositionTableEntry.SizeOf;
+
+        // floor to a power of two
+        ulong pow2 = 2;
+        while((pow2 << 1) <= itemCount)
+            pow2 <<= 1;
+        itemCount = pow2;
+
+        TTable = new TranspositionTableEntry[itemCount];
+
+        KeyMask = 0;
         for(int i=0;KeyMask+1 < itemCount;i++)
             KeyMask |= (ulong)1<<i;
-        
-        KeyMask &= 0xFFFFFFFFFFFFFFFE;// we are saving every other entry to use as a bucket for an 'always store' move 
+
+        KeyMask &= 0xFFFFFFFFFFFFFFFE;// we are saving every other entry to use as a bucket for an 'always store' move
     }
 
     public void NextSearchId(){
@@ -463,14 +498,16 @@ public class TranspositionTable
         newEntry.Lock =  newEntry.Value ^ hashKey;
 
         //we will always store the entry in the second bucket
-        TTable[index+1] = new TranspositionTableEntry(newEntry);
+        TTable[index+1] = newEntry;
 
         //check that a result is already present at this index, and decide if we should replace
-        //if it matches the current position, go ahead and overwrite.  If the 
+        //if it matches the current position, go ahead and overwrite.  If the
         //existing entry had been useful, we would not be here.
+        //(An empty slot reads back as a zeroed entry: Lock=0, Depth=0, so the
+        //keep-existing guard below never protects it and it is overwritten.)
 
         //this block decides to keep the existing entry
-        if(existing != null && existing.Lock != newEntry.Lock)
+        if(existing.Lock != newEntry.Lock)
         {
             // replacement strategy is as follows:
             //  prefer deeper results
@@ -489,23 +526,29 @@ public class TranspositionTable
         
     }
 
-    public TranspositionTableEntry Read(ulong hashKey){
+    // Look up the entry for hashKey. Returns true and fills entry on a hit.
+    // A zeroed (empty) slot can only match when hashKey == 0, which never
+    // happens for a real position, so no separate emptiness test is needed.
+    public bool TryProbe(ulong hashKey, out TranspositionTableEntry entry){
         var index = HashFunction(hashKey);
         var e = TTable[index];
         var e2 = TTable[index+1];
         Probes++;
-    
+
         //verify lock
-        if(e != null && (hashKey ^ e.Value) == e.Lock)
+        if((hashKey ^ e.Value) == e.Lock)
         {
             Hits++;
-            return e;
+            entry = e;
+            return true;
         }
-        else if(e2 != null && (hashKey ^ e2.Value)== e2.Lock)
+        else if((hashKey ^ e2.Value)== e2.Lock)
         {
             Hits++;
-            return e2;
+            entry = e2;
+            return true;
         }
-        return null;
+        entry = default;
+        return false;
     }
 }

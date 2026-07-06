@@ -67,9 +67,9 @@ public partial class AlphaBeta
     // hand-verified against every other tier's (a single combined int score
     // would need history's accumulated counts to never grow large enough to
     // spill into the killer/capture ranges above it).
-    (int Tier, int Score) OrderMove(Move m, TranspositionTableEntry entry)
+    (int Tier, int Score) OrderMove(Move m, bool hasEntry, in TranspositionTableEntry entry)
     {
-        if (entry != null && m.Value == entry.MoveValue)
+        if (hasEntry && m.Value == entry.MoveValue)
             return (4, 0); // search this move first
 
         if ((m.Bits & (byte)MoveBits.Capture) > 0)
@@ -236,8 +236,8 @@ public partial class AlphaBeta
             return Quiesce(alpha, beta);
 
         //first let's look for a transposition
-        var entry = TranspositionTable.Instance.Read(MyBoard.HashKey);
-        if (entry != null)
+        var hasEntry = TranspositionTable.Instance.TryProbe(MyBoard.HashKey, out var entry);
+        if (hasEntry)
         {
             //we have a hit from the TTable
             if (entry.Depth >= depth){
@@ -294,7 +294,7 @@ public partial class AlphaBeta
 
         var moves = MoveGenerator
             .GenerateMoves(MyBoard)
-            .OrderByDescending((m) => OrderMove(m, entry));
+            .OrderByDescending((m) => OrderMove(m, hasEntry, entry));
         Move lastMove = null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
 
@@ -307,7 +307,7 @@ public partial class AlphaBeta
 
             var justGaveCheck = MyBoard.InCheck(MyBoard.SideToMove);
             var capture = ((m.Bits & (byte)MoveBits.Capture) != 0);
-            if (!capture && (entry==null || entry.MoveValue!=m.Value)) // don't count the hash move as a non-capture
+            if (!capture && (!hasEntry || entry.MoveValue!=m.Value)) // don't count the hash move as a non-capture
                 ++nonCaptureMoves;                                     // while it might not be a capture, the point 
                                                                        // here is to start counting after generated captures
             var passedpawnpush = (m.Bits & (byte)MoveBits.Pawn) > 0 && (Evaluator.PassedPawnMask[MyBoard.SideToMove^1,m.To] & MyBoard.Pawns[MyBoard.SideToMove]) == 0;                                               
@@ -376,7 +376,7 @@ public partial class AlphaBeta
 
             if (score >= beta)
             {
-                SearchFailHigh(m, score, depth, entry);
+                SearchFailHigh(m, score, depth, hasEntry, entry);
                 if (lastMove == null)
                     Metrics.FirstMoveFailHigh++;
                 return score;
@@ -470,12 +470,12 @@ public partial class AlphaBeta
         RootMoves.Insert(0,m);
     }
 
-    void SearchFailHigh(Move m, int score, int depth, TranspositionTableEntry entry)
+    void SearchFailHigh(Move m, int score, int depth, bool hasEntry, in TranspositionTableEntry entry)
     {
         UpdateHeuristics(m,depth);
         Metrics.FailHigh++;
 
-        if (entry != null && entry.MoveValue == m.Value)
+        if (hasEntry && entry.MoveValue == m.Value)
             Metrics.TTFailHigh++;
 
         else if ((Killers[Ply, 0] != null && m.Value == Killers[Ply, 0].Value) ||
