@@ -76,7 +76,8 @@ public partial class AlphaBeta
 
         }
 
-        var moves = MoveGenerator.GenerateQuiescenceMoves(MyBoard,false);
+        var moves = GetMoveBuffer();
+        MoveGenerator.GenerateQuiescenceMoves(MyBoard, moves, false);
         OrderQuiesceMoves(moves, inCheck);
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;

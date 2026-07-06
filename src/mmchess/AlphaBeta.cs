@@ -17,6 +17,7 @@ public partial class AlphaBeta
     GameState MyGameState { get; set; }
     Action Interrupt { get; set; }
     Move[,] Killers = new Move[MAX_DEPTH, 2];
+    readonly List<Move>[] MoveBuffers = new List<Move>[MAX_DEPTH];
     // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
     // ply, where side-to-move already alternates implicitly along one line
     // of play), history accumulates across the whole tree, where the same
@@ -30,6 +31,7 @@ public partial class AlphaBeta
     public AlphaBeta()
     {
         Metrics = new AlphaBetaMetrics();
+        InitializeMoveBuffers();
     }
     public AlphaBeta(GameState state, Action interrupt)
     {
@@ -42,6 +44,13 @@ public partial class AlphaBeta
         TimeLimit = TimeSpan.FromSeconds(5);
         Metrics = new AlphaBetaMetrics();
         Interrupt = interrupt;
+        InitializeMoveBuffers();
+    }
+
+    void InitializeMoveBuffers()
+    {
+        for (int i = 0; i < MoveBuffers.Length; i++)
+            MoveBuffers[i] = new List<Move>(256);
     }
 
     int OrderRootMove(Move m)
@@ -292,7 +301,8 @@ public partial class AlphaBeta
             }
         }
 
-        var moves = MoveGenerator.GenerateMoves(MyBoard);
+        var moves = GetMoveBuffer();
+        MoveGenerator.GenerateMoves(MyBoard, moves);
         OrderMoves(moves, hasEntry, entry);
         Move lastMove = Move.Null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
@@ -467,6 +477,13 @@ public partial class AlphaBeta
         //we need to move this one to the top of root moves
         RootMoves.Remove(m);
         RootMoves.Insert(0,m);
+    }
+
+    List<Move> GetMoveBuffer()
+    {
+        var moves = MoveBuffers[Ply];
+        moves.Clear();
+        return moves;
     }
 
     void OrderMoves(IList<Move> moves, bool hasEntry, in TranspositionTableEntry entry)

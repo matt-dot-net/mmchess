@@ -630,13 +630,18 @@ public class MoveGenerator
     // and ignore a check the way it can ignore a quiet position.
     public static IList<Move> GenerateQuiescenceMoves(Board b, bool fullPromo=true)
     {
-        int xside = b.SideToMove ^ 1;
         List<Move> list = new List<Move>();
+        GenerateQuiescenceMoves(b, list, fullPromo);
+        return list;
+    }
 
+    public static void GenerateQuiescenceMoves(Board b, IList<Move> list, bool fullPromo=true)
+    {
+        int xside = b.SideToMove ^ 1;
         if (b.InCheck(b.SideToMove))
         {
             GenerateEvasions(b, list, fullPromo);
-            return list;
+            return;
         }
 
         ulong moves;
@@ -792,19 +797,21 @@ public class MoveGenerator
                 });
             }
         }
-        return list;
-
     }
 
     public static IList<Move> GenerateMoves(Board b, bool fullPromo=true)
     {
-
         List<Move> list = new List<Move>();
+        GenerateMoves(b, list, fullPromo);
+        return list;
+    }
 
+    public static void GenerateMoves(Board b, IList<Move> list, bool fullPromo=true)
+    {
         if (b.InCheck(b.SideToMove))
         {
             GenerateEvasions(b, list,fullPromo);
-            return list;
+            return;
         }
 
         GenerateQueenMoves(b, list);
@@ -813,8 +820,6 @@ public class MoveGenerator
         GenerateKnightMoves(b, list);
         GeneratePawnMoves(b, list,fullPromo);
         GenerateKingMoves(b, list);
-
-        return list;
     }
 
     // GenerateMoves is only pseudo-legal (MakeMove is what rejects a move that
@@ -906,7 +911,6 @@ public class MoveGenerator
     static void GenerateRankAndFileMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)
     {
         ulong sidePieces = b.Pieces[b.SideToMove];
-        var returnVal = new List<Move>();
         while (pieces > 0)
         {
             int sq = pieces.BitScanForward();
@@ -969,7 +973,6 @@ public class MoveGenerator
     {
         ulong pawns = b.Pawns[b.SideToMove];
         ulong enemyPieces = b.Pieces[b.SideToMove ^ 1];
-        var returnList = new List<Move>();
         while (pawns > 0)
         {
             int sq = pawns.BitScanForward();

@@ -116,8 +116,13 @@ if an unusually long game/search exceeds the initial capacity. Make/unmake now
 pushes and pops inline history entries without `List<T>` capacity churn.
 
 ## 4. `new List<Move>()` per movegen call
-Tie to #1/#2: a reusable move buffer indexed by Ply removes the per-node list
-allocation. Needs care - each ply/recursion level needs its own buffer.
+DONE (2026-07-06): `AlphaBeta` now owns reusable `List<Move>` buffers indexed
+by `Ply`, so recursive search and quiescence each write into their own cleared
+per-ply buffer instead of allocating a fresh move list per node/qnode.
+`MoveGenerator` keeps the old allocating APIs for non-search callers, but now
+also exposes append-into-existing-list overloads used by the hot search path.
+Removed two dead helper-list allocations inside movegen while here.
+Correctness: full suite green (110).
 
 ## 5. `PawnScore` is a class holding a ulong[2,8] array
 PawnScore.cs. Lower frequency (cached in the pawn hash) but each store allocates
