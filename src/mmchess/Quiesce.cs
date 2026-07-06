@@ -1,4 +1,5 @@
-using System.Linq;
+using System;
+using System.Collections.Generic;
 
 namespace mmchess;
 
@@ -75,9 +76,8 @@ public partial class AlphaBeta
 
         }
 
-        var moves = MoveGenerator
-            .GenerateQuiescenceMoves(MyBoard,false)
-            .OrderByDescending((m) => OrderQuiesceMove(m, inCheck));
+        var moves = MoveGenerator.GenerateQuiescenceMoves(MyBoard,false);
+        OrderQuiesceMoves(moves, inCheck);
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;
         bool anyMoveTried = false;
@@ -127,5 +127,31 @@ public partial class AlphaBeta
 
         return alpha;
 
+    }
+
+    void OrderQuiesceMoves(IList<Move> moves, bool inCheck)
+    {
+        var count = moves.Count;
+        Span<int> scores = count <= 256 ? stackalloc int[count] : new int[count];
+
+        for (int i = 0; i < count; i++)
+            scores[i] = OrderQuiesceMove(moves[i], inCheck);
+
+        for (int i = 1; i < count; i++)
+        {
+            var move = moves[i];
+            var score = scores[i];
+            var j = i - 1;
+
+            while (j >= 0 && scores[j] < score)
+            {
+                moves[j + 1] = moves[j];
+                scores[j + 1] = scores[j];
+                j--;
+            }
+
+            moves[j + 1] = move;
+            scores[j + 1] = score;
+        }
     }
 }

@@ -292,9 +292,8 @@ public partial class AlphaBeta
             }
         }
 
-        var moves = MoveGenerator
-            .GenerateMoves(MyBoard)
-            .OrderByDescending((m) => OrderMove(m, hasEntry, entry));
+        var moves = MoveGenerator.GenerateMoves(MyBoard);
+        OrderMoves(moves, hasEntry, entry);
         Move lastMove = Move.Null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
 
@@ -468,6 +467,45 @@ public partial class AlphaBeta
         //we need to move this one to the top of root moves
         RootMoves.Remove(m);
         RootMoves.Insert(0,m);
+    }
+
+    void OrderMoves(IList<Move> moves, bool hasEntry, in TranspositionTableEntry entry)
+    {
+        var count = moves.Count;
+        Span<int> tiers = count <= 256 ? stackalloc int[count] : new int[count];
+        Span<int> scores = count <= 256 ? stackalloc int[count] : new int[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            var order = OrderMove(moves[i], hasEntry, entry);
+            tiers[i] = order.Tier;
+            scores[i] = order.Score;
+        }
+
+        for (int i = 1; i < count; i++)
+        {
+            var move = moves[i];
+            var tier = tiers[i];
+            var score = scores[i];
+            var j = i - 1;
+
+            while (j >= 0 && IsMoveScoreLess(tiers[j], scores[j], tier, score))
+            {
+                moves[j + 1] = moves[j];
+                tiers[j + 1] = tiers[j];
+                scores[j + 1] = scores[j];
+                j--;
+            }
+
+            moves[j + 1] = move;
+            tiers[j + 1] = tier;
+            scores[j + 1] = score;
+        }
+    }
+
+    static bool IsMoveScoreLess(int leftTier, int leftScore, int rightTier, int rightScore)
+    {
+        return leftTier < rightTier || (leftTier == rightTier && leftScore < rightScore);
     }
 
     void SearchFailHigh(Move m, int score, int depth, bool hasEntry, in TranspositionTableEntry entry)
