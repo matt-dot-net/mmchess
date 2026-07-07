@@ -139,6 +139,17 @@ search still uses these shapes for data like principal variation, killers, and
 history. Do this one structure at a time and bench each change independently,
 since some arrays are tiny or cold enough that readability may be worth keeping.
 
+## 7. Flatten per-side board bitboards
+Replace `Board`'s separate two-element arrays (`Pawns`, `Knights`, `Bishops`,
+`Rooks`, `Queens`, `King`, `Pieces`) with inline board storage so each `Board`
+does not own seven tiny heap arrays and hot accesses avoid array-object
+indirection. For maximum performance, prefer explicit fields (`WhiteRooks`,
+`BlackRooks`, etc.) or source-generated side-specific helpers over a polite
+`ulong[14]` middle ground if benchmarks show the field version wins. This will
+touch `Board`, `MoveGenerator`, `Evaluator`, hashing, SEE, notation, and tests,
+so do it as its own isolated branch with a full correctness run and a
+before/after bench.
+
 # Search / performance bugs costing Elo
 
 ## 1. LMR reduction value leaks between moves
