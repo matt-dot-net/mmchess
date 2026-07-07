@@ -12,7 +12,8 @@ public class PawnHashTableTests
 
         table.Store(key, score);
 
-        Assert.Same(score, table.Probe(key));
+        Assert.True(table.TryProbe(key, out var probed));
+        Assert.Equal(score.Eval, probed.Eval);
     }
 
     [Fact]
@@ -26,7 +27,7 @@ public class PawnHashTableTests
         // bits, different high bits) must not be served the wrong entry
         var collidingKey = key ^ 0x8000_0000_0000_0000UL;
 
-        Assert.Null(table.Probe(collidingKey));
+        Assert.False(table.TryProbe(collidingKey, out _));
     }
 
     [Fact]

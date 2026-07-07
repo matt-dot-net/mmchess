@@ -44,16 +44,19 @@ public class PawnHashTable
         }
     }
 
-    public PawnScore Probe(ulong pawnHashKey)
+    public bool TryProbe(ulong pawnHashKey, out PawnScore score)
     {
         Probes++;
         var e = table[pawnHashKey & KeyMask];
         if (e != null && e.Key == pawnHashKey)
         {
             Hits++;
-            return e.Score;
+            score = e.Score;
+            return true;
         }
-        return null;
+
+        score = default(PawnScore);
+        return false;
     }
 
     public void Store(ulong pawnHashKey, PawnScore score)

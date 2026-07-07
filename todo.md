@@ -125,9 +125,11 @@ Removed two dead helper-list allocations inside movegen while here.
 Correctness: full suite green (110).
 
 ## 5. `PawnScore` is a class holding a ulong[2,8] array
-PawnScore.cs. Lower frequency (cached in the pawn hash) but each store allocates
-the object AND the 8x2 array. Smaller win; convert to a struct with inline
-storage.
+DONE (2026-07-06): `PawnScore` is now a struct with inline per-file storage
+instead of a heap object wrapping a `ulong[2,8]` array. Pawn hash probing now
+uses `TryProbe(out PawnScore)`, so cache hits return the stored value without
+allocating a fresh result object, and `EvaluatePawns` updates the returned
+struct copy's side-to-move-relative eval without mutating the cached entry.
 
 # Search / performance bugs costing Elo
 

@@ -442,10 +442,10 @@ public static class Evaluator
                 rooks ^= BitMask.Mask[sq];
 
                 //open file bonus
-                if (e.PawnScore.Files[side, sq.File()] == 0)
+                if (e.PawnScore.GetFile(side, sq.File()) == 0)
                 {
                     eval[side] += RookOnOpenFileBonus / 2;
-                    if (e.PawnScore.Files[xside, sq.File()] == 0)
+                    if (e.PawnScore.GetFile(xside, sq.File()) == 0)
                         eval[side] += RookOnOpenFileBonus;
                 }
 
@@ -696,7 +696,7 @@ public static class Evaluator
                     for (int f = 5; f < 8; f++)
                     {
                         //if I have no pawns on the file
-                        if (pawnScore.Files[side, f] == 0)
+                        if (pawnScore.GetFile(side, f) == 0)
                         {
                             eval[side] += OpenFileInFrontOfCastledKingPenalty;
 
@@ -732,7 +732,7 @@ public static class Evaluator
                     for (int f = 2; f >= 0; f--)
                     {
                         //if I have no pawns on the file
-                        if (pawnScore.Files[side, f] == 0)
+                        if (pawnScore.GetFile(side, f) == 0)
                         {
                             eval[side] += OpenFileInFrontOfCastledKingPenalty;
 
@@ -771,23 +771,26 @@ public static class Evaluator
     // Black); EvaluatePawns below converts to side-to-move-relative.
     static PawnScore EvaluatePawnStructure(Board b)
     {
-        int[] eval = new int[2];
+        int whiteEval = 0;
+        int blackEval = 0;
         var returnVal = new PawnScore();
         for (int side = 0; side < 2; side++)
         {
             ulong pawns = b.Pawns[side];
             int xside = side ^ 1;
             ulong opponentPawns = b.Pawns[side ^ 1];
+            int sideEval = 0;
 
             //evaluate file by file
             for (int i = 0; i < 8; i++)
             {
 
-                returnVal.Files[side, i] = pawns & Board.FileMask[i];
-                returnVal.Files[xside, i] = opponentPawns & Board.FileMask[i];
+                var pawnsOnFile = pawns & Board.FileMask[i];
+                returnVal.SetFile(side, i, pawnsOnFile);
+                returnVal.SetFile(xside, i, opponentPawns & Board.FileMask[i]);
 
                 //evaluate my doubled pawns
-                if (returnVal.Files[side, i].Count() > 1)
+                if (pawnsOnFile.Count() > 1)
                 {
                     //doubled pawns
                     if (i > 0 && i < 7) //ignoring outside pawns
@@ -795,11 +798,11 @@ public static class Evaluator
                         if ((pawns & Board.FileMask[i - 1]) == 0 &&
                             (pawns & Board.FileMask[i + 1]) == 0)
                         {
-                            eval[side] += 4 * DoubledPawnPenalty;
+                            sideEval += 4 * DoubledPawnPenalty;
                         }
                         else
                         {
-                            eval[side] += 2 * DoubledPawnPenalty;
+                            sideEval += 2 * DoubledPawnPenalty;
                         }
                 }
             }
@@ -814,13 +817,18 @@ public static class Evaluator
                 if ((PassedPawnMask[side, pawnsq] & opponentPawns) == 0)
                 {
                     var distanceMultiplier = side == 1 ? pawnsq.Rank() : 8 - pawnsq.Rank();
-                    eval[side] +=
+                    sideEval +=
                         PassedPawnBonus * distanceMultiplier;
                 }
             }
+
+            if (side == 0)
+                whiteEval = sideEval;
+            else
+                blackEval = sideEval;
         }
 
-        returnVal.Eval = eval[0] - eval[1];
+        returnVal.Eval = whiteEval - blackEval;
         return returnVal;
     }
 
@@ -831,9 +839,11 @@ public static class Evaluator
     // (White minus Black) score, same convention as EvaluatePawnStructure.
     static int EvaluateBlockedPawns(Board b)
     {
-        int[] eval = new int[2];
+        int whiteEval = 0;
+        int blackEval = 0;
         for (int side = 0; side < 2; side++)
         {
+            int sideEval = 0;
             var p = b.Pawns[side];
             while (p > 0)
             {
@@ -843,22 +853,26 @@ public static class Evaluator
                 if (side == 0 && pawnsq > 7)
                 {
                     if ((b.AllPieces & BitMask.Mask[pawnsq - 8]) > 0)
-                        eval[side] += BlockedPawnPenalty;
+                        sideEval += BlockedPawnPenalty;
                 }
                 else if (side == 1 && pawnsq < 56)
                 {
                     if ((b.AllPieces & BitMask.Mask[pawnsq + 8]) > 0)
-                        eval[side] += BlockedPawnPenalty;
+                        sideEval += BlockedPawnPenalty;
                 }
             }
+
+            if (side == 0)
+                whiteEval = sideEval;
+            else
+                blackEval = sideEval;
         }
-        return eval[0] - eval[1];
+        return whiteEval - blackEval;
     }
 
     static PawnScore EvaluatePawns(Board b)
     {
-        var structure = PawnHashTable.Instance.Probe(b.PawnHashKey);
-        if (structure == null)
+        if (!PawnHashTable.Instance.TryProbe(b.PawnHashKey, out var structure))
         {
             structure = EvaluatePawnStructure(b);
             PawnHashTable.Instance.Store(b.PawnHashKey, structure);
@@ -866,13 +880,9 @@ public static class Evaluator
 
         var whiteRelativeEval = structure.Eval + EvaluateBlockedPawns(b);
 
-        //don't mutate the cached entry - build a fresh result using its
-        //(immutable once stored) Files data plus our own side-to-move-
-        //relative Eval combining the cached and always-fresh components
-        return new PawnScore
-        {
-            Files = structure.Files,
-            Eval = b.SideToMove == 0 ? whiteRelativeEval : -whiteRelativeEval
-        };
+        // Don't mutate the cached entry: the returned struct copy carries the
+        // same inline file data plus this call's side-to-move-relative eval.
+        structure.Eval = b.SideToMove == 0 ? whiteRelativeEval : -whiteRelativeEval;
+        return structure;
     }
 }
