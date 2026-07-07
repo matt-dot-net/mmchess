@@ -131,6 +131,14 @@ uses `TryProbe(out PawnScore)`, so cache hits return the stored value without
 allocating a fresh result object, and `EvaluatePawns` updates the returned
 struct copy's side-to-move-relative eval without mutating the cached entry.
 
+## 6. Replace rectangular arrays in hot paths
+Audit remaining `[,]`/`[,,]` arrays and replace performance-sensitive ones
+with flat arrays plus explicit index helpers. .NET rectangular array indexing
+has extra bounds/rank overhead compared with single-dimensional arrays, and the
+search still uses these shapes for data like principal variation, killers, and
+history. Do this one structure at a time and bench each change independently,
+since some arrays are tiny or cold enough that readability may be worth keeping.
+
 # Search / performance bugs costing Elo
 
 ## 1. LMR reduction value leaks between moves
