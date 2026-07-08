@@ -48,8 +48,8 @@ bench and self-play), it graduates to Dorky.
   **mate-conversion** scoring.
 
 ### Protocols & tooling
-- **xboard / WinBoard** (CECP) — the primary interface today. Partial **UCI**
-  (handshake + `position`); full UCI is on the roadmap (`todo.md`).
+- **UCI** and **xboard / WinBoard** (CECP) compatible, including position
+  setup, engine search commands, time controls, and configurable hash size.
 - Time controls: per-game, moves-in-N, fixed time per move, fixed depth.
 - `perft` / `perft <depth> parallel` for move-generation verification.
 - `bench <epd> [depth]` — fixed-depth move-ordering benchmark reporting
@@ -64,15 +64,16 @@ Requires the **.NET 10 SDK**.
 # Build
 dotnet build src/mmchess -c Release
 
-# Run the engine (reads xboard/UCI commands on stdin)
+# Run the engine (reads UCI or xboard/CECP commands on stdin)
 dotnet run --project src/mmchess -c Release
 
 # Run the test suite
 dotnet test
 ```
 
-The engine speaks CECP/xboard, so it plugs into WinBoard, XBoard, or
-cutechess-cli (which also supplies opening books — there is no built-in book).
+The engine speaks both UCI and CECP/xboard, so it plugs into UCI-compatible
+GUIs as well as WinBoard, XBoard, or cutechess-cli (which can also supply
+opening books — there is no built-in book).
 
 ### Handy interactive commands
 ```
@@ -96,9 +97,9 @@ epdtest wac.epd     # 5s/position best-move test
 
 ## Roadmap
 
-See `todo.md` for the full list. Highlights: full UCI, Lazy-SMP parallel search
-(needs per-thread search context), Syzygy tablebases, pondering, texel tuning
-then NNUE, and MultiPV / analysis mode.
+See `todo.md` for the full list. Highlights: Lazy-SMP parallel search (needs
+per-thread search context), Syzygy tablebases, texel tuning then NNUE, and
+MultiPV / analysis mode.
 
 ## Author
 
