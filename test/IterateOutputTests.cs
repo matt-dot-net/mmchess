@@ -49,6 +49,30 @@ public class IterateOutputTests
         return capturedError.ToString();
     }
 
+    static string CapturePonderStdOut(GameState state)
+    {
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        var capturedOut = new StringWriter();
+        var interrupts = 0;
+        Console.SetOut(capturedOut);
+        Console.SetError(new StringWriter());
+        try
+        {
+            Iterate.DoPonder(state, () =>
+            {
+                if (++interrupts > 1)
+                    state.TimeUp = true;
+            });
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+        return capturedOut.ToString();
+    }
+
     [Fact]
     public void DoIterateWritesNothingToStdOutWhenNotShowingThinking()
     {
@@ -88,6 +112,66 @@ public class IterateOutputTests
         // silently ignored (or stdout capture is broken), this should fail
         // rather than the empty-output assertion in the other test passing vacuously
         Assert.NotEqual(string.Empty, output);
+    }
+
+    [Fact]
+    public void DoPonderWritesPostOutputWhenShowingThinking()
+    {
+        var state = new GameState
+        {
+            ComputerSide = 1,
+            ShowThinking = true,
+            TimeControl = new TimeControl
+            {
+                Type = TimeControlType.FixedTimePerMove,
+                FixedTimePerSearchSeconds = 1
+            }
+        };
+
+        var output = CapturePonderStdOut(state);
+
+        Assert.NotEqual(string.Empty, output);
+    }
+
+    [Fact]
+    public void DoIteratePreservesPonderMoveFromCompletedIterationWhenInterrupted()
+    {
+        var state = new GameState
+        {
+            ComputerSide = 0,
+            TimeControl = new TimeControl
+            {
+                Type = TimeControlType.FixedTimePerMove,
+                FixedTimePerSearchSeconds = 60
+            }
+        };
+        var interrupts = 0;
+
+        Iterate.DoIterate(state, () =>
+        {
+            if (++interrupts > 4)
+                state.TimeUp = true;
+        });
+
+        Assert.False(state.PonderMove.IsNull);
+    }
+
+    [Fact]
+    public void FindPonderMoveProducesMoveWhenNoPvReplyExists()
+    {
+        var state = new GameState
+        {
+            ComputerSide = 0,
+            TimeControl = new TimeControl
+            {
+                Type = TimeControlType.FixedTimePerMove,
+                FixedTimePerSearchSeconds = 60
+            }
+        };
+
+        var move = Iterate.FindPonderMove(state, () => { });
+
+        Assert.False(move.IsNull);
     }
 
     [Fact]

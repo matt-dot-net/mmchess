@@ -15,12 +15,12 @@ public class Program
 
         while (cmd == null || cmd.Value != CommandVal.Quit)
         {
-            var input = ConsoleInputQueue.ReadLine();
-            if (input == null)
+            cmd = ReadNextCommand(gameState);
+            if (cmd == null)
                 break; // stdin closed
 
-            cmd = CommandParser.ParseCommand(input);
-            CommandParser.DoCommand(cmd, gameState);
+            if (!Ponder.HandlePonderedCommand(cmd, gameState))
+                CommandParser.DoCommand(cmd, gameState);
 
             if (gameState.IsMyTurn)
             {
@@ -37,11 +37,18 @@ public class Program
                 {
                     Console.WriteLine("move {0}", myMove.ToAlegbraicNotation(gameState.GameBoard));
                     gameState.GameBoard.MakeMove(myMove);
+                    Ponder.EnsureMoveFromTranspositionTable(gameState);
                 }
             }
         }
     }
 
+    static Command ReadNextCommand(GameState gameState)
+    {
+        if (Ponder.ShouldPonder(gameState))
+            return Ponder.PonderUntilCommand(gameState);
 
-
+        var input = ConsoleInputQueue.ReadLine();
+        return input == null ? null : CommandParser.ParseCommand(input);
+    }
 }

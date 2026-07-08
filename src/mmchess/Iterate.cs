@@ -103,7 +103,57 @@ public static class Iterate
 
     public static Move DoIterate(GameState state, Action interrupt, out AlphaBetaMetrics metrics)
     {
+        return DoSearch(state, interrupt, out metrics, useClock: true, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: true);
+    }
+
+    public static Move DoPonder(GameState state, Action interrupt)
+    {
+        return DoSearch(state, interrupt, out _, useClock: false, suppressThinking: false, honorFixedDepthLimit: false, updatePonderMove: false);
+    }
+
+    public static Move FindPonderMove(GameState state, Action interrupt)
+    {
+        var originalPonderMove = state.PonderMove;
+        var originalPonderMoveMade = state.PonderMoveMade;
+        var originalPonderStartHash = state.PonderStartHash;
+        var originalTimeControl = state.TimeControl;
+        var originalDepthLimit = state.DepthLimit;
+
+        state.TimeControl = new TimeControl { Type = TimeControlType.FixedDepth };
+        state.DepthLimit = 1;
+        var move = DoSearch(
+            state,
+            interrupt,
+            out _,
+            useClock: false,
+            suppressThinking: true,
+            honorFixedDepthLimit: true,
+            updatePonderMove: false);
+
+        state.PonderMove = originalPonderMove;
+        state.PonderMoveMade = originalPonderMoveMade;
+        state.PonderStartHash = originalPonderStartHash;
+        state.TimeControl = originalTimeControl;
+        state.DepthLimit = originalDepthLimit;
+        return move;
+    }
+
+    static Move DoSearch(
+        GameState state,
+        Action interrupt,
+        out AlphaBetaMetrics metrics,
+        bool useClock,
+        bool suppressThinking,
+        bool honorFixedDepthLimit,
+        bool updatePonderMove)
+    {
         state.TimeUp = false;
+        if (updatePonderMove)
+        {
+            state.PonderMove = Move.Null;
+            state.PonderMoveMade = false;
+            state.PonderStartHash = 0;
+        }
 
         //if the position is forced (exactly one legal move) there is nothing to
         //decide - play it immediately without searching and without burning the
@@ -120,7 +170,7 @@ public static class Iterate
         var timeLimit = GetThinkTimeSpan(state);
         AlphaBeta ab = new AlphaBeta(state, () =>
         {
-            if ((DateTime.Now - startTime) > timeLimit)
+            if (useClock && (DateTime.Now - startTime) > timeLimit)
                 state.TimeUp = true;
             interrupt();
         });
@@ -131,6 +181,7 @@ public static class Iterate
         int alpha = -10000;
         int beta = 10000;
         Move bestMove = Move.Null;
+        Move ponderMove = Move.Null;
         //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
         ab.Metrics.Depth = 0;
         for (int i = 0; i < AlphaBeta.MAX_DEPTH && !state.TimeUp; i++)
@@ -148,7 +199,7 @@ public static class Iterate
                 score = ab.SearchRoot(alpha, beta, i);
                 bestMove=ab.PrincipalVariation[0,0];
                 
-                if(!state.TimeUp && state.ShowThinking)
+                if(!state.TimeUp && state.ShowThinking && !suppressThinking)
                     PrintSearchResult(state, startTime, ab, i, score);
                 if (score > alpha && score < beta)
                 {
@@ -176,6 +227,8 @@ public static class Iterate
             {
                 ab.Metrics.DepthNodes[i] = ab.Metrics.Nodes;
                 ab.Metrics.Depth = i;
+                if (updatePonderMove && ab.PvLength[0] > 1)
+                    ponderMove = ab.PrincipalVariation[0, 1];
             }
 
             if (Math.Abs(score) > 9900) // stop if we have found mate
@@ -185,12 +238,14 @@ public static class Iterate
             //completed the requested depth instead of running to MAX_DEPTH -
             //GetThinkTimeSpan returns TimeSpan.MaxValue for this mode, so
             //nothing else would ever set state.TimeUp
-            if (state.TimeControl.Type == TimeControlType.FixedDepth && i >= state.DepthLimit)
+            if (honorFixedDepthLimit && state.TimeControl.Type == TimeControlType.FixedDepth && i >= state.DepthLimit)
                 break;
         }
-        if (state.ShowThinking)
+        if (state.ShowThinking && !suppressThinking)
             PrintMetrics(ab.Metrics, DateTime.Now - startTime);
         metrics = ab.Metrics;
+        if (updatePonderMove)
+            state.PonderMove = ponderMove;
         return bestMove;
     }
 

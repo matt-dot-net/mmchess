@@ -27,6 +27,28 @@ public class CommandProcessorTests
         Assert.Equal(CommandVal.Draw, cmd.Value);
     }
 
+    [Fact]
+    public void HardAndEasyTogglePondering()
+    {
+        var state = new GameState { GameBoard = new Board() };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("hard"), state);
+        Assert.True(state.PonderEnabled);
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("easy"), state);
+        Assert.False(state.PonderEnabled);
+    }
+
+    [Fact]
+    public void MoveNowRequestsSearchStop()
+    {
+        var state = new GameState { GameBoard = new Board() };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("?"), state);
+
+        Assert.True(state.TimeUp);
+    }
+
     [Theory]
     [InlineData("ping 1")]
     [InlineData("xyzzy")]

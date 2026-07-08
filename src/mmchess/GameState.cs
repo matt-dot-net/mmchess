@@ -8,6 +8,12 @@ public class GameState
 
     public int ComputerSide{get;set;}
     public String Opponent{get;set;}
+    public bool PonderEnabled{get;set;}
+    public Move PonderMove{get;set;}
+    public bool PonderMoveMade{get;set;}
+    public ulong PonderStartHash{get;set;}
+    public int PonderHits{get;set;}
+    public int PonderMisses{get;set;}
 
     public TimeSpan WhiteClock{get;set;}
     public TimeSpan BlackClock{get;set;}

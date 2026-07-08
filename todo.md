@@ -18,8 +18,17 @@ Implement `position`, `go` (wtime/btime/movestogo/movetime/infinite),
 Opens the door to standard GUIs and testing tools (cutechess-cli, fastchess).
 
 ## 4. Pondering
-Think on the opponent's time (`hard`/`easy` are currently no-ops). Predict
-the reply, search it while waiting, and handle ponder-hit vs ponder-miss.
+DONE (2026-07-08): xboard `hard`/`easy` now toggle pondering. After our move,
+the normal PV reply is tracked as `PonderMove`; while waiting for the opponent,
+the main thread makes that predicted reply on the real board and searches our
+answer from the resulting position, warming the shared transposition table
+without cloning board state or running a background search thread. Coordinate
+input records ponder-hit/miss counters: on hit the speculative move stays made,
+on miss it is unmade before the actual move is applied. With `post` enabled,
+ponder thinking output is visible and the assumed reply is emitted as `Hint:`.
+If the normal PV did not leave a reply to ponder, the wait loop first performs
+a shallow search from the opponent-to-move position to choose one before making
+it speculatively.
 
 ## 5. Stronger evaluation: texel tuning, then NNUE
 Near term: automated tuning of the existing hand-crafted eval terms against

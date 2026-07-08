@@ -131,17 +131,23 @@ public static class CommandParser
                 cmd.Value == CommandVal.Rejected ||
 
                 cmd.Value == CommandVal.Random ||
-                 cmd.Value == CommandVal.Hard ||
-                 cmd.Value == CommandVal.Easy ||
-                 cmd.Value == CommandVal.MoveNow ||
                  cmd.Value == CommandVal.Draw)
         {
             //noop
-            //we don't ponder, so hard/easy are both no-ops
-            //MoveNow ("?"): we search synchronously, so by the time we read
-            //it the move is already out - nothing to interrupt
             //Draw: ignoring a draw offer declines it
 
+        }
+        else if (cmd.Value == CommandVal.Hard)
+        {
+            state.PonderEnabled = true;
+        }
+        else if (cmd.Value == CommandVal.Easy)
+        {
+            state.PonderEnabled = false;
+        }
+        else if (cmd.Value == CommandVal.MoveNow)
+        {
+            state.TimeUp = true;
         }
         else if (cmd.Value == CommandVal.Unknown)
         {
