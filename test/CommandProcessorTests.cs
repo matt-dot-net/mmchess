@@ -197,4 +197,49 @@ public class CommandProcessorTests
             TranspositionTable.SetSize(TranspositionTable.DefaultSizeMb);
         }
     }
+
+    [Fact]
+    public void UciCommandEntersUciMode()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.True(state.UciMode);
+        Assert.Contains("uciok", stdout.ToString());
+    }
+
+    [Fact]
+    public void PositionStartposAppliesTrailingMoves()
+    {
+        var state = new GameState { GameBoard = new Board() };
+
+        CommandParser.DoCommand(
+            CommandParser.ParseCommand("position startpos moves e2e4 e7e5"),
+            state);
+
+        Assert.Equal(0, state.GameBoard.SideToMove);
+        Assert.Equal(2, state.GameBoard.History.Count);
+    }
+
+    [Fact]
+    public void UciGoDepthRequestsSearch()
+    {
+        var state = new GameState { GameBoard = new Board(), UciMode = true };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("go depth 1"), state);
+
+        Assert.True(state.UciGoRequested);
+        Assert.Equal(TimeControlType.FixedDepth, state.TimeControl.Type);
+        Assert.Equal(1, state.DepthLimit);
+    }
 }

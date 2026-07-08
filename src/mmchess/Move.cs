@@ -101,7 +101,10 @@ public struct Move
 
     public override string ToString()
     {
-        var output = Board.SquareNames[From] + Board.SquareNames[To];
+        var output = ToCoordinateString();
+        if (Promotion > 0)
+            output = output.Substring(0, 4);
+
         if (Promotion > 0)
         {
             output += "=";
@@ -118,6 +121,30 @@ public struct Move
                     break;
                 case Piece.Queen:
                     output += "Q";
+                    break;
+            }
+        }
+        return output;
+    }
+
+    public string ToCoordinateString()
+    {
+        var output = Board.SquareNames[From] + Board.SquareNames[To];
+        if (Promotion > 0)
+        {
+            switch ((Piece)Promotion)
+            {
+                case Piece.Knight:
+                    output += "n";
+                    break;
+                case Piece.Bishop:
+                    output += "b";
+                    break;
+                case Piece.Rook:
+                    output += "r";
+                    break;
+                case Piece.Queen:
+                    output += "q";
                     break;
             }
         }

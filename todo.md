@@ -12,10 +12,13 @@ extract per-search state (killers, history, ply stack, metrics) off the
 existing TPL search context plan.
 
 ## 3. Full UCI support
-Only the `uci` handshake exists today; the engine is effectively xboard-only.
-Implement `position`, `go` (wtime/btime/movestogo/movetime/infinite),
-`stop`, `setoption`, `info` output (depth/score/pv/nps), and `isready`.
-Opens the door to standard GUIs and testing tools (cutechess-cli, fastchess).
+DONE (2026-07-08): UCI mode now handles `uci`/`isready`, `ucinewgame`,
+`position startpos|fen ... moves ...`, `go depth`, `go movetime`,
+`go wtime/btime/winc/binc/movestogo`, `go infinite`, and `stop`. Searches emit
+UCI `info depth ... score cp ... time ... nodes ... nps ... pv ...` lines and
+return `bestmove` in coordinate notation while xboard output remains unchanged.
+`setoption name Hash value N` remains wired through the existing configurable
+transposition table size.
 
 ## 4. Pondering
 DONE (2026-07-08): xboard `hard`/`easy` now toggle pondering. After our move,

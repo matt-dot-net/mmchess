@@ -75,6 +75,8 @@ public static class Iterate
         switch (state.TimeControl.Type)
         {
             case TimeControlType.FixedTimePerMove:
+                if (state.TimeControl.FixedTimePerSearchMilliseconds > 0)
+                    return TimeSpan.FromMilliseconds(state.TimeControl.FixedTimePerSearchMilliseconds);
                 return TimeSpan.FromSeconds(state.TimeControl.FixedTimePerSearchSeconds);
             case TimeControlType.TimePerGame:
                 return TimeSpan.FromSeconds(
@@ -91,6 +93,8 @@ public static class Iterate
                 }
                 var movesRemaining = state.TimeControl.MovesInTimeControl - moves;
                 return TimeSpan.FromSeconds(state.MyClock.TotalSeconds / (movesRemaining+1));
+            case TimeControlType.Infinite:
+                return TimeSpan.MaxValue;
             default:
                 return TimeSpan.MaxValue;
         }
@@ -103,12 +107,17 @@ public static class Iterate
 
     public static Move DoIterate(GameState state, Action interrupt, out AlphaBetaMetrics metrics)
     {
-        return DoSearch(state, interrupt, out metrics, useClock: true, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: true);
+        return DoSearch(state, interrupt, out metrics, useClock: true, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: true, uciOutput: false);
+    }
+
+    public static Move DoUciIterate(GameState state, Action interrupt)
+    {
+        return DoSearch(state, interrupt, out _, useClock: state.TimeControl.Type != TimeControlType.Infinite, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: false, uciOutput: true);
     }
 
     public static Move DoPonder(GameState state, Action interrupt)
     {
-        return DoSearch(state, interrupt, out _, useClock: false, suppressThinking: false, honorFixedDepthLimit: false, updatePonderMove: false);
+        return DoSearch(state, interrupt, out _, useClock: false, suppressThinking: false, honorFixedDepthLimit: false, updatePonderMove: false, uciOutput: false);
     }
 
     public static Move FindPonderMove(GameState state, Action interrupt)
@@ -128,7 +137,8 @@ public static class Iterate
             useClock: false,
             suppressThinking: true,
             honorFixedDepthLimit: true,
-            updatePonderMove: false);
+            updatePonderMove: false,
+            uciOutput: false);
 
         state.PonderMove = originalPonderMove;
         state.PonderMoveMade = originalPonderMoveMade;
@@ -145,7 +155,8 @@ public static class Iterate
         bool useClock,
         bool suppressThinking,
         bool honorFixedDepthLimit,
-        bool updatePonderMove)
+        bool updatePonderMove,
+        bool uciOutput)
     {
         state.TimeUp = false;
         if (updatePonderMove)
@@ -199,7 +210,9 @@ public static class Iterate
                 score = ab.SearchRoot(alpha, beta, i);
                 bestMove=ab.PrincipalVariation[0,0];
                 
-                if(!state.TimeUp && state.ShowThinking && !suppressThinking)
+                if(!state.TimeUp && uciOutput && !suppressThinking && i > 0)
+                    PrintUciSearchResult(state, startTime, ab, i, score);
+                else if(!state.TimeUp && state.ShowThinking && !suppressThinking)
                     PrintSearchResult(state, startTime, ab, i, score);
                 if (score > alpha && score < beta)
                 {
@@ -255,6 +268,34 @@ public static class Iterate
             (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
         PrintPV(state.GameBoard, ab);
         Console.WriteLine();
+    }
+
+    private static void PrintUciSearchResult(GameState state, DateTime startTime, AlphaBeta ab, int i, int score)
+    {
+        var elapsed = DateTime.Now - startTime;
+        var milliseconds = Math.Max(1, (long)elapsed.TotalMilliseconds);
+        var nps = (long)(ab.Metrics.Nodes * 1000.0 / milliseconds);
+        Console.Write("info depth {0} score cp {1} time {2} nodes {3} nps {4} pv ",
+            i,
+            score,
+            milliseconds,
+            ab.Metrics.Nodes,
+            nps);
+        PrintUciPV(state.GameBoard, ab);
+        Console.WriteLine();
+    }
+
+    private static void PrintUciPV(Board b, AlphaBeta ab)
+    {
+        for (int j = 0; j < ab.PvLength[0]; j++)
+        {
+            var m = ab.PrincipalVariation[0, j];
+            Console.Write("{0} ", m.ToCoordinateString());
+            b.MakeMove(m);
+        }
+
+        for (int j = ab.PvLength[0] - 1; j >= 0; j--)
+            b.UnMakeMove();
     }
 
     private static void PrintPV(Board b, AlphaBeta ab)

@@ -5,6 +5,7 @@ public class GameState
 {
     public bool ShowThinking{get;set;}
     public bool UsingGui{get;set;}
+    public bool UciMode{get;set;}
 
     public int ComputerSide{get;set;}
     public String Opponent{get;set;}
@@ -23,6 +24,7 @@ public class GameState
     public bool TimeUp { get; set; }     
 
     public int DepthLimit{get;set;}
+    public bool UciGoRequested{get;set;}
 
     public TimeControl TimeControl{get;set;}
 

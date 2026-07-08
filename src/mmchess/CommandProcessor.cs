@@ -43,9 +43,11 @@ public enum CommandVal
     ST,
     Bench,
     MoveNow,
+    Stop,
     Draw,
     Memory,
     SetOption,
+    UciNewGame,
     Unknown
 }
 public class Command
@@ -149,6 +151,10 @@ public static class CommandParser
         {
             state.TimeUp = true;
         }
+        else if (cmd.Value == CommandVal.Stop)
+        {
+            state.TimeUp = true;
+        }
         else if (cmd.Value == CommandVal.Unknown)
         {
             //xboard-spec reply; harmless to GUIs, keeps a diagnostic trail
@@ -226,9 +232,18 @@ public static class CommandParser
         {
             state.GameBoard = new Board();
         }
+        else if (cmd.Value == CommandVal.UciNewGame)
+        {
+            state.GameBoard = new Board();
+            state.ComputerSide = -1;
+            state.PonderMove = Move.Null;
+            state.PonderMoveMade = false;
+        }
         else if (cmd.Value == CommandVal.Uci)
         {
             state.UsingGui = true;
+            state.UciMode = true;
+            state.ComputerSide = -1;
             Console.WriteLine("id name mmchess {0}", VersionNumber);
             Console.WriteLine("id author Matt McKnight");
             Console.WriteLine("option name Hash type spin default {0} min 1 max 4096",
@@ -245,15 +260,7 @@ public static class CommandParser
         }
         else if (cmd.Value == CommandVal.Position)
         {
-            if (cmd.Arguments.Length < 2)
-                return;
-            if (cmd.Arguments[1] == "startpos")
-            {
-                state.GameBoard = new Board(); return;
-            }
-
-            var fenString = string.Join(' ',cmd.Arguments,1,cmd.Arguments.Length-1);
-            state.GameBoard = Board.ParseFenString(fenString);
+            SetUciPosition(cmd, state);
         }
         else if (cmd.Value == CommandVal.PERFT)
         {
@@ -282,7 +289,14 @@ public static class CommandParser
         }
         if (cmd.Value == CommandVal.Go)
         {
-            state.ComputerSide = state.GameBoard.SideToMove;
+            if (state.UciMode)
+            {
+                SetUciGo(cmd, state);
+            }
+            else
+            {
+                state.ComputerSide = state.GameBoard.SideToMove;
+            }
 
         }
         else if (cmd.Value == CommandVal.MoveInput)
@@ -481,6 +495,116 @@ public static class CommandParser
             if (int.TryParse(args[valueIdx + 1], out var mb))
                 TranspositionTable.SetSize(mb);
         }
+    }
+
+    static void SetUciPosition(Command cmd, GameState state)
+    {
+        if (cmd.Arguments.Length < 2)
+            return;
+
+        int movesIndex = Array.FindIndex(cmd.Arguments, 1, token => token.Equals("moves", StringComparison.OrdinalIgnoreCase));
+        if (cmd.Arguments[1].Equals("startpos", StringComparison.OrdinalIgnoreCase))
+        {
+            state.GameBoard = new Board();
+        }
+        else if (cmd.Arguments[1].Equals("fen", StringComparison.OrdinalIgnoreCase))
+        {
+            var fenEnd = movesIndex >= 0 ? movesIndex : cmd.Arguments.Length;
+            if (fenEnd <= 2)
+                return;
+
+            state.GameBoard = Board.ParseFenString(string.Join(' ', cmd.Arguments, 2, fenEnd - 2));
+        }
+        else
+        {
+            var fenEnd = movesIndex >= 0 ? movesIndex : cmd.Arguments.Length;
+            state.GameBoard = Board.ParseFenString(string.Join(' ', cmd.Arguments, 1, fenEnd - 1));
+        }
+
+        if (movesIndex < 0)
+            return;
+
+        for (int i = movesIndex + 1; i < cmd.Arguments.Length; i++)
+            TryPlayLegalCoordinateMove(state.GameBoard, cmd.Arguments[i]);
+    }
+
+    static void SetUciGo(Command cmd, GameState state)
+    {
+        state.ComputerSide = state.GameBoard.SideToMove;
+        state.UciGoRequested = true;
+        state.TimeControl = new TimeControl { Type = TimeControlType.Infinite };
+        state.DepthLimit = AlphaBeta.MAX_DEPTH - 1;
+
+        int wtime = -1, btime = -1, winc = 0, binc = 0, movestogo = 0, movetime = -1, depth = -1;
+        bool infinite = false;
+        for (int i = 1; i < cmd.Arguments.Length; i++)
+        {
+            var token = cmd.Arguments[i];
+            if (token.Equals("infinite", StringComparison.OrdinalIgnoreCase))
+            {
+                infinite = true;
+            }
+            else if (i + 1 < cmd.Arguments.Length && int.TryParse(cmd.Arguments[i + 1], out var value))
+            {
+                if (token.Equals("wtime", StringComparison.OrdinalIgnoreCase))
+                    wtime = value;
+                else if (token.Equals("btime", StringComparison.OrdinalIgnoreCase))
+                    btime = value;
+                else if (token.Equals("winc", StringComparison.OrdinalIgnoreCase))
+                    winc = value;
+                else if (token.Equals("binc", StringComparison.OrdinalIgnoreCase))
+                    binc = value;
+                else if (token.Equals("movestogo", StringComparison.OrdinalIgnoreCase))
+                    movestogo = value;
+                else if (token.Equals("movetime", StringComparison.OrdinalIgnoreCase))
+                    movetime = value;
+                else if (token.Equals("depth", StringComparison.OrdinalIgnoreCase))
+                    depth = value;
+                i++;
+            }
+        }
+
+        if (depth > 0)
+        {
+            state.TimeControl.Type = TimeControlType.FixedDepth;
+            state.DepthLimit = depth;
+        }
+
+        if (movetime > 0)
+        {
+            state.TimeControl.Type = TimeControlType.FixedTimePerMove;
+            state.TimeControl.FixedTimePerSearchMilliseconds = movetime;
+        }
+        else if (!infinite && (wtime >= 0 || btime >= 0))
+        {
+            state.WhiteClock = TimeSpan.FromMilliseconds(Math.Max(0, wtime));
+            state.BlackClock = TimeSpan.FromMilliseconds(Math.Max(0, btime));
+            state.TimeControl.IncrementSeconds = Math.Max(0, state.GameBoard.SideToMove == 0 ? winc : binc) / 1000;
+            if (movestogo > 0)
+            {
+                state.TimeControl.Type = TimeControlType.NumberOfMoves;
+                state.TimeControl.MovesInTimeControl = movestogo;
+            }
+            else
+            {
+                state.TimeControl.Type = TimeControlType.TimePerGame;
+            }
+        }
+    }
+
+    static bool TryPlayLegalCoordinateMove(Board board, string input)
+    {
+        var parsed = Move.ParseMove(board, input);
+        if (parsed.IsNull)
+            return false;
+
+        foreach (var move in MoveGenerator.GenerateMoves(board))
+        {
+            if (move.From == parsed.From && move.To == parsed.To && move.Promotion == parsed.Promotion)
+                return board.MakeMove(move);
+        }
+
+        return false;
     }
 
     static void EpdTest(Command cmd)

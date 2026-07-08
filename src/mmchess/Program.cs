@@ -22,7 +22,30 @@ public class Program
             if (!Ponder.HandlePonderedCommand(cmd, gameState))
                 CommandParser.DoCommand(cmd, gameState);
 
-            if (gameState.IsMyTurn)
+            if (gameState.UciGoRequested)
+            {
+                gameState.UciGoRequested = false;
+                var bestMove = Iterate.DoUciIterate(gameState, () =>
+                {
+                    if (ConsoleInputQueue.TryReadLine(out var line))
+                    {
+                        cmd = CommandParser.ParseCommand(line);
+                        if (cmd.Value == CommandVal.Stop || cmd.Value == CommandVal.Quit)
+                        {
+                            gameState.TimeUp = true;
+                            if (cmd.Value == CommandVal.Quit)
+                                CommandParser.DoCommand(cmd, gameState);
+                        }
+                        else if (cmd.Value == CommandVal.IsReady)
+                        {
+                            CommandParser.DoCommand(cmd, gameState);
+                        }
+                    }
+                });
+
+                Console.WriteLine("bestmove {0}", bestMove.IsNull ? "0000" : bestMove.ToCoordinateString());
+            }
+            else if (!gameState.UciMode && gameState.IsMyTurn)
             {
                 var myMove = Iterate.DoIterate(gameState, () =>
                 {

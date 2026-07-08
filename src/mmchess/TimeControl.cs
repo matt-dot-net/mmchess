@@ -5,7 +5,8 @@ public enum TimeControlType{
     FixedTimePerMove,
     TimePerGame,
     NumberOfMoves,
-    FixedDepth
+    FixedDepth,
+    Infinite
 }
 
 public class TimeControl
@@ -15,4 +16,5 @@ public class TimeControl
     public int GameTimeSeconds{get;set;}
     public int IncrementSeconds{get;set;}
     public int FixedTimePerSearchSeconds{get;set;}
+    public int FixedTimePerSearchMilliseconds{get;set;}
 }
