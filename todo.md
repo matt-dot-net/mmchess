@@ -19,6 +19,7 @@ UCI `info depth ... score cp ... time ... nodes ... nps ... pv ...` lines and
 return `bestmove` in coordinate notation while xboard output remains unchanged.
 `setoption name Hash value N` remains wired through the existing configurable
 transposition table size.
+NOT QUITE DONE: cutechess reporting that engine does not have option "Hash"
 
 ## 4. Pondering
 DONE (2026-07-08): xboard `hard`/`easy` now toggle pondering. After our move,
