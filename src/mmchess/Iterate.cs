@@ -107,17 +107,26 @@ public static class Iterate
 
     public static Move DoIterate(GameState state, Action interrupt, out AlphaBetaMetrics metrics)
     {
-        return DoSearch(state, interrupt, out metrics, useClock: true, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: true, uciOutput: false);
+        return DoSearch(state, interrupt, out metrics, useClock: () => true, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: true, uciOutput: false);
     }
 
     public static Move DoUciIterate(GameState state, Action interrupt)
     {
-        return DoSearch(state, interrupt, out _, useClock: state.TimeControl.Type != TimeControlType.Infinite, suppressThinking: false, honorFixedDepthLimit: true, updatePonderMove: false, uciOutput: true);
+        return DoSearch(
+            state,
+            interrupt,
+            out _,
+            useClock: () => state.TimeControl.Type != TimeControlType.Infinite &&
+                (!state.UciPonderSearch || state.UciPonderHit),
+            suppressThinking: false,
+            honorFixedDepthLimit: true,
+            updatePonderMove: state.PonderEnabled,
+            uciOutput: true);
     }
 
     public static Move DoPonder(GameState state, Action interrupt)
     {
-        return DoSearch(state, interrupt, out _, useClock: false, suppressThinking: false, honorFixedDepthLimit: false, updatePonderMove: false, uciOutput: false);
+        return DoSearch(state, interrupt, out _, useClock: () => false, suppressThinking: false, honorFixedDepthLimit: false, updatePonderMove: false, uciOutput: false);
     }
 
     public static Move FindPonderMove(GameState state, Action interrupt)
@@ -134,7 +143,7 @@ public static class Iterate
             state,
             interrupt,
             out _,
-            useClock: false,
+            useClock: () => false,
             suppressThinking: true,
             honorFixedDepthLimit: true,
             updatePonderMove: false,
@@ -152,7 +161,7 @@ public static class Iterate
         GameState state,
         Action interrupt,
         out AlphaBetaMetrics metrics,
-        bool useClock,
+        Func<bool> useClock,
         bool suppressThinking,
         bool honorFixedDepthLimit,
         bool updatePonderMove,
@@ -180,10 +189,19 @@ public static class Iterate
         }
 
         var startTime = DateTime.Now;
+        var clockStartTime = startTime;
+        var clockWasRunning = false;
         var timeLimit = GetThinkTimeSpan(state);
         AlphaBeta ab = new AlphaBeta(state, () =>
         {
-            if (useClock && (DateTime.Now - startTime) > timeLimit)
+            var clockIsRunning = useClock();
+            if (clockIsRunning && !clockWasRunning)
+            {
+                clockStartTime = DateTime.Now;
+                clockWasRunning = true;
+            }
+
+            if (clockIsRunning && (DateTime.Now - clockStartTime) > timeLimit)
                 state.TimeUp = true;
             interrupt();
         });

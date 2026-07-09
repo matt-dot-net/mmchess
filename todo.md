@@ -12,14 +12,69 @@ extract per-search state (killers, history, ply stack, metrics) off the
 existing TPL search context plan.
 
 ## 3. Full UCI support
-DONE (2026-07-08): UCI mode now handles `uci`/`isready`, `ucinewgame`,
-`position startpos|fen ... moves ...`, `go depth`, `go movetime`,
-`go wtime/btime/winc/binc/movestogo`, `go infinite`, and `stop`. Searches emit
-UCI `info depth ... score cp ... time ... nodes ... nps ... pv ...` lines and
-return `bestmove` in coordinate notation while xboard output remains unchanged.
-`setoption name Hash value N` remains wired through the existing configurable
-transposition table size.
-NOT QUITE DONE: cutechess reporting that engine does not have option "Hash"
+Status (2026-07-09): core UCI play works. The important distinction:
+`option name ...` lines are only for GUI-configurable engine features, not for
+every UCI command we parse. Advertise only features that actually work.
+
+Advertised UCI identity/options:
+- `uci`: emits `id name mmchess <version>`, `id author Matt McKnight`,
+  then the supported option list, then `uciok`. xboard equivalent: `protover`
+  advertises `myname`, but CECP has no standard author field.
+- `option name Hash type spin default 512 min 1 max 4096`: resizes the
+  transposition table via `setoption name Hash value N`. xboard equivalent:
+  `memory N` via `feature memory=1`.
+- `option name Clear Hash type button`: clears the transposition table and pawn
+  hash via `setoption name Clear Hash`. No direct xboard equivalent except
+  resizing memory or starting a fresh engine.
+- `option name Ponder type check default false`: toggles pondering via
+  `setoption name Ponder value true|false`. xboard equivalent: `hard`/`easy`.
+
+Implemented UCI protocol:
+- `isready`: emits `readyok`. xboard equivalent: none needed; `ping` is the
+  closest CECP readiness command and is not implemented yet.
+- `ucinewgame`: resets board/search game state. xboard equivalent: `new`.
+- `position startpos|fen ... moves ...`: sets a UCI position and applies
+  coordinate moves. xboard equivalent: `setboard` plus coordinate moves.
+- `go depth`, `go movetime`, `go wtime/btime/winc/binc/movestogo`,
+  `go infinite`: starts search with the requested limit. xboard equivalents:
+  `sd`, `st`, `level`, and force/go mode, but not a one-to-one mapping.
+- `go ponder` + `ponderhit`: Cute Chess will only send these after the engine
+  advertises `Ponder`; UCI now returns `bestmove <move> ponder <reply>` when a
+  ponder move is available, runs ponder searches without spending clock, and
+  starts the clock after `ponderhit`. xboard equivalent: `hard`/`easy` plus
+  current move-input ponder-hit detection.
+- `stop`: stops the active search. xboard equivalent: `?` move-now.
+- `quit`: exits.
+- Search output: emits `info depth ... score cp ... time ... nodes ... nps
+  ... pv ...` and final `bestmove <move>`. xboard equivalent: `post` thinking
+  output and `move <san>`.
+
+Remaining UCI protocol commands / args:
+- `debug on|off`: parse and store a debug flag. No xboard equivalent.
+- `register ...`: parse and ignore with a harmless success/no-op path, since
+  mmchess is not a registering engine. No xboard equivalent.
+- `go searchmoves <moves...>`: restrict root search to a move subset. No direct
+  xboard equivalent.
+- `go nodes N`: stop after a node budget. No standard xboard equivalent.
+- `go mate N`: search for mate within N moves. No direct xboard equivalent.
+- `go binc/winc` currently truncates millisecond increments to whole seconds;
+  preserve sub-second increments for fast UCI time controls.
+- UCI mate scores: emit `score mate N` for mate values instead of always
+  `score cp`. xboard equivalent: engine-specific thinking text only.
+- Optional richer `info`: `currmove`, `currmovenumber`, `hashfull`, `seldepth`,
+  `multipv`, `tbhits`, and `string` diagnostics where useful. xboard
+  equivalent: mostly engine-specific `post` text.
+- `copyprotection` / `registration`: explicitly omit unless the engine ever
+  needs them; they are not appropriate for this project today.
+
+Future UCI options to advertise only when the related feature exists:
+- `option name Threads type spin ...`: add with Lazy SMP (#2). No xboard
+  equivalent currently.
+- `option name MultiPV type spin ...` and `UCI_AnalyseMode type check`: add
+  with MultiPV / analysis mode (#7). No xboard equivalent currently.
+- `option name SyzygyPath type string ...`: add with tablebases (#1). No
+  xboard equivalent currently.
+- `UCI_Chess960`: do not advertise unless Chess960 castling support is added.
 
 ## 4. Pondering
 DONE (2026-07-08): xboard `hard`/`easy` now toggle pondering. After our move,

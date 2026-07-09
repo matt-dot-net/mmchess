@@ -25,6 +25,8 @@ public class GameState
 
     public int DepthLimit{get;set;}
     public bool UciGoRequested{get;set;}
+    public bool UciPonderSearch{get;set;}
+    public bool UciPonderHit{get;set;}
 
     public TimeControl TimeControl{get;set;}
 

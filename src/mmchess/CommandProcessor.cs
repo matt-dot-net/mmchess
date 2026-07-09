@@ -44,6 +44,7 @@ public enum CommandVal
     Bench,
     MoveNow,
     Stop,
+    PonderHit,
     Draw,
     Memory,
     SetOption,
@@ -155,6 +156,10 @@ public static class CommandParser
         {
             state.TimeUp = true;
         }
+        else if (cmd.Value == CommandVal.PonderHit)
+        {
+            state.UciPonderHit = true;
+        }
         else if (cmd.Value == CommandVal.Unknown)
         {
             //xboard-spec reply; harmless to GUIs, keeps a diagnostic trail
@@ -248,6 +253,8 @@ public static class CommandParser
             Console.WriteLine("id author Matt McKnight");
             Console.WriteLine("option name Hash type spin default {0} min 1 max 4096",
                 TranspositionTable.DefaultSizeMb);
+            Console.WriteLine("option name Clear Hash type button");
+            Console.WriteLine("option name Ponder type check default false");
             Console.WriteLine("uciok");
         }
         else if (cmd.Value == CommandVal.Protover)
@@ -355,8 +362,8 @@ public static class CommandParser
         }
         else if (cmd.Value == CommandVal.SetOption)
         {
-            //UCI "setoption name <id> value <x>" - only Hash is supported today
-            SetOption(cmd);
+            //UCI "setoption name <id> value <x>"
+            SetOption(cmd, state);
         }
 
         else if (cmd.Value == CommandVal.EpdTest)
@@ -477,8 +484,8 @@ public static class CommandParser
 
     // Parse "setoption name <id> value <x>". Tokens are case-insensitive for
     // the keywords; the option name is whatever sits between "name" and
-    // "value". Only "Hash" (size in MB) is recognized; anything else is ignored.
-    static void SetOption(Command cmd)
+    // "value". Unknown options are ignored silently.
+    static void SetOption(Command cmd, GameState state)
     {
         var args = cmd.Arguments;
         int nameIdx = -1, valueIdx = -1;
@@ -490,14 +497,29 @@ public static class CommandParser
                 valueIdx = i;
         }
 
-        if (nameIdx < 0 || valueIdx <= nameIdx + 1 || valueIdx >= args.Length - 1)
+        if (nameIdx < 0 || nameIdx >= args.Length - 1)
             return; // malformed - ignore silently, matching UCI's tolerance
 
-        var optionName = string.Join(' ', args, nameIdx + 1, valueIdx - nameIdx - 1);
+        var optionEnd = valueIdx > nameIdx ? valueIdx : args.Length;
+        if (optionEnd <= nameIdx + 1)
+            return;
+
+        var optionName = string.Join(' ', args, nameIdx + 1, optionEnd - nameIdx - 1);
+        var hasValue = valueIdx > nameIdx && valueIdx < args.Length - 1;
         if (optionName.Equals("Hash", StringComparison.OrdinalIgnoreCase))
         {
-            if (int.TryParse(args[valueIdx + 1], out var mb))
+            if (hasValue && int.TryParse(args[valueIdx + 1], out var mb))
                 TranspositionTable.SetSize(mb);
+        }
+        else if (optionName.Equals("Clear Hash", StringComparison.OrdinalIgnoreCase))
+        {
+            TranspositionTable.Clear();
+            PawnHashTable.Instance.Clear();
+        }
+        else if (optionName.Equals("Ponder", StringComparison.OrdinalIgnoreCase))
+        {
+            if (hasValue && bool.TryParse(args[valueIdx + 1], out var enabled))
+                state.PonderEnabled = enabled;
         }
     }
 
@@ -536,6 +558,8 @@ public static class CommandParser
     {
         state.ComputerSide = state.GameBoard.SideToMove;
         state.UciGoRequested = true;
+        state.UciPonderSearch = false;
+        state.UciPonderHit = false;
         state.TimeControl = new TimeControl { Type = TimeControlType.Infinite };
         state.DepthLimit = AlphaBeta.MAX_DEPTH - 1;
 
@@ -547,6 +571,10 @@ public static class CommandParser
             if (token.Equals("infinite", StringComparison.OrdinalIgnoreCase))
             {
                 infinite = true;
+            }
+            else if (token.Equals("ponder", StringComparison.OrdinalIgnoreCase))
+            {
+                state.UciPonderSearch = true;
             }
             else if (i + 1 < cmd.Arguments.Length && int.TryParse(cmd.Arguments[i + 1], out var value))
             {

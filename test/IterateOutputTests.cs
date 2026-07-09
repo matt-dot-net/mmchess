@@ -73,6 +73,11 @@ public class IterateOutputTests
         return capturedOut.ToString();
     }
 
+    static void ClearTranspositionTable()
+    {
+        TranspositionTable.SetSize(TranspositionTable.Instance.SizeInMb);
+    }
+
     [Fact]
     public void DoIterateWritesNothingToStdOutWhenNotShowingThinking()
     {
@@ -136,6 +141,8 @@ public class IterateOutputTests
     [Fact]
     public void DoIteratePreservesPonderMoveFromCompletedIterationWhenInterrupted()
     {
+        ClearTranspositionTable();
+
         var state = new GameState
         {
             ComputerSide = 0,
@@ -159,6 +166,8 @@ public class IterateOutputTests
     [Fact]
     public void FindPonderMoveProducesMoveWhenNoPvReplyExists()
     {
+        ClearTranspositionTable();
+
         var state = new GameState
         {
             ComputerSide = 0,

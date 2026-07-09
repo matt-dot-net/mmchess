@@ -59,6 +59,15 @@ public class TranspositionTable
         }
     }
 
+    public static void Clear()
+    {
+        lock(_lock)
+        {
+            if (_instance != null)
+                _instance.ClearEntries();
+        }
+    }
+
     // (Re)allocate the table to hold as many entries as fit in mb megabytes,
     // floored to a power of two. Reserves the low bit of the index for the
     // 'always store' bucket (see Store), so entries come in pairs.
@@ -81,6 +90,14 @@ public class TranspositionTable
             KeyMask |= (ulong)1<<i;
 
         KeyMask &= 0xFFFFFFFFFFFFFFFE;// we are saving every other entry to use as a bucket for an 'always store' move
+    }
+
+    void ClearEntries()
+    {
+        Array.Clear(TTable, 0, TTable.Length);
+        Hits = 0;
+        Probes = 0;
+        Stores = 0;
     }
 
     public void NextSearchId(){

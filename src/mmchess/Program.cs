@@ -40,10 +40,20 @@ public class Program
                         {
                             CommandParser.DoCommand(cmd, gameState);
                         }
+                        else if (cmd.Value == CommandVal.PonderHit)
+                        {
+                            CommandParser.DoCommand(cmd, gameState);
+                        }
                     }
                 });
 
-                Console.WriteLine("bestmove {0}", bestMove.IsNull ? "0000" : bestMove.ToCoordinateString());
+                var bestMoveText = bestMove.IsNull ? "0000" : bestMove.ToCoordinateString();
+                if (gameState.PonderEnabled && !gameState.PonderMove.IsNull)
+                    Console.WriteLine("bestmove {0} ponder {1}", bestMoveText, gameState.PonderMove.ToCoordinateString());
+                else
+                    Console.WriteLine("bestmove {0}", bestMoveText);
+                gameState.UciPonderSearch = false;
+                gameState.UciPonderHit = false;
             }
             else if (!gameState.UciMode && gameState.IsMyTurn)
             {

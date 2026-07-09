@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Xunit;
 namespace mmchess.Test;
 
@@ -36,6 +37,18 @@ public class CommandProcessorTests
         Assert.True(state.PonderEnabled);
 
         CommandParser.DoCommand(CommandParser.ParseCommand("easy"), state);
+        Assert.False(state.PonderEnabled);
+    }
+
+    [Fact]
+    public void SetOptionPonderTogglesPondering()
+    {
+        var state = new GameState { GameBoard = new Board() };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("setoption name Ponder value true"), state);
+        Assert.True(state.PonderEnabled);
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("setoption name Ponder value false"), state);
         Assert.False(state.PonderEnabled);
     }
 
@@ -219,6 +232,153 @@ public class CommandProcessorTests
     }
 
     [Fact]
+    public void UciCommandAdvertisesEngineIdentity()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var output = stdout.ToString();
+
+        Assert.Contains("id name mmchess", output);
+        Assert.Contains("id author Matt McKnight", output);
+    }
+
+    [Fact]
+    public void UciCommandAdvertisesHashOptionBeforeUciOk()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var output = stdout.ToString();
+        var hashOption = "option name Hash type spin default 512 min 1 max 4096";
+
+        Assert.Contains(hashOption, output);
+        Assert.True(
+            output.IndexOf(hashOption, StringComparison.Ordinal) <
+            output.IndexOf("uciok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void UciCommandAdvertisesClearHashOptionBeforeUciOk()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var output = stdout.ToString();
+        var clearHashOption = "option name Clear Hash type button";
+
+        Assert.Contains(clearHashOption, output);
+        Assert.True(
+            output.IndexOf(clearHashOption, StringComparison.Ordinal) <
+            output.IndexOf("uciok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void UciCommandAdvertisesPonderOptionBeforeUciOk()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var output = stdout.ToString();
+        var ponderOption = "option name Ponder type check default false";
+
+        Assert.Contains(ponderOption, output);
+        Assert.True(
+            output.IndexOf(ponderOption, StringComparison.Ordinal) <
+            output.IndexOf("uciok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void UciCommandAdvertisesOnlySupportedOptions()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var optionLines = stdout.ToString()
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => line.StartsWith("option name ", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Equal(new[]
+        {
+            "option name Hash type spin default 512 min 1 max 4096",
+            "option name Clear Hash type button",
+            "option name Ponder type check default false"
+        }, optionLines);
+    }
+
+    [Fact]
+    public void SetOptionClearHashClearsMainAndPawnHashTables()
+    {
+        var tt = TranspositionTable.Instance;
+        var pawnTable = PawnHashTable.Instance;
+        var ttKey = 0x1234_5678_9abc_def0UL;
+        var pawnKey = 0x0f0e_0d0c_0b0a_0908UL;
+
+        tt.Store(ttKey, new Move(0x00001234), 2, 35, TranspositionTableEntry.EntryType.PV, 0);
+        pawnTable.Store(pawnKey, new PawnScore { Eval = 17 });
+        Assert.True(tt.TryProbe(ttKey, out _));
+        Assert.True(pawnTable.TryProbe(pawnKey, out _));
+
+        CommandParser.DoCommand(
+            CommandParser.ParseCommand("setoption name Clear Hash"),
+            new GameState { GameBoard = new Board() });
+
+        Assert.False(tt.TryProbe(ttKey, out _));
+        Assert.False(pawnTable.TryProbe(pawnKey, out _));
+    }
+
+    [Fact]
     public void PositionStartposAppliesTrailingMoves()
     {
         var state = new GameState { GameBoard = new Board() };
@@ -241,5 +401,28 @@ public class CommandProcessorTests
         Assert.True(state.UciGoRequested);
         Assert.Equal(TimeControlType.FixedDepth, state.TimeControl.Type);
         Assert.Equal(1, state.DepthLimit);
+    }
+
+    [Fact]
+    public void UciGoPonderMarksPonderSearch()
+    {
+        var state = new GameState { GameBoard = new Board(), UciMode = true };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("go ponder wtime 60000 btime 60000"), state);
+
+        Assert.True(state.UciGoRequested);
+        Assert.True(state.UciPonderSearch);
+        Assert.False(state.UciPonderHit);
+    }
+
+    [Fact]
+    public void PonderHitMarksUciPonderHitWithoutStoppingSearch()
+    {
+        var state = new GameState { GameBoard = new Board(), UciPonderSearch = true };
+
+        CommandParser.DoCommand(CommandParser.ParseCommand("ponderhit"), state);
+
+        Assert.True(state.UciPonderHit);
+        Assert.False(state.TimeUp);
     }
 }

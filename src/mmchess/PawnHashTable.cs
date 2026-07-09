@@ -63,4 +63,11 @@ public class PawnHashTable
     {
         table[pawnHashKey & KeyMask] = new Entry { Key = pawnHashKey, Score = score };
     }
+
+    public void Clear()
+    {
+        System.Array.Clear(table, 0, table.Length);
+        Hits = 0;
+        Probes = 0;
+    }
 }
