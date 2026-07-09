@@ -30,3 +30,17 @@ Nodes=72223971, QNodes=45134583, Elapsed=41.614s, Knps=1736
 FirstMoveFH%=95.45, KillerFH%=17.11, TTFH%=27.09, FailHigh=6754469
 NullMoveTries=1670820, NullMoveFH%=65.35, MateThreats=2560, LMRResearch=10148, FPrune=14043421, EFPrune=3447234
 ```
+
+## 2026-07-09 - pre-king-safety checkpoint
+
+Latest depth-10 checkpoint before adding `EvaluateKingSafety`. Search shape is
+identical to the 2026-07-06 depth-10 baseline (same nodes/fail-high metrics),
+but elapsed time improved from 41.614s to 28.042s and Knps from 1736 to 2576.
+
+```
+bench wac.epd 10
+Bench: 300 positions at depth 10
+Nodes=72223971, QNodes=45134583, Elapsed=28.042s, Knps=2576
+FirstMoveFH%=95.45, KillerFH%=17.11, TTFH%=27.09, FailHigh=6754469
+NullMoveTries=1670820, NullMoveFH%=65.35, MateThreats=2560, LMRResearch=10148, FPrune=14043421, EFPrune=3447234
+```
