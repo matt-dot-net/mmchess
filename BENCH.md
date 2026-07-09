@@ -52,6 +52,12 @@ elapsed time only moved from 28.042s to 28.590s (+2.0%). FirstMoveFH improved
 from 95.45% to 95.69%, KillerFH from 17.11% to 17.99%, and TTFH from 27.09%
 to 27.69%.
 
+Strength confirmed against the same codebase without king safety:
+`mmchess baseline` scored 375 - 509 - 214 against `mmchess latest`
+(`0.439`, 1098 games), so latest scored about +42.6 Elo +/- 18.5 with LOS
+~100% from latest's perspective. Split: baseline as White 214 - 229 - 106
+(`0.486`), baseline as Black 161 - 280 - 108 (`0.392`). Draw ratio 19.5%.
+
 ```
 bench wac.epd 10
 Bench: 300 positions at depth 10
