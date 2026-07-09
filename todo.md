@@ -162,6 +162,16 @@ touch `Board`, `MoveGenerator`, `Evaluator`, hashing, SEE, notation, and tests,
 so do it as its own isolated branch with a full correctness run and a
 before/after bench.
 
+## 8. Move buffers should live in per-thread search context
+Current move generation uses stack-backed `MoveList` buffers, which removes the
+old heap `List<Move>` churn but still requires each search/movegen call to
+declare its own local buffer. When implementing Lazy SMP (#2), introduce a
+`SearchState`/`Tree` context object per search thread and move these buffers
+there: per-ply full-width move buffers, quiescence buffers, and ordering score
+scratch space. Do not make this process-global mutable state - SMP needs one
+context per worker thread so move lists, killers/history, ply state, and metrics
+cannot race or bleed between searches.
+
 # Search / performance bugs costing Elo
 
 ## 1. LMR reduction value leaks between moves

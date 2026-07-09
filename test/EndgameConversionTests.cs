@@ -1,4 +1,5 @@
 using Xunit;
+using System;
 namespace mmchess.Test;
 
 // End-to-end: the engine must actually convert a trivially won ending.
@@ -34,8 +35,12 @@ public class EndgameConversionTests
 
     static bool HasLegalMove(Board b)
     {
-        foreach (var m in MoveGenerator.GenerateMoves(b))
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(b, ref moves);
+        for (int i = 0; i < moves.Count; i++)
         {
+            var m = moves[i];
             if (b.MakeMove(m))
             {
                 b.UnMakeMove();

@@ -309,8 +309,12 @@ public static class CommandParser
             Move legal = Move.Null;
             if (!m.IsNull)
             {
-                foreach (var g in MoveGenerator.GenerateMoves(state.GameBoard))
+                Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+                var generatedMoves = new MoveList(moveBuffer);
+                MoveGenerator.GenerateMoves(state.GameBoard, ref generatedMoves);
+                for (int i = 0; i < generatedMoves.Count; i++)
                 {
+                    var g = generatedMoves[i];
                     if (g.From == m.From && g.To == m.To && g.Promotion == m.Promotion)
                     {
                         legal = g;
@@ -598,8 +602,12 @@ public static class CommandParser
         if (parsed.IsNull)
             return false;
 
-        foreach (var move in MoveGenerator.GenerateMoves(board))
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var generatedMoves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(board, ref generatedMoves);
+        for (int i = 0; i < generatedMoves.Count; i++)
         {
+            var move = generatedMoves[i];
             if (move.From == parsed.From && move.To == parsed.To && move.Promotion == parsed.Promotion)
                 return board.MakeMove(move);
         }

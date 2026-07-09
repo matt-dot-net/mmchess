@@ -170,7 +170,9 @@ public static class Iterate
         //decide - play it immediately without searching and without burning the
         //clock. (Zero legal moves is mate/stalemate; fall through to the normal
         //path, which returns no move.)
-        var rootMoves = MoveGenerator.GenerateLegalMoves(state.GameBoard);
+        Span<Move> rootMoveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var rootMoves = new MoveList(rootMoveBuffer);
+        MoveGenerator.GenerateLegalMoves(state.GameBoard, ref rootMoves);
         if (rootMoves.Count == 1)
         {
             metrics = new AlphaBetaMetrics();

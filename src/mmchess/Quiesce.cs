@@ -76,15 +76,17 @@ public partial class AlphaBeta
 
         }
 
-        var moves = GetMoveBuffer();
-        MoveGenerator.GenerateQuiescenceMoves(MyBoard, moves, false);
-        OrderQuiesceMoves(moves, inCheck);
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateQuiescenceMoves(MyBoard, ref moves, false);
+        OrderQuiesceMoves(ref moves, inCheck);
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;
         bool anyMoveTried = false;
 
-        foreach (var m in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            var m = moves[moveIndex];
             if((BitMask.Mask[m.To] & (MyBoard.King[0]|MyBoard.King[1])) > 0)
                 return beta;
 
@@ -130,7 +132,7 @@ public partial class AlphaBeta
 
     }
 
-    void OrderQuiesceMoves(IList<Move> moves, bool inCheck)
+    void OrderQuiesceMoves(ref MoveList moves, bool inCheck)
     {
         var count = moves.Count;
         Span<int> scores = count <= 256 ? stackalloc int[count] : new int[count];

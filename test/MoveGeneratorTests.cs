@@ -1,5 +1,5 @@
 using Xunit;
-using System.Collections.Generic;
+using System;
 
 namespace mmchess;
 
@@ -33,8 +33,10 @@ public class MoveGeneratorTests{
     [Fact]
     public void PerfTLevel1(){
         var testBoard = new Board();
-        
-        var result = MoveGenerator.GenerateMoves(testBoard);
+
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var result = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(testBoard, ref result);
         Assert.Equal(20,result.Count);
     }
 
@@ -43,10 +45,12 @@ public class MoveGeneratorTests{
     {
         var board = Board.ParseFenString("r3k2r/8/8/8/8/8/8/R3K2R b kq - 0 1");
 
-        var moves = MoveGenerator.GenerateMoves(board);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(board, ref moves);
 
-        Assert.Contains(moves, m => m.From == 4 && m.To == 6);
-        Assert.Contains(moves, m => m.From == 4 && m.To == 2);
+        Assert.True(ContainsMove(moves, 4, 6));
+        Assert.True(ContainsMove(moves, 4, 2));
     }
 
     [Fact]
@@ -54,8 +58,22 @@ public class MoveGeneratorTests{
     {
         var board = Board.ParseFenString("r3k3/8/8/8/8/8/8/3R3K b q - 0 1");
 
-        var moves = MoveGenerator.GenerateMoves(board);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(board, ref moves);
 
-        Assert.DoesNotContain(moves, m => m.From == 4 && m.To == 2);
+        Assert.False(ContainsMove(moves, 4, 2));
+    }
+
+    static bool ContainsMove(MoveList moves, int from, int to)
+    {
+        for (int i = 0; i < moves.Count; i++)
+        {
+            var move = moves[i];
+            if (move.From == from && move.To == to)
+                return true;
+        }
+
+        return false;
     }
 }

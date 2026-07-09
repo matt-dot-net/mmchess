@@ -1,4 +1,5 @@
 using Xunit;
+using System;
 namespace mmchess;
 
 public class PawnHashKeyTests
@@ -7,10 +8,13 @@ public class PawnHashKeyTests
     public void PawnHashKeyMatchesFreshComputationAfterEachMove()
     {
         var testBoard = new Board();
-        var moves = MoveGenerator.GenerateMoves(testBoard);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(testBoard, ref moves);
 
-        foreach (var m in moves)
+        for (int i = 0; i < moves.Count; i++)
         {
+            var m = moves[i];
             if (!testBoard.MakeMove(m))
                 continue;
 
@@ -25,10 +29,13 @@ public class PawnHashKeyTests
     public void PawnHashKeyRestoredAfterUnMakeMove()
     {
         var testBoard = new Board();
-        var moves = MoveGenerator.GenerateMoves(testBoard);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(testBoard, ref moves);
 
-        foreach (var m in moves)
+        for (int i = 0; i < moves.Count; i++)
         {
+            var m = moves[i];
             var expected = testBoard.PawnHashKey;
             if (!testBoard.MakeMove(m))
                 continue;

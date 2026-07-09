@@ -1,4 +1,5 @@
 using Xunit;
+using System;
 
 namespace mmchess.Test;
 
@@ -67,11 +68,16 @@ public class BoardTests{
             Assert.True(!m.IsNull && board.MakeMove(m), $"move {moveStr} should have been legal");
         }
 
-        var legalMoves = MoveGenerator.GenerateMoves(board);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var legalMoves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(board, ref legalMoves);
         var hasCastle = false;
-        foreach (var m in legalMoves)
+        for (int i = 0; i < legalMoves.Count; i++)
+        {
+            var m = legalMoves[i];
             if (m.From == 4 && m.To == 6) // e8g8 = black O-O
                 hasCastle = true;
+        }
 
         Assert.False(hasCastle, "O-O should not be offered - the h8 rook was captured");
     }

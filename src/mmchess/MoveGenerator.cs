@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace mmchess;
 
@@ -276,7 +275,7 @@ public class MoveGenerator
         return BishopAttacks(b, sq) | RookAttacks(b, sq);
     }
 
-    public static void GenerateEvasions(Board b, IList<Move> list, bool fullPromo)
+    public static void GenerateEvasions(Board b, ref MoveList list, bool fullPromo)
     {
 
         var xSideToMove = b.SideToMove ^ 1;
@@ -485,7 +484,7 @@ public class MoveGenerator
                     Bits = (byte)MoveBits.Pawn
                 };
                 if (toi < 8)
-                    GeneratePromotions(list, newMove, fullPromo);
+                    GeneratePromotions(ref list, newMove, fullPromo);
                 else
                     list.Add(newMove);
             }
@@ -504,7 +503,7 @@ public class MoveGenerator
                     };
                     if (toi < 8)
 
-                        GeneratePromotions(list, newMove, fullPromo);
+                        GeneratePromotions(ref list, newMove, fullPromo);
                     else
                     {
                         list.Add(newMove);
@@ -521,7 +520,7 @@ public class MoveGenerator
                         Bits = (byte)(MoveBits.Pawn | MoveBits.Capture),
                     };
                     if (toi < 8)
-                        GeneratePromotions(list, newMove, fullPromo);
+                        GeneratePromotions(ref list, newMove, fullPromo);
 
                     else
                     {
@@ -578,7 +577,7 @@ public class MoveGenerator
                     Bits = (byte)MoveBits.Pawn
                 };
                 if (toi > 55)
-                    GeneratePromotions(list, newMove,fullPromo);
+                    GeneratePromotions(ref list, newMove,fullPromo);
                 else
                     list.Add(newMove);
             }
@@ -599,7 +598,7 @@ public class MoveGenerator
                         Bits = (byte)(MoveBits.Pawn | MoveBits.Capture)
                     };
                     if (toi > 55)
-                        GeneratePromotions(list, newMove,fullPromo);
+                        GeneratePromotions(ref list, newMove,fullPromo);
                     else
                         list.Add(newMove);
                 }
@@ -613,7 +612,7 @@ public class MoveGenerator
                         Bits = (byte)((byte)MoveBits.Pawn | (capture > 0 ? (byte)MoveBits.Capture : (byte)0)),
                     };
                     if (toi < 8)
-                        GeneratePromotions(list, newMove, fullPromo);
+                        GeneratePromotions(ref list, newMove, fullPromo);
 
                     else
                         list.Add(newMove);
@@ -628,19 +627,12 @@ public class MoveGenerator
     // the FULL legal evasion set instead (king flight, blocks, and captures of
     // the checker - not just captures), since quiescence can't just stand pat
     // and ignore a check the way it can ignore a quiet position.
-    public static IList<Move> GenerateQuiescenceMoves(Board b, bool fullPromo=true)
-    {
-        List<Move> list = new List<Move>();
-        GenerateQuiescenceMoves(b, list, fullPromo);
-        return list;
-    }
-
-    public static void GenerateQuiescenceMoves(Board b, IList<Move> list, bool fullPromo=true)
+    public static void GenerateQuiescenceMoves(Board b, ref MoveList list, bool fullPromo=true)
     {
         int xside = b.SideToMove ^ 1;
         if (b.InCheck(b.SideToMove))
         {
-            GenerateEvasions(b, list, fullPromo);
+            GenerateEvasions(b, ref list, fullPromo);
             return;
         }
 
@@ -762,7 +754,7 @@ public class MoveGenerator
 
                     if ((b.Pieces[xside] & BitMask.Mask[to]) > 0)
                         m.Bits |= (byte)MoveBits.Capture;
-                    GeneratePromotions(list, m, fullPromo);
+                    GeneratePromotions(ref list, m, fullPromo);
                 }
                 else
                 {
@@ -799,44 +791,39 @@ public class MoveGenerator
         }
     }
 
-    public static IList<Move> GenerateMoves(Board b, bool fullPromo=true)
-    {
-        List<Move> list = new List<Move>();
-        GenerateMoves(b, list, fullPromo);
-        return list;
-    }
-
-    public static void GenerateMoves(Board b, IList<Move> list, bool fullPromo=true)
+    public static void GenerateMoves(Board b, ref MoveList list, bool fullPromo=true)
     {
         if (b.InCheck(b.SideToMove))
         {
-            GenerateEvasions(b, list,fullPromo);
+            GenerateEvasions(b, ref list,fullPromo);
             return;
         }
 
-        GenerateQueenMoves(b, list);
-        GenerateRookMoves(b, list);
-        GenerateBishopMoves(b, list);
-        GenerateKnightMoves(b, list);
-        GeneratePawnMoves(b, list,fullPromo);
-        GenerateKingMoves(b, list);
+        GenerateQueenMoves(b, ref list);
+        GenerateRookMoves(b, ref list);
+        GenerateBishopMoves(b, ref list);
+        GenerateKnightMoves(b, ref list);
+        GeneratePawnMoves(b, ref list,fullPromo);
+        GenerateKingMoves(b, ref list);
     }
 
     // GenerateMoves is only pseudo-legal (MakeMove is what rejects a move that
     // leaves our king in check), so filter through make/unmake to get the moves
     // that are actually legal in this position.
-    public static IList<Move> GenerateLegalMoves(Board b)
+    public static void GenerateLegalMoves(Board b, ref MoveList legal)
     {
-        var legal = new List<Move>();
-        foreach (var m in GenerateMoves(b))
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        GenerateMoves(b, ref moves);
+        for (int i = 0; i < moves.Count; i++)
         {
+            var m = moves[i];
             if (b.MakeMove(m))
             {
                 b.UnMakeMove();
                 legal.Add(m);
             }
         }
-        return legal;
     }
 
     static void InitDirections()
@@ -890,25 +877,27 @@ public class MoveGenerator
         }
     }
 
-    static void GenerateQueenMoves(Board b, IList<Move> list)
+    static void GenerateQueenMoves(Board b, ref MoveList list)
     {
         ulong queens = b.Queens[b.SideToMove];
-        GenerateRankAndFileMoves(b, queens, MoveBits.Queen, list);
-        GenerateDiagonalMoves(b, queens, MoveBits.Queen, list);
+        GenerateRankAndFileMoves(b, queens, MoveBits.Queen, ref list);
+        GenerateDiagonalMoves(b, queens, MoveBits.Queen, ref list);
 
     }
-    static void GenerateBishopMoves(Board b, IList<Move> list)
+
+    static void GenerateBishopMoves(Board b, ref MoveList list)
     {
         ulong bishops = b.Bishops[b.SideToMove];
-        GenerateDiagonalMoves(b, bishops, MoveBits.Bishop, list);
-    }
-    static void GenerateRookMoves(Board b, IList<Move> list)
-    {
-        ulong rooks = b.Rooks[b.SideToMove];
-        GenerateRankAndFileMoves(b, rooks, MoveBits.Rook, list);
+        GenerateDiagonalMoves(b, bishops, MoveBits.Bishop, ref list);
     }
 
-    static void GenerateRankAndFileMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)
+    static void GenerateRookMoves(Board b, ref MoveList list)
+    {
+        ulong rooks = b.Rooks[b.SideToMove];
+        GenerateRankAndFileMoves(b, rooks, MoveBits.Rook, ref list);
+    }
+
+    static void GenerateRankAndFileMoves(Board b, ulong pieces, MoveBits which, ref MoveList list)
     {
         ulong sidePieces = b.Pieces[b.SideToMove];
         while (pieces > 0)
@@ -919,12 +908,12 @@ public class MoveGenerator
             ulong moves = RookAttacks(b, sq);
             moves &= ~sidePieces;
 
-            moves = AddMovesToList(b, which, list, sq, moves);
+            moves = AddMovesToList(b, which, ref list, sq, moves);
 
         }
     }
 
-    private static ulong AddMovesToList(Board b, MoveBits which, IList<Move> list, int sq, ulong moves)
+    private static ulong AddMovesToList(Board b, MoveBits which, ref MoveList list, int sq, ulong moves)
     {
         while (moves > 0)
         {
@@ -942,7 +931,7 @@ public class MoveGenerator
         return moves;
     }
 
-    static void GenerateDiagonalMoves(Board b, ulong pieces, MoveBits which, IList<Move> list)
+    static void GenerateDiagonalMoves(Board b, ulong pieces, MoveBits which, ref MoveList list)
     {
         ulong sidePieces = b.Pieces[b.SideToMove];
 
@@ -969,7 +958,7 @@ public class MoveGenerator
         }
     }
 
-    static void GeneratePawnMoves(Board b, IList<Move> list, bool fullPromo)
+    static void GeneratePawnMoves(Board b, ref MoveList list, bool fullPromo)
     {
         ulong pawns = b.Pawns[b.SideToMove];
         ulong enemyPieces = b.Pieces[b.SideToMove ^ 1];
@@ -1013,7 +1002,7 @@ public class MoveGenerator
                 var rank = to.Rank();
                 if (rank == 7 || rank == 0) //promotion
                 {
-                    GeneratePromotions(list, m, fullPromo);
+                    GeneratePromotions(ref list, m, fullPromo);
                 }
                 else
                 {
@@ -1023,7 +1012,7 @@ public class MoveGenerator
         }
     }
 
-    private static void GeneratePromotions(IList<Move> list, Move m, bool full)
+    private static void GeneratePromotions(ref MoveList list, Move m, bool full)
     {
         int skip = full? 1:3; //hack to skip rook and bishop
         for (int i=1; i < 5; i+=skip)
@@ -1034,7 +1023,7 @@ public class MoveGenerator
         }
     }
 
-    static void GenerateKingMoves(Board b, IList<Move> list)
+    static void GenerateKingMoves(Board b, ref MoveList list)
     {
         ulong king = b.King[b.SideToMove];
         ulong sidepieces = b.Pieces[b.SideToMove];
@@ -1063,10 +1052,10 @@ public class MoveGenerator
         //generate castling moves
         var bits = b.CastleStatus >> (b.SideToMove * 2);
         if ((bits & 3) > 0)
-            GenerateCastleMoves(b, list, sq, bits);
+            GenerateCastleMoves(b, ref list, sq, bits);
     }
 
-    private static void GenerateCastleMoves(Board b, IList<Move> list, int sq, int bits)
+    private static void GenerateCastleMoves(Board b, ref MoveList list, int sq, int bits)
     {
         if ((bits & 1) > 0)
         {
@@ -1136,7 +1125,7 @@ public class MoveGenerator
         }
     }
 
-    static void GenerateKnightMoves(Board b, IList<Move> list)
+    static void GenerateKnightMoves(Board b, ref MoveList list)
     {
         ulong knights = b.Knights[b.SideToMove];
         ulong sidepieces = b.Pieces[b.SideToMove];

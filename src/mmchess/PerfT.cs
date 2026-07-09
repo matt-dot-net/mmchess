@@ -16,12 +16,15 @@ public static class PerfT
     public static void PerftDivide(Board b, int depth)
     {
         var startTime = DateTime.Now;
-        var moves = MoveGenerator.GenerateMoves(b,true);
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(b, ref moves,true);
         long total = 0;
         int i = 0;
         int moveCount = 0;
-        foreach (var m in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            var m = moves[moveIndex];
             if (!b.MakeMove(m))
                 continue;
             i++;
@@ -40,11 +43,14 @@ public static class PerfT
     public static void PerftDivideParallel(Board b, int depth)
     {
         var startTime = DateTime.Now;
-        var moves = MoveGenerator.GenerateMoves(b);
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(b, ref moves);
         var legalMoves = new List<PerfTMove>();
         //before we parallelize, let's remove any illegal moves
-        foreach (var m in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            var m = moves[moveIndex];
             if (!b.MakeMove(m))
                 continue;
             legalMoves.Add(new PerfTMove { Move = m, Nodes = 0 });
@@ -78,10 +84,13 @@ public static class PerfT
         if (depth == 0)
             return 1;
 
-        var moves = MoveGenerator.GenerateMoves(b);
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(b, ref moves);
         var nMoves = moves.Count;
-        foreach (var m in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            var m = moves[moveIndex];
             if (b.MakeMove(m))
             {
                 nodes += Perft(b, depth - 1);

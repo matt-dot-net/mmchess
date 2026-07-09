@@ -17,7 +17,6 @@ public partial class AlphaBeta
     GameState MyGameState { get; set; }
     Action Interrupt { get; set; }
     Move[,] Killers = new Move[MAX_DEPTH, 2];
-    readonly List<Move>[] MoveBuffers = new List<Move>[MAX_DEPTH];
     // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
     // ply, where side-to-move already alternates implicitly along one line
     // of play), history accumulates across the whole tree, where the same
@@ -31,7 +30,6 @@ public partial class AlphaBeta
     public AlphaBeta()
     {
         Metrics = new AlphaBetaMetrics();
-        InitializeMoveBuffers();
     }
     public AlphaBeta(GameState state, Action interrupt)
     {
@@ -44,13 +42,6 @@ public partial class AlphaBeta
         TimeLimit = TimeSpan.FromSeconds(5);
         Metrics = new AlphaBetaMetrics();
         Interrupt = interrupt;
-        InitializeMoveBuffers();
-    }
-
-    void InitializeMoveBuffers()
-    {
-        for (int i = 0; i < MoveBuffers.Length; i++)
-            MoveBuffers[i] = new List<Move>(256);
     }
 
     int OrderRootMove(Move m)
@@ -142,10 +133,15 @@ public partial class AlphaBeta
             return CurrentDrawScore;
 
         if(RootMoves == null){
-            RootMoves= MoveGenerator
-            .GenerateMoves(MyBoard)
-            .OrderByDescending(m => OrderRootMove(m))
-            .ToList();
+            Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+            var generatedMoves = new MoveList(moveBuffer);
+            MoveGenerator.GenerateMoves(MyBoard, ref generatedMoves);
+
+            RootMoves = new List<Move>(generatedMoves.Count);
+            generatedMoves.CopyTo(RootMoves);
+            RootMoves = RootMoves
+                .OrderByDescending(m => OrderRootMove(m))
+                .ToList();
         }
 
         int score;
@@ -301,14 +297,16 @@ public partial class AlphaBeta
             }
         }
 
-        var moves = GetMoveBuffer();
-        MoveGenerator.GenerateMoves(MyBoard, moves);
-        OrderMoves(moves, hasEntry, entry);
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(MyBoard, ref moves);
+        OrderMoves(ref moves, hasEntry, entry);
         Move lastMove = Move.Null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
 
-        foreach (var m in moves)
+        for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
+            var m = moves[moveIndex];
             bool fprune = false;
             int score;
             if (!Make(m))
@@ -479,14 +477,7 @@ public partial class AlphaBeta
         RootMoves.Insert(0,m);
     }
 
-    List<Move> GetMoveBuffer()
-    {
-        var moves = MoveBuffers[Ply];
-        moves.Clear();
-        return moves;
-    }
-
-    void OrderMoves(IList<Move> moves, bool hasEntry, in TranspositionTableEntry entry)
+    void OrderMoves(ref MoveList moves, bool hasEntry, in TranspositionTableEntry entry)
     {
         var count = moves.Count;
         Span<int> tiers = count <= 256 ? stackalloc int[count] : new int[count];

@@ -15,8 +15,12 @@ public static class Ponder
             return;
 
         var move = new Move(entry.MoveValue);
-        foreach (var legal in MoveGenerator.GenerateMoves(gameState.GameBoard))
+        Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
+        var generatedMoves = new MoveList(moveBuffer);
+        MoveGenerator.GenerateMoves(gameState.GameBoard, ref generatedMoves);
+        for (int i = 0; i < generatedMoves.Count; i++)
         {
+            var legal = generatedMoves[i];
             if (legal.Value == move.Value && gameState.GameBoard.MakeMove(legal))
             {
                 gameState.GameBoard.UnMakeMove();

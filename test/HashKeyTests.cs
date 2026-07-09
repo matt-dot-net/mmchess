@@ -1,4 +1,5 @@
 using Xunit;
+using System;
 namespace mmchess;
 
 public class HashKeyTests
@@ -8,7 +9,9 @@ public class HashKeyTests
     public void MoveGeneratorDoesNotChangeHashKey(){
         var b = new Board();
         var expected = TranspositionTable.GetHashKeyForPosition(b);
-        MoveGenerator.GenerateMoves(b);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(b, ref moves);
         Assert.Equal(expected,b.HashKey);
     }
 
@@ -16,10 +19,13 @@ public class HashKeyTests
     public void GetHashKeyAgreesWithMakeMove1(){
         var testBoard = new Board();
 
-        var moves = MoveGenerator.GenerateMoves(testBoard);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(testBoard, ref moves);
 
-        foreach(var m in moves)
+        for (int i = 0; i < moves.Count; i++)
         {
+            var m = moves[i];
             var expected = testBoard.HashKey;
             if(!testBoard.MakeMove(m))
                 continue;
@@ -33,9 +39,12 @@ public class HashKeyTests
     [Fact]
     public void HashKeyRestoredAfterUnMakeMove(){
         var testBoard = new Board();
-        var moves = MoveGenerator.GenerateMoves(testBoard);
+        Span<Move> buffer = stackalloc Move[MoveList.StackCapacity];
+        var moves = new MoveList(buffer);
+        MoveGenerator.GenerateMoves(testBoard, ref moves);
 
-        foreach(var m in moves){
+        for (int i = 0; i < moves.Count; i++){
+            var m = moves[i];
             var expected = testBoard.HashKey;
             if(!testBoard.MakeMove(m))
                 continue;
