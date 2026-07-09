@@ -44,3 +44,18 @@ Nodes=72223971, QNodes=45134583, Elapsed=28.042s, Knps=2576
 FirstMoveFH%=95.45, KillerFH%=17.11, TTFH%=27.09, FailHigh=6754469
 NullMoveTries=1670820, NullMoveFH%=65.35, MateThreats=2560, LMRResearch=10148, FPrune=14043421, EFPrune=3447234
 ```
+## 2026-07-09 - after king-safety evaluation
+
+Compared with the pre-king-safety checkpoint above: nodes rose from 72,223,971
+to 77,895,993 (+7.9%) and qnodes from 45,134,583 to 49,403,013 (+9.5%), but
+elapsed time only moved from 28.042s to 28.590s (+2.0%). FirstMoveFH improved
+from 95.45% to 95.69%, KillerFH from 17.11% to 17.99%, and TTFH from 27.09%
+to 27.69%.
+
+```
+bench wac.epd 10
+Bench: 300 positions at depth 10
+Nodes=77895993, QNodes=49403013, Elapsed=28.590s, Knps=2725
+FirstMoveFH%=95.69, KillerFH%=17.99, TTFH%=27.69, FailHigh=7336323
+NullMoveTries=1617612, NullMoveFH%=65.93, MateThreats=2369, LMRResearch=9249, FPrune=17570004, EFPrune=3948743
+```
