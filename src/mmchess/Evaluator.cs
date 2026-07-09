@@ -37,6 +37,9 @@ public static class Evaluator
     const int DoubledPawnPenalty = -8;
     const int OpenFileInFrontOfCastledKingPenalty = -50;
     const int KingUnderAttack = -150;
+    const int SemiOpenFileInFrontOfKingPenalty = -18;
+    const int KingZoneAttackPenalty = -12;
+    const int CenterKingWithEnemyQueenPenalty = -35;
     const int PassedPawnBonus = 20;
     const int BlockedPawnPenalty = -8;
     const int BlockedCentralPawnPenalty = -20;
@@ -324,10 +327,10 @@ public static class Evaluator
 
         e.PawnScore = EvaluatePawns(b);
         eval += e.PawnScore.Eval;
+        eval += EvaluateKingSafety(b, e.PawnScore, gamePhase);
         if (gamePhase != GamePhase.EndGame)
         {
             eval += EvaluateDevelopment(b);
-            eval += EvaluateKingSafety(b, e.PawnScore);
             eval += EvaluatePieces(e);
         }
         else
@@ -353,8 +356,6 @@ public static class Evaluator
                 var conv = EvaluateMateConversion(b, winner);
                 eval += b.SideToMove == winner ? conv : -conv;
             }
-            else
-                eval += EvaluateKingEndGame(b);
         }
 
         if (ocb)
@@ -670,14 +671,20 @@ public static class Evaluator
 
     }
 
-    static int EvaluateKingSafety(Board b, PawnScore pawnScore)
+    static int EvaluateKingSafety(Board b, PawnScore pawnScore, GamePhase gamePhase)
     {
+        if (gamePhase == GamePhase.EndGame)
+            return EvaluateKingEndGame(b);
 
         int[] eval = new int[2];
 
         for (int side = 0; side < 2; side++)
         {
             var xside = side ^ 1;
+            var opponentHasQueen = b.Queens[xside] > 0;
+            var kingSq = b.King[side].BitScanForward();
+            var kingZone = MoveGenerator.KingMoves[kingSq] | b.King[side];
+
             if ((kingside & b.King[side]) > 0)
             { // if my king is on the kingside
 
@@ -685,8 +692,7 @@ public static class Evaluator
                 {
                     //if the opponent has a queen and rook on the board, evaluate castle status
 
-                    if ((b.Queens[xside] > 0) &&
-                        (b.Rooks[xside] > 0))
+                    if (opponentHasQueen && b.Rooks[xside] > 0)
                         eval[side] += NotCastledPenalty;
                 }
                 else
@@ -698,18 +704,10 @@ public static class Evaluator
                         //if I have no pawns on the file
                         if (pawnScore.GetFile(side, f) == 0)
                         {
-                            eval[side] += OpenFileInFrontOfCastledKingPenalty;
-
-                            // //look for case where the opponent has an opening
-                            // //and a major piece, and has not castled in that direction
-                            // if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
-                            //     ((b.Rooks[xside] | b.Queens[xside]) & Board.FileMask[f]) > 0 && //heavypiece
-                            //     ((b.King[xside] & queenside) > 0))//opponents king is safely on the other side
-                            // {
-                            //     //major probjem
-                            //     eval[side] += KingUnderAttack;
-                            // }
+                            eval[side] += ScaleKingSafetyPenalty(OpenFileInFrontOfCastledKingPenalty, opponentHasQueen);
                         }
+                        else if (pawnScore.GetFile(xside, f) == 0)
+                            eval[side] += ScaleKingSafetyPenalty(SemiOpenFileInFrontOfKingPenalty, opponentHasQueen);
 
                     }
                 }
@@ -721,8 +719,7 @@ public static class Evaluator
                 {
                     //if the opponent has a queen and rook on the board, evaluate castle status
 
-                    if ((b.Queens[xside] > 0) &&
-                        (b.Rooks[xside] > 0))
+                    if (opponentHasQueen && b.Rooks[xside] > 0)
                         eval[side] += NotCastledPenalty;
                 }
                 else
@@ -734,18 +731,10 @@ public static class Evaluator
                         //if I have no pawns on the file
                         if (pawnScore.GetFile(side, f) == 0)
                         {
-                            eval[side] += OpenFileInFrontOfCastledKingPenalty;
-
-                            // //look for case where the opponent has an opening
-                            // //and a major piece, and has not castled in that direction
-                            // if (pawnScore.Files[xside, f] == 0 && //opponent has opened  the file  
-                            //     ((b.Rooks[xside] | b.Queens[xside]) & kingside) > 0 && //heavypiece
-                            //     ((b.King[xside] & kingside) > 0)) //opponents king is safely on the other side
-                            // {
-                            //     //major probjem
-                            //     eval[side] += KingUnderAttack;
-                            // }
+                            eval[side] += ScaleKingSafetyPenalty(OpenFileInFrontOfCastledKingPenalty, opponentHasQueen);
                         }
+                        else if (pawnScore.GetFile(xside, f) == 0)
+                            eval[side] += ScaleKingSafetyPenalty(SemiOpenFileInFrontOfKingPenalty, opponentHasQueen);
 
                     }
                 }
@@ -753,14 +742,79 @@ public static class Evaluator
             else
             {
                 //king is in the middle of the board
-                if ((b.Queens[xside] > 0) &&
-                    (b.Rooks[xside] > 0))
+                if (opponentHasQueen && b.Rooks[xside] > 0)
                 {
                     eval[side] += NotCastledPenalty;
                 }
+
+                if (opponentHasQueen)
+                    eval[side] += CenterKingWithEnemyQueenPenalty;
             }
+
+            var kingZoneAttackers = CountKingZoneAttackers(b, xside, kingZone);
+            eval[side] += kingZoneAttackers * ScaleKingSafetyPenalty(KingZoneAttackPenalty, opponentHasQueen);
+            if (kingZoneAttackers >= 3 && opponentHasQueen)
+                eval[side] += KingUnderAttack;
         }
         return eval[b.SideToMove] - eval[b.SideToMove ^ 1];
+    }
+
+    static int ScaleKingSafetyPenalty(int penalty, bool opponentHasQueen)
+    {
+        return opponentHasQueen ? penalty : penalty / 2;
+    }
+
+    static int CountKingZoneAttackers(Board b, int attackerSide, ulong kingZone)
+    {
+        int attackers = 0;
+        ulong pieces;
+
+        pieces = b.Pawns[attackerSide];
+        while (pieces > 0)
+        {
+            int sq = pieces.BitScanForward();
+            pieces ^= BitMask.Mask[sq];
+            if ((MoveGenerator.PawnAttacks[attackerSide, sq] & kingZone) > 0)
+                attackers++;
+        }
+
+        pieces = b.Knights[attackerSide];
+        while (pieces > 0)
+        {
+            int sq = pieces.BitScanForward();
+            pieces ^= BitMask.Mask[sq];
+            if ((MoveGenerator.KnightMoves[sq] & kingZone) > 0)
+                attackers++;
+        }
+
+        pieces = b.Bishops[attackerSide];
+        while (pieces > 0)
+        {
+            int sq = pieces.BitScanForward();
+            pieces ^= BitMask.Mask[sq];
+            if ((MoveGenerator.BishopAttacks(b, sq) & kingZone) > 0)
+                attackers++;
+        }
+
+        pieces = b.Rooks[attackerSide];
+        while (pieces > 0)
+        {
+            int sq = pieces.BitScanForward();
+            pieces ^= BitMask.Mask[sq];
+            if ((MoveGenerator.RookAttacks(b, sq) & kingZone) > 0)
+                attackers++;
+        }
+
+        pieces = b.Queens[attackerSide];
+        while (pieces > 0)
+        {
+            int sq = pieces.BitScanForward();
+            pieces ^= BitMask.Mask[sq];
+            if ((MoveGenerator.QueenAttacks(b, sq) & kingZone) > 0)
+                attackers++;
+        }
+
+        return attackers;
     }
 
     // Pure pawn-structure score (doubled/passed pawns, per-file occupancy) -

@@ -27,8 +27,9 @@ public class EvaluateDevelopmentTests
         var evalB = Evaluator.Evaluate(boardB, -10000, 10000);
 
         // 8 from the existing generic blocked-pawn penalty (fires in B
-        // either way, central or not) + 20 from the new central-pawn-
-        // specific development penalty this test adds
-        Assert.Equal(28, evalA - evalB);
+        // either way, central or not) + 20 from the central-pawn-specific
+        // development penalty + 6 because the rook on e3 attacks into the
+        // white king zone, discounted because the queens are off.
+        Assert.Equal(34, evalA - evalB);
     }
 }
