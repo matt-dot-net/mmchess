@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using static mmchess.TranspositionTableEntry;
 
@@ -8,6 +9,9 @@ namespace mmchess;
 public partial class AlphaBeta
 {
     public const int MAX_DEPTH = 64;
+    const int InterruptCheckTargetMilliseconds = 75;
+    const ulong InitialInterruptCheckNodes = 4096;
+    static readonly long InterruptCheckTargetTicks = Stopwatch.Frequency * InterruptCheckTargetMilliseconds / 1000;
     int Ply { get; set; }
     public AlphaBetaMetrics Metrics { get; set; }
     public Move[,] PrincipalVariation { get; private set; }
@@ -16,6 +20,9 @@ public partial class AlphaBeta
     Board MyBoard { get; set; }
     GameState MyGameState { get; set; }
     Action Interrupt { get; set; }
+    ulong NextInterruptCheckNode { get; set; }
+    ulong InterruptSampleNodes { get; set; }
+    long InterruptSampleTimestamp { get; set; }
     Move[,] Killers = new Move[MAX_DEPTH, 2];
     // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
     // ply, where side-to-move already alternates implicitly along one line
@@ -30,6 +37,7 @@ public partial class AlphaBeta
     public AlphaBeta()
     {
         Metrics = new AlphaBetaMetrics();
+        ResetInterruptCheckSchedule();
     }
     public AlphaBeta(GameState state, Action interrupt)
     {
@@ -42,6 +50,45 @@ public partial class AlphaBeta
         TimeLimit = TimeSpan.FromSeconds(5);
         Metrics = new AlphaBetaMetrics();
         Interrupt = interrupt;
+        ResetInterruptCheckSchedule();
+    }
+
+    void CountNode()
+    {
+        Metrics.Nodes++;
+        if (Metrics.Nodes >= NextInterruptCheckNode)
+            CheckScheduledInterrupt();
+    }
+
+    void CheckScheduledInterrupt()
+    {
+        Interrupt?.Invoke();
+
+        var now = Stopwatch.GetTimestamp();
+        var elapsedTicks = now - InterruptSampleTimestamp;
+        var elapsedNodes = Metrics.Nodes - InterruptSampleNodes;
+
+        ulong nextInterval;
+        if (elapsedTicks > 0 && elapsedNodes > 0)
+        {
+            var nodesPerTargetWindow = elapsedNodes * (double)InterruptCheckTargetTicks / elapsedTicks;
+            nextInterval = Math.Max(1, (ulong)Math.Round(nodesPerTargetWindow));
+        }
+        else
+        {
+            nextInterval = InitialInterruptCheckNodes;
+        }
+
+        InterruptSampleTimestamp = now;
+        InterruptSampleNodes = Metrics.Nodes;
+        NextInterruptCheckNode = Metrics.Nodes + nextInterval;
+    }
+
+    void ResetInterruptCheckSchedule()
+    {
+        InterruptSampleTimestamp = Stopwatch.GetTimestamp();
+        InterruptSampleNodes = Metrics?.Nodes ?? 0;
+        NextInterruptCheckNode = InterruptSampleNodes + InitialInterruptCheckNodes;
     }
 
     int OrderRootMove(Move m)
@@ -215,7 +262,7 @@ public partial class AlphaBeta
     public int Search(int alpha, int beta, int depth)
     {
 
-        Metrics.Nodes++;
+        CountNode();
         if (Ply >= MAX_DEPTH)
         {
             return Evaluator.Evaluate(MyBoard,-10000,10000);
@@ -229,11 +276,9 @@ public partial class AlphaBeta
             MyBoard.IsInsufficientMaterial())
             return CurrentDrawScore;
 
-        if ((Metrics.Nodes & 65535) == 65535)
+        if (MyGameState.TimeUp)
         {
-            Interrupt();
-            if (MyGameState.TimeUp)
-                return alpha;
+            return alpha;
         }
 
         Move bestMove = Move.Null;

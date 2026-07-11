@@ -39,7 +39,7 @@ public partial class AlphaBeta
     // narrower, standard heuristic than "always trust stand-pat in check".
     public int Quiesce(int alpha, int beta, int checkChaseDepth = 0)
     {
-        Metrics.Nodes++;
+        CountNode();
         Metrics.QNodes++;
 
         if (Ply >= MAX_DEPTH)
@@ -47,11 +47,9 @@ public partial class AlphaBeta
             return Evaluator.Evaluate(MyBoard,-10000,10000);
         }
 
-        if ((Metrics.Nodes & 65535) == 65535)
+        if (MyGameState.TimeUp)
         {
-            Interrupt();
-            if (MyGameState.TimeUp)
-                return alpha;
+            return alpha;
         }
         int score = Evaluator.Evaluate(MyBoard,alpha,beta);
         //attempt to stand pat (don't search if eval tells us we are in a good position)
