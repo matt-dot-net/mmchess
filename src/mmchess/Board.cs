@@ -118,7 +118,7 @@ public class Board
         this.AllPiecesR90 = b.AllPiecesR90;
         this.CastleStatus = b.CastleStatus;
         this.EnPassant = b.EnPassant;
-        this.History = new GameHistory();
+        this.History = b.History.CloneForSearch();
         this.King = new ulong[2];
         this.Knights = new ulong[2];
         this.Rooks = new ulong[2];
@@ -138,6 +138,11 @@ public class Board
         }
         HashKey = b.HashKey;
         PawnHashKey = b.PawnHashKey;
+    }
+
+    public Board CloneForSearch()
+    {
+        return new Board(this);
     }
 
     public Board()

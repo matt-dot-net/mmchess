@@ -34,12 +34,33 @@ public struct AlphaBetaContext
         Board = gameBoard;
         Metrics = new AlphaBetaMetrics();
         TTMetrics = new TTMetrics();
-        ResetInterruptCheckSchedule();
         Interrupt = interrupt;
         ResetInterruptCheckSchedule();
     }
 
     public Board Board { get; set; }
+
+    public AlphaBetaContext Split()
+    {
+        return Split(Board.CloneForSearch());
+    }
+
+    public AlphaBetaContext Split(Board clonedBoard)
+    {
+        if (clonedBoard == null)
+            throw new ArgumentNullException(nameof(clonedBoard));
+
+        var split = new AlphaBetaContext(GameState, clonedBoard, Interrupt)
+        {
+            Ply = Ply
+        };
+
+        Array.Copy(PrincipalVariation, split.PrincipalVariation, PrincipalVariation.Length);
+        Array.Copy(PvLength, split.PvLength, PvLength.Length);
+        Array.Copy(Killers, split.Killers, Killers.Length);
+        Array.Copy(HistoryHeuristic, split.HistoryHeuristic, HistoryHeuristic.Length);
+        return split;
+    }
 
     public void CountNode()
     {

@@ -33,7 +33,7 @@ public partial class AlphaBeta
     {
         context.PvLength[0]=0;
 
-        if (MyGameState.GameBoard.History.IsGameDrawn(context.Board.HashKey) ||
+        if (context.Board.History.IsGameDrawn(context.Board.HashKey) ||
             context.Board.IsInsufficientMaterial())
             return CurrentDrawScore;
 
@@ -130,7 +130,7 @@ public partial class AlphaBeta
         var inCheck = context.Board.InCheck(context.Board.SideToMove);
         int ext = inCheck ? 1 : 0;
 
-        if (context.GameState.GameBoard.History.IsPositionDrawn(context.Board.HashKey) ||
+        if (context.Board.History.IsPositionDrawn(context.Board.HashKey) ||
             context.Board.IsInsufficientMaterial())
             return CurrentDrawScore;
 

@@ -257,12 +257,12 @@ search returns.
 
 ## Implementation Phases
 
-### Phase 1: Correct cloning
+### Phase 1: Correct cloning (complete)
 
-- Add `GameHistory` copy support.
-- Add `Board.CloneForSearch()`.
-- Add `AlphaBetaContext.Split()` with private mutable search state.
-- Test that cloned state has identical hashes, history, draw decisions, and
+- [x] Add `GameHistory` copy support.
+- [x] Add `Board.CloneForSearch()`.
+- [x] Add `AlphaBetaContext.Split()` with private mutable search state.
+- [x] Test that cloned state has identical hashes, history, draw decisions, and
   legal moves.
 
 ### Phase 2: Thread-safe shared state

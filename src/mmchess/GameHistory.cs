@@ -33,6 +33,22 @@ public class GameHistory
         _pawnOrCapIndices = new int[InitialPawnOrCaptureCapacity];
     }
 
+    public GameHistory(GameHistory source)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+
+        _history = (HistoryMove[])source._history.Clone();
+        _pawnOrCapIndices = (int[])source._pawnOrCapIndices.Clone();
+        _count = source._count;
+        _pawnOrCapCount = source._pawnOrCapCount;
+    }
+
+    public GameHistory CloneForSearch()
+    {
+        return new GameHistory(this);
+    }
+
     public void Add(HistoryMove move){
         if (_count == _history.Length)
             Array.Resize(ref _history, _history.Length * 2);
