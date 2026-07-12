@@ -2,11 +2,15 @@ using System;
 
 namespace mmchess;
 
-public class TranspositionTable
+public sealed class TTMetrics
 {
     public ulong Hits{get;set;}
     public ulong Probes{get;set;}
     public ulong Stores{get;set;}
+}
+public class TranspositionTable
+{
+
 
     public int SearchId{
         get;
@@ -95,9 +99,6 @@ public class TranspositionTable
     void ClearEntries()
     {
         Array.Clear(TTable, 0, TTable.Length);
-        Hits = 0;
-        Probes = 0;
-        Stores = 0;
     }
 
     public void NextSearchId(){
@@ -498,8 +499,13 @@ public class TranspositionTable
         return score;
     }
 
+    public void Store(AlphaBetaContext context, Move m, int depth, int score, TranspositionTableEntry.EntryType type)
+    {
+        context.TTMetrics.Stores++;
+        Store(context.Board.HashKey, m, depth, score, type, context.Ply);
+    }
+
     public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type, int ply){
-        Stores++;
         var index = HashFunction(hashKey);
         var existing = TTable[index];
 
@@ -539,29 +545,32 @@ public class TranspositionTable
         }
         
         TTable[index]=newEntry;
-
-        
     }
 
     // Look up the entry for hashKey. Returns true and fills entry on a hit.
     // A zeroed (empty) slot can only match when hashKey == 0, which never
     // happens for a real position, so no separate emptiness test is needed.
+    public bool TryProbe(AlphaBetaContext context, out TranspositionTableEntry entry)
+    {
+        context.TTMetrics.Probes++;
+        var hit = TryProbe(context.Board.HashKey, out entry);
+        if (hit)
+            context.TTMetrics.Hits++;
+        return hit;
+    }
+
     public bool TryProbe(ulong hashKey, out TranspositionTableEntry entry){
         var index = HashFunction(hashKey);
         var e = TTable[index];
         var e2 = TTable[index+1];
-        Probes++;
-
         //verify lock
         if((hashKey ^ e.Value) == e.Lock)
         {
-            Hits++;
             entry = e;
             return true;
         }
         else if((hashKey ^ e2.Value)== e2.Lock)
         {
-            Hits++;
             entry = e2;
             return true;
         }

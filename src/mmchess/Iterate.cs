@@ -23,44 +23,44 @@ public static class Iterate
         return Math.Max(-10000, Math.Min(alpha - (ASPIRATION_WINDOW * relax), score - ASPIRATION_WINDOW));
     }
 
-    static void PrintMetrics(AlphaBetaMetrics metrics, TimeSpan searchTime)
+    static void PrintMetrics(AlphaBetaContext context, TimeSpan searchTime)
     {
         //prevent index out of bounds.
         //note, this will not effect the calculation
-        if (metrics.Depth == 0)
+        if (context.Metrics.Depth == 0)
         {
-            metrics.Depth = 1;
+            context.Metrics.Depth = 1;
         }
         float ebf = 0;
-        for (int d = 1; d < metrics.Depth; d++)
+        for (int d = 1; d < context.Metrics.Depth; d++)
         {
-            var bf = (float)metrics.DepthNodes[d] / (float)(metrics.DepthNodes[d - 1] + 1);
+            var bf = (float)context.Metrics.DepthNodes[d] / (float)(context.Metrics.DepthNodes[d - 1] + 1);
             if (ebf > 0)
                 ebf = (ebf + bf) / 2;
             else
                 ebf = bf;
         }
         Console.Error.WriteLine("Nodes={0}, QNodes={1}, Qsearch%={2:0.0}, Knps={3:0}, EBF({4})={5:0.00}",
-            metrics.Nodes,
-            metrics.QNodes,
-            100 * (double)metrics.QNodes / ((double)metrics.Nodes + 1),
-            (metrics.Nodes / 1000 / searchTime.TotalSeconds),
-            metrics.Depth,
+            context.Metrics.Nodes,
+            context.Metrics.QNodes,
+            100 * (double)context.Metrics.QNodes / ((double)context.Metrics.Nodes + 1),
+            (context.Metrics.Nodes / 1000 / searchTime.TotalSeconds),
+            context.Metrics.Depth,
             ebf);
         Console.Error.WriteLine("FirstMoveFH%={0:0.0}, Killers%={1:0.0} FutilePrune={2}, EFutilePrune={3}",
-            100 * (double)metrics.FirstMoveFailHigh / ((double)metrics.FailHigh + 1),
-            100 * (double)metrics.KillerFailHigh / ((double)metrics.FailHigh + 1),
-            metrics.FPrune,
-            metrics.EFPrune);
+            100 * (double)context.Metrics.FirstMoveFailHigh / ((double)context.Metrics.FailHigh + 1),
+            100 * (double)context.Metrics.KillerFailHigh / ((double)context.Metrics.FailHigh + 1),
+            context.Metrics.FPrune,
+            context.Metrics.EFPrune);
         Console.Error.WriteLine("NullMoveTries={0} NullMove%={1:0.0}, NMResearch={2}, MateThreats={3}, LMRResearch={4}",
-            metrics.NullMoveTries,
-            100 * (double)metrics.NullMoveFailHigh / ((double)metrics.NullMoveTries + 1),
-            metrics.NullMoveResearch,
-            metrics.MateThreats,
-            metrics.LMRResearch);
+            context.Metrics.NullMoveTries,
+            100 * (double)context.Metrics.NullMoveFailHigh / ((double)context.Metrics.NullMoveTries + 1),
+            context.Metrics.NullMoveResearch,
+            context.Metrics.MateThreats,
+            context.Metrics.LMRResearch);
         Console.Error.WriteLine("HashTable: FH%={0:0.0} Hit%={1:0.0}",
-            100*(double)metrics.TTFailHigh/(double)metrics.FirstMoveFailHigh+1,
-            100*(double)TranspositionTable.Instance.Hits/(double)TranspositionTable.Instance.Probes);
+            100*(double)context.Metrics.TTFailHigh/(double)context.Metrics.FirstMoveFailHigh+1,
+            100*(double)context.TTMetrics.Hits/(double)context.TTMetrics.Probes);
         Console.Error.WriteLine("PawnHashTable: Hit%={0:0.0}",
             100*(double)PawnHashTable.Instance.Hits/(double)PawnHashTable.Instance.Probes);
     }
@@ -277,7 +277,7 @@ public static class Iterate
                 break;
         }
         if (state.ShowThinking && !suppressThinking)
-            PrintMetrics(context.Metrics, DateTime.Now - startTime);
+            PrintMetrics(context, DateTime.Now - startTime);
         metrics = context.Metrics;
         if (updatePonderMove)
             state.PonderMove = ponderMove;
@@ -338,7 +338,7 @@ public static class Iterate
             if (hashKeys.Contains(context.Board.HashKey))
                 break;
 
-            if (!TranspositionTable.Instance.TryProbe(context.Board.HashKey, out var entry) ||
+            if (!TranspositionTable.Instance.TryProbe(context, out var entry) ||
                 entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
                 break;
             var m = new Move(entry.MoveValue);

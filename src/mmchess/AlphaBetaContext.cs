@@ -11,6 +11,7 @@ public struct AlphaBetaContext
     long InterruptSampleTimestamp { get; set; }
     Action Interrupt { get; set; }
     public AlphaBetaMetrics Metrics { get; set; }
+    public TTMetrics TTMetrics { get; set; }
     public Move[,] PrincipalVariation { get; private set; }
     public int[] PvLength = new int[AlphaBeta.MAX_DEPTH];
     public int Ply { get; set; }
@@ -32,6 +33,7 @@ public struct AlphaBetaContext
         Ply = 0;
         Board = gameBoard;
         Metrics = new AlphaBetaMetrics();
+        TTMetrics = new TTMetrics();
         ResetInterruptCheckSchedule();
         Interrupt = interrupt;
         ResetInterruptCheckSchedule();

@@ -91,7 +91,7 @@ public partial class AlphaBeta
                 // PV Node
                 //update the PV
                 UpdatePv(context,bestMove);
-                TranspositionTable.Instance.Store(context.Board.HashKey,m,depth,alpha,EntryType.PV,context.Ply);
+                TranspositionTable.Instance.Store(context, m, depth, alpha, EntryType.PV);
             }
 
             lastMove = m;
@@ -144,7 +144,7 @@ public partial class AlphaBeta
             return Quiesce(context, alpha, beta);
 
         //first let's look for a transposition
-        var hasEntry = TranspositionTable.Instance.TryProbe(context.Board.HashKey, out var entry);
+        var hasEntry = TranspositionTable.Instance.TryProbe(context, out var entry);
         if (hasEntry)
         {
             //we have a hit from the TTable
@@ -186,7 +186,7 @@ public partial class AlphaBeta
             if (nmScore >= beta)
             {
                 context.Metrics.NullMoveFailHigh++;
-                TranspositionTable.Instance.Store(context.Board.HashKey, Move.Null, depth, nmScore, EntryType.CUT, context.Ply);
+                TranspositionTable.Instance.Store(context, Move.Null, depth, nmScore, EntryType.CUT);
                 return nmScore;
             }
 
@@ -301,7 +301,7 @@ public partial class AlphaBeta
                 UpdatePv(context, bestMove);
                 //Add to hashtable
                 TranspositionTable.Instance.Store(
-                    context.Board.HashKey, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV, context.Ply);
+                    context, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV);
             }
 
             lastMove = m;
@@ -322,8 +322,8 @@ public partial class AlphaBeta
         {
             //ALL NODE
             TranspositionTable.Instance.Store(
-                context.Board.HashKey, Move.Null, depth, alpha,
-                TranspositionTableEntry.EntryType.ALL, context.Ply);
+                context, Move.Null, depth, alpha,
+                TranspositionTableEntry.EntryType.ALL);
         }
 
         return alpha;
@@ -489,8 +489,7 @@ public partial class AlphaBeta
 
         //update the transposition table
         //the move doesn't matter if it is a CUT node
-        TranspositionTable.Instance.Store(
-            context.Board.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT, context.Ply);
+        TranspositionTable.Instance.Store(context, m, depth, score, EntryType.CUT);
     }
 
     private void UpdateHeuristics(AlphaBetaContext context, Move m, int depth)
