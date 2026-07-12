@@ -1,5 +1,7 @@
 namespace mmchess;
 
+using System.Threading;
+
 // Caches the pure pawn-structure part of pawn evaluation (doubled/passed
 // pawns, per-file occupancy), keyed by Board.PawnHashKey (pawn placement
 // only - see TranspositionTable.GetPawnHashKeyForPosition). Unlike the main
@@ -23,8 +25,11 @@ public class PawnHashTable
 
     readonly Entry[] table = new Entry[EntryCount];
 
-    public ulong Hits { get; private set; }
-    public ulong Probes { get; private set; }
+    long hits;
+    long probes;
+
+    public ulong Hits => (ulong)Interlocked.Read(ref hits);
+    public ulong Probes => (ulong)Interlocked.Read(ref probes);
 
     static readonly object _lock = new object();
     static PawnHashTable _instance;
@@ -46,11 +51,11 @@ public class PawnHashTable
 
     public bool TryProbe(ulong pawnHashKey, out PawnScore score)
     {
-        Probes++;
-        var e = table[pawnHashKey & KeyMask];
+        Interlocked.Increment(ref probes);
+        var e = Volatile.Read(ref table[pawnHashKey & KeyMask]);
         if (e != null && e.Key == pawnHashKey)
         {
-            Hits++;
+            Interlocked.Increment(ref hits);
             score = e.Score;
             return true;
         }
@@ -61,13 +66,13 @@ public class PawnHashTable
 
     public void Store(ulong pawnHashKey, PawnScore score)
     {
-        table[pawnHashKey & KeyMask] = new Entry { Key = pawnHashKey, Score = score };
+        Volatile.Write(ref table[pawnHashKey & KeyMask], new Entry { Key = pawnHashKey, Score = score });
     }
 
     public void Clear()
     {
         System.Array.Clear(table, 0, table.Length);
-        Hits = 0;
-        Probes = 0;
+        Interlocked.Exchange(ref hits, 0);
+        Interlocked.Exchange(ref probes, 0);
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace mmchess;
 
@@ -507,7 +508,7 @@ public class TranspositionTable
 
     public void Store(ulong hashKey, Move m, int depth, int score, TranspositionTableEntry.EntryType type, int ply){
         var index = HashFunction(hashKey);
-        var existing = TTable[index];
+        var existing = ReadEntryWords(ref TTable[index]);
 
         var newEntry = new TranspositionTableEntry{
             Type = (byte)type,
@@ -518,10 +519,10 @@ public class TranspositionTable
         if(!m.IsNull)
             newEntry.MoveValue =m.Value;
 
-        newEntry.Lock =  newEntry.Value ^ hashKey;
+        newEntry.Lock = newEntry.Value ^ hashKey;
 
         //we will always store the entry in the second bucket
-        TTable[index+1] = newEntry;
+        WriteEntry(ref TTable[index + 1], hashKey, newEntry.Value);
 
         //check that a result is already present at this index, and decide if we should replace
         //if it matches the current position, go ahead and overwrite.  If the
@@ -544,7 +545,7 @@ public class TranspositionTable
             }                                     
         }
         
-        TTable[index]=newEntry;
+        WriteEntry(ref TTable[index], hashKey, newEntry.Value);
     }
 
     // Look up the entry for hashKey. Returns true and fills entry on a hit.
@@ -561,20 +562,51 @@ public class TranspositionTable
 
     public bool TryProbe(ulong hashKey, out TranspositionTableEntry entry){
         var index = HashFunction(hashKey);
-        var e = TTable[index];
-        var e2 = TTable[index+1];
-        //verify lock
-        if((hashKey ^ e.Value) == e.Lock)
-        {
-            entry = e;
+        if (TryReadEntry(ref TTable[index], hashKey, out entry))
             return true;
-        }
-        else if((hashKey ^ e2.Value)== e2.Lock)
-        {
-            entry = e2;
+
+        if (TryReadEntry(ref TTable[index + 1], hashKey, out entry))
             return true;
-        }
+
         entry = default;
         return false;
+    }
+
+    // Hyatt/Mann lockless TT publication. Each field is one naturally aligned
+    // 64-bit word. Lock stores hashKey XOR data; a reader accepts the entry only
+    // when XORing the two independently-read words reconstructs its requested
+    // hash. If concurrent writers make the reader observe words from different
+    // stores, validation fails and the probe is treated as a harmless miss.
+    static void WriteEntry(ref TranspositionTableEntry destination, ulong hashKey, ulong data)
+    {
+        Volatile.Write(ref destination.Lock, hashKey ^ data);
+        Volatile.Write(ref destination.Value, data);
+    }
+
+    static bool TryReadEntry(
+        ref TranspositionTableEntry source,
+        ulong hashKey,
+        out TranspositionTableEntry entry)
+    {
+        var xorKey = Volatile.Read(ref source.Lock);
+        var data = Volatile.Read(ref source.Value);
+        if ((xorKey ^ data) != hashKey)
+        {
+            entry = default;
+            return false;
+        }
+
+        entry = default;
+        entry.Value = data;
+        entry.Lock = xorKey;
+        return true;
+    }
+
+    static TranspositionTableEntry ReadEntryWords(ref TranspositionTableEntry source)
+    {
+        var entry = default(TranspositionTableEntry);
+        entry.Lock = Volatile.Read(ref source.Lock);
+        entry.Value = Volatile.Read(ref source.Value);
+        return entry;
     }
 }

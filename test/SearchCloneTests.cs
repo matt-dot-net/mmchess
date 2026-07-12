@@ -107,6 +107,7 @@ public class SearchCloneTests
         var split = context.Split();
 
         Assert.Same(state, split.GameState);
+        Assert.Same(context.GameState.SearchStop, split.GameState.SearchStop);
         Assert.NotSame(context.Board, split.Board);
         Assert.NotSame(context.PrincipalVariation, split.PrincipalVariation);
         Assert.NotSame(context.PvLength, split.PvLength);
@@ -135,6 +136,9 @@ public class SearchCloneTests
         Assert.Equal(27, context.HistoryHeuristic[board.SideToMove, 0, pvMove.To]);
         Assert.Equal(99UL, context.Metrics.Nodes);
         Assert.Equal(12UL, context.TTMetrics.Probes);
+
+        state.TimeUp = true;
+        Assert.True(split.GameState.TimeUp);
     }
 
     static void PlayFirstLegalMove(Board board)

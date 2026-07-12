@@ -265,12 +265,14 @@ search returns.
 - [x] Test that cloned state has identical hashes, history, draw decisions, and
   legal moves.
 
-### Phase 2: Thread-safe shared state
+### Phase 2: Thread-safe shared state (complete)
 
-- Make TT probes/stores safe under concurrent access.
-- Make pawn-hash publication explicit and counters safe.
-- Introduce a shared search-stop object.
-- Separate global statistics from per-worker metrics.
+- [x] Make TT probes/stores safe under concurrent access using Hyatt/Mann
+  XOR-key validation and atomic 64-bit word access.
+- [x] Make pawn-hash publication explicit and counters safe.
+- [x] Introduce a shared search-stop object.
+- [x] Separate TT statistics into per-context metrics; keep pawn-table global
+  counters atomic because pawn probes do not currently receive a search context.
 
 ### Phase 3: Extract sibling-search operations
 

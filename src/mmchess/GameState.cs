@@ -21,7 +21,18 @@ public class GameState
 
     public Board GameBoard{get;set;}
 
-    public bool TimeUp { get; set; }     
+    public SearchStop SearchStop { get; } = new SearchStop();
+    public bool TimeUp
+    {
+        get => SearchStop.IsRequested;
+        set
+        {
+            if (value)
+                SearchStop.Request();
+            else
+                SearchStop.Reset();
+        }
+    }
 
     public int DepthLimit{get;set;}
     public bool UciGoRequested{get;set;}
