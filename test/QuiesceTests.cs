@@ -18,8 +18,8 @@ public class QuiesceTests
         var board = Board.ParseFenString("3R3k/5ppp/r7/r7/8/8/8/4K3 b - - 0 1");
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
-
-        var result = ab.Quiesce(-5000, 5000);
+        var context = new AlphaBetaContext(state, board);
+        var result = AlphaBeta.Quiesce(context, -5000, 5000);
 
         Assert.Equal(-10000, result); // mate detected at Ply=0 -> -10000+0
     }
@@ -34,10 +34,10 @@ public class QuiesceTests
         // eval directly, rather than recursing further.
         var board = Board.ParseFenString("R6k/8/8/8/8/8/8/4K3 b - - 0 1");
         var state = new GameState { GameBoard = board };
-        var ab = new AlphaBeta(state, () => { });
+        var context = new AlphaBetaContext(state, board);
 
         var expectedStaticEval = Evaluator.Evaluate(board, -5000, 5000);
-        var result = ab.Quiesce(-5000, 5000, AlphaBeta.MaxCheckChaseDepth);
+        var result =AlphaBeta.Quiesce(context,-5000, 5000, AlphaBeta.MaxCheckChaseDepth);
 
         Assert.Equal(expectedStaticEval, result);
     }

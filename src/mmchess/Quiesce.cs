@@ -6,6 +6,7 @@ namespace mmchess;
 public partial class AlphaBeta
 {
     public const int MaxCheckChaseDepth = 6;
+    public const int MAX_DEPTH = 64;
 
     // "Non-capture" means something different depending on check status:
     // - Not in check: GenerateQuiescenceMoves only ever returns captures,
@@ -16,13 +17,13 @@ public partial class AlphaBeta
     //   piece's own value, an accident of an empty destination square scoring 0).
     //   Order captures - including capturing the checking piece - first by
     //   LvaMvv, then king flight, then blocking moves last.
-    int OrderQuiesceMove(Move m, bool inCheck)
+    static int OrderQuiesceMove(Board b, Move m, bool inCheck)
     {
         if ((m.Bits & (byte)MoveBits.Capture) != 0)
-            return 200_000 + LvaMvv(m);
+            return 200_000 + LvaMvv(b, m);
 
         if (!inCheck)
-            return LvaMvv(m); // quiet promotion push - still rank by what it promotes to
+            return LvaMvv(b,m); // quiet promotion push - still rank by what it promotes to
 
         if ((m.Bits & (byte)MoveBits.King) != 0)
             return 100_000;
@@ -37,24 +38,24 @@ public partial class AlphaBeta
     // early via the static eval, so this bounds how many plies of full evasion
     // search we'll do before falling back to the static eval anyway - a much
     // narrower, standard heuristic than "always trust stand-pat in check".
-    public int Quiesce(int alpha, int beta, int checkChaseDepth = 0)
+    public static int Quiesce(AlphaBetaContext context, int alpha, int beta, int checkChaseDepth = 0)
     {
-        CountNode();
-        Metrics.QNodes++;
+        context.CountNode();
+        context.Metrics.QNodes++;
 
-        if (Ply >= MAX_DEPTH)
+        if (context.Ply >= MAX_DEPTH)
         {
-            return Evaluator.Evaluate(MyBoard,-10000,10000);
+            return Evaluator.Evaluate(context.Board,-10000,10000);
         }
 
-        if (MyGameState.TimeUp)
+        if (context.GameState.TimeUp)
         {
             return alpha;
         }
-        int score = Evaluator.Evaluate(MyBoard,alpha,beta);
+        int score = Evaluator.Evaluate(context.Board,alpha,beta);
         //attempt to stand pat (don't search if eval tells us we are in a good position)
         //only valid when not in check - you can't "pass" and decline to respond to check
-        var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
+        var inCheck = context.Board.InCheck(context.Board.SideToMove);
 
         //we've chased a forcing check sequence too long - cut our losses and
         //fall back to the static eval rather than let it balloon unboundedly
@@ -76,8 +77,8 @@ public partial class AlphaBeta
 
         Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
         var moves = new MoveList(moveBuffer);
-        MoveGenerator.GenerateQuiescenceMoves(MyBoard, ref moves, false);
-        OrderQuiesceMoves(ref moves, inCheck);
+        MoveGenerator.GenerateQuiescenceMoves(context.Board, ref moves, false);
+        OrderQuiesceMoves(context, ref moves, inCheck);
 
         var nextCheckChaseDepth = inCheck ? checkChaseDepth + 1 : 0;
         bool anyMoveTried = false;
@@ -85,7 +86,7 @@ public partial class AlphaBeta
         for (int moveIndex = 0; moveIndex < moves.Count; moveIndex++)
         {
             var m = moves[moveIndex];
-            if((BitMask.Mask[m.To] & (MyBoard.King[0]|MyBoard.King[1])) > 0)
+            if((BitMask.Mask[m.To] & (context.Board.King[0]|context.Board.King[1])) > 0)
                 return beta;
 
             //if SEE says this is a losing capture, we prune it - but only when
@@ -93,23 +94,23 @@ public partial class AlphaBeta
             //responding to check, since none of them can be skipped as "not
             //worth it" - the alternative (not responding) isn't legal at all,
             //and a bad trade is always better than being checkmated
-            if(!inCheck && StaticExchange.Eval(MyBoard,m,MyBoard.SideToMove) < 0)
+            if(!inCheck && StaticExchange.Eval(context.Board,m,context.Board.SideToMove) < 0)
                 continue;
 
 
             if(inCheck) {
-                MyBoard.MakeMove(m,false);
+                context.Board.MakeMove(m,false);
             }
             else
             {
-                if (!MyBoard.MakeMove(m,true))
+                if (!context.Board.MakeMove(m,true))
                     continue;
             }
             anyMoveTried = true;
-            Ply++;
+            context.Ply++;
 
-            score = -Quiesce(-beta, -alpha, nextCheckChaseDepth);
-            TakeBack();
+            score = -Quiesce(context,-beta, -alpha, nextCheckChaseDepth);
+            context.TakeBack();
             if (score >= beta)
                 return beta;
             if (score > alpha)
@@ -124,19 +125,19 @@ public partial class AlphaBeta
         //through the whole search (see: engine emitting no move at all in a
         //genuinely lost-but-not-yet-detected position)
         if (inCheck && !anyMoveTried)
-            return -10000 + Ply;
+            return -10000 + context.Ply;
 
         return alpha;
 
     }
 
-    void OrderQuiesceMoves(ref MoveList moves, bool inCheck)
+    static void OrderQuiesceMoves(AlphaBetaContext context, ref MoveList moves, bool inCheck)
     {
         var count = moves.Count;
         Span<int> scores = count <= 256 ? stackalloc int[count] : new int[count];
 
         for (int i = 0; i < count; i++)
-            scores[i] = OrderQuiesceMove(moves[i], inCheck);
+            scores[i] = OrderQuiesceMove(context.Board, moves[i], inCheck);
 
         for (int i = 1; i < count; i++)
         {
@@ -154,5 +155,17 @@ public partial class AlphaBeta
             moves[j + 1] = move;
             scores[j + 1] = score;
         }
+    }
+
+    public static int LvaMvv(Board b, Move m)
+    {
+        //sort by victim-attacker (LVV/MVA)
+        //note these will occur after killer moves if they are deemed to be losing
+        return (
+            //we multiple the victim value so that moves like rook x rook are higher than pawn x pawn
+            128*Evaluator.PieceValueOnSquare(b, m.To) -
+            Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
+            +
+            Evaluator.PieceValues[m.Promotion]; //add promotion in as well
     }
 }

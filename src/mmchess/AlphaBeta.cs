@@ -8,211 +8,69 @@ namespace mmchess;
 
 public partial class AlphaBeta
 {
-    public const int MAX_DEPTH = 64;
-    const int InterruptCheckTargetMilliseconds = 75;
-    const ulong InitialInterruptCheckNodes = 4096;
-    static readonly long InterruptCheckTargetTicks = Stopwatch.Frequency * InterruptCheckTargetMilliseconds / 1000;
-    int Ply { get; set; }
-    public AlphaBetaMetrics Metrics { get; set; }
-    public Move[,] PrincipalVariation { get; private set; }
-    public int[] PvLength = new int[MAX_DEPTH];
-    public TimeSpan TimeLimit { get; set; }
-    Board MyBoard { get; set; }
-    GameState MyGameState { get; set; }
-    Action Interrupt { get; set; }
-    ulong NextInterruptCheckNode { get; set; }
-    ulong InterruptSampleNodes { get; set; }
-    long InterruptSampleTimestamp { get; set; }
-    Move[,] Killers = new Move[MAX_DEPTH, 2];
-    // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
-    // ply, where side-to-move already alternates implicitly along one line
-    // of play), history accumulates across the whole tree, where the same
-    // ply can be reached by either side across different branches - so side
-    // has to be its own index here to keep White's and Black's stats apart.
-    int[,,] HistoryHeuristic = new int[2, 6, 64];
-    public int CurrentDrawScore { get; set; }
     
+    public static readonly long InterruptCheckTargetTicks = Stopwatch.Frequency * InterruptCheckTargetMilliseconds / 1000;
+    const int InterruptCheckTargetMilliseconds = 75;
+    AlphaBetaContext Context{get;set;}
+    public TimeSpan TimeLimit { get; set; }
+    GameState MyGameState { get; set; }
+    public int CurrentDrawScore { get; set; }
 
     List<Move> RootMoves{get; set;}
-    public AlphaBeta()
+    public AlphaBetaContext[] Threads{get;set;}
+    public AlphaBeta(GameState state)
     {
-        Metrics = new AlphaBetaMetrics();
-        ResetInterruptCheckSchedule();
+        MyGameState = state;
+
     }
     public AlphaBeta(GameState state, Action interrupt)
     {
-
-        PrincipalVariation = new Move[MAX_DEPTH, MAX_DEPTH];
-        PvLength[0] = 0;
-        Ply = 0;
-        MyGameState = state;
-        MyBoard = state.GameBoard;
         TimeLimit = TimeSpan.FromSeconds(5);
-        Metrics = new AlphaBetaMetrics();
-        Interrupt = interrupt;
-        ResetInterruptCheckSchedule();
-    }
+        MyGameState = state;
+    }    
 
-    void CountNode()
+    public int SearchRoot(AlphaBetaContext context,int alpha, int beta, int depth)
     {
-        Metrics.Nodes++;
-        if (Metrics.Nodes >= NextInterruptCheckNode)
-            CheckScheduledInterrupt();
-    }
+        context.PvLength[0]=0;
 
-    void CheckScheduledInterrupt()
-    {
-        Interrupt?.Invoke();
-
-        var now = Stopwatch.GetTimestamp();
-        var elapsedTicks = now - InterruptSampleTimestamp;
-        var elapsedNodes = Metrics.Nodes - InterruptSampleNodes;
-
-        ulong nextInterval;
-        if (elapsedTicks > 0 && elapsedNodes > 0)
-        {
-            var nodesPerTargetWindow = elapsedNodes * (double)InterruptCheckTargetTicks / elapsedTicks;
-            nextInterval = Math.Max(1, (ulong)Math.Round(nodesPerTargetWindow));
-        }
-        else
-        {
-            nextInterval = InitialInterruptCheckNodes;
-        }
-
-        InterruptSampleTimestamp = now;
-        InterruptSampleNodes = Metrics.Nodes;
-        NextInterruptCheckNode = Metrics.Nodes + nextInterval;
-    }
-
-    void ResetInterruptCheckSchedule()
-    {
-        InterruptSampleTimestamp = Stopwatch.GetTimestamp();
-        InterruptSampleNodes = Metrics?.Nodes ?? 0;
-        NextInterruptCheckNode = InterruptSampleNodes + InitialInterruptCheckNodes;
-    }
-
-    int OrderRootMove(Move m)
-    {
-
-        //use the principal variation move first
-        if (!PrincipalVariation[0, 0].IsNull && PrincipalVariation[0, 0].Value == m.Value)
-            return int.MaxValue;
-
-        // otherwise we will use Qsearch to order the moves
-        if (!MyBoard.MakeMove(m))
-            return int.MinValue;
-
-        var score = Quiesce(-10000, 10000);
-
-        MyBoard.UnMakeMove();
-        return score;
-
-    }
-
-    // Returns (tier, score): moves are sorted by tier first, then score
-    // within that tier - avoids needing every tier's numeric range to be
-    // hand-verified against every other tier's (a single combined int score
-    // would need history's accumulated counts to never grow large enough to
-    // spill into the killer/capture ranges above it).
-    (int Tier, int Score) OrderMove(Move m, bool hasEntry, in TranspositionTableEntry entry)
-    {
-        if (hasEntry && m.Value == entry.MoveValue)
-            return (4, 0); // search this move first
-
-        if ((m.Bits & (byte)MoveBits.Capture) > 0)
-        {
-
-            //winning and even captures
-            if(Evaluator.PieceValueOnSquare(MyBoard, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
-                return (3, LvaMvv(m));
-            else
-            {
-                //verify that it is actually losing with SEE
-                if(StaticExchange.Eval(MyBoard,m, MyBoard.SideToMove) >= 0)
-                    return (3, LvaMvv(m));
-                return (0, LvaMvv(m));//losing captures at the bottom
-            }
-
-        }
-        else
-        {
-            //killers come before history-ordered quiets
-            if (!Killers[Ply, 0].IsNull && Killers[Ply, 0].Value == m.Value)
-                return (2, 1);
-            if (!Killers[Ply, 1].IsNull && Killers[Ply, 1].Value == m.Value)
-                return (2, 0);
-
-            return (1, HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To]);
-        }
-    }
-
-    private int LvaMvv(Move m)
-    {
-        //sort by victim-attacker (LVV/MVA)
-        //note these will occur after killer moves if they are deemed to be losing
-        return (
-            //we multiple the victim value so that moves like rook x rook are higher than pawn x pawn
-            128*Evaluator.PieceValueOnSquare(MyBoard, m.To) -
-            Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
-            +
-            Evaluator.PieceValues[m.Promotion]; //add promotion in as well
-    }
-
-    private Boolean Make(Move m)
-    {
-        if (!MyBoard.MakeMove(m))
-            return false;
-        Ply++;
-        return true;
-    }
-    private void TakeBack()
-    {
-        MyBoard.UnMakeMove();
-        Ply--;
-    }
-
-    public int SearchRoot(int alpha, int beta, int depth)
-    {
-        PvLength[0]=0;
-
-        if (MyGameState.GameBoard.History.IsGameDrawn(MyBoard.HashKey) ||
-            MyBoard.IsInsufficientMaterial())
+        if (MyGameState.GameBoard.History.IsGameDrawn(context.Board.HashKey) ||
+            context.Board.IsInsufficientMaterial())
             return CurrentDrawScore;
 
         if(RootMoves == null){
             Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
             var generatedMoves = new MoveList(moveBuffer);
-            MoveGenerator.GenerateMoves(MyBoard, ref generatedMoves);
+            MoveGenerator.GenerateMoves(context.Board, ref generatedMoves);
 
             RootMoves = new List<Move>(generatedMoves.Count);
             generatedMoves.CopyTo(RootMoves);
             RootMoves = RootMoves
-                .OrderByDescending(m => OrderRootMove(m))
+                .OrderByDescending(m => OrderRootMove(context,m))
                 .ToList();
         }
 
         int score;
         Move bestMove = Move.Null, lastMove = Move.Null;
-        bool inCheck = MyBoard.InCheck(MyBoard.SideToMove);
+        bool inCheck = context.Board.InCheck(context.Board.SideToMove);
         foreach (var m in RootMoves)
         {
-            if (!Make(m))
+            if (!context.Make(m))
                 continue;
 
             if (depth > 0){
                 if(bestMove.IsNull)
-                    score = -Search(-beta, -alpha, depth-1);
+                    score = -Search(context,-beta, -alpha, depth-1);
                 else   {
-                    score = -Search(-alpha-1,-alpha,depth-1);
+                    score = -Search(context,-alpha-1,-alpha,depth-1);
                     if(score > alpha)
-                        score = -Search(-beta,-alpha, depth-1);
+                        score = -Search(context,-beta,-alpha, depth-1);
                 }
                 
             }
             else
-                score = -Quiesce(-beta, -alpha);
+                score = -Quiesce(context,-beta, -alpha);
 
-            TakeBack();
+            context.TakeBack();
 
             if (MyGameState.TimeUp)
                 return alpha;
@@ -221,8 +79,8 @@ public partial class AlphaBeta
             {
                 //we want to try this move first next time
                 NewRootMove(m);
-                PvLength[0] = 1;
-                PrincipalVariation[0,0]=m;
+                context.PvLength[0] = 1;
+                context.PrincipalVariation[0,0]=m;
                 return score;
             }
 
@@ -232,8 +90,8 @@ public partial class AlphaBeta
                 bestMove = m;
                 // PV Node
                 //update the PV
-                UpdatePv(bestMove);
-                TranspositionTable.Instance.Store(MyBoard.HashKey,m,depth,alpha,EntryType.PV,Ply);
+                UpdatePv(context,bestMove);
+                TranspositionTable.Instance.Store(context.Board.HashKey,m,depth,alpha,EntryType.PV,context.Ply);
             }
 
             lastMove = m;
@@ -244,7 +102,7 @@ public partial class AlphaBeta
         {
             //we can't make a move. check for mate or stalemate.
             if (inCheck)
-                return -10000 + Ply;
+                return -10000 + context.Ply;
             else
                 return CurrentDrawScore;
         }
@@ -259,39 +117,39 @@ public partial class AlphaBeta
         return alpha;
     }
 
-    public int Search(int alpha, int beta, int depth)
+    public int Search(AlphaBetaContext context, int alpha, int beta, int depth)
     {
 
-        CountNode();
-        if (Ply >= MAX_DEPTH)
+        context.CountNode();
+        if (context.Ply >= MAX_DEPTH)
         {
-            return Evaluator.Evaluate(MyBoard,-10000,10000);
+            return Evaluator.Evaluate(context.Board,-10000,10000);
         }
 
-        PvLength[Ply] = Ply;
-        var inCheck = MyBoard.InCheck(MyBoard.SideToMove);
+        context.PvLength[context.Ply] = context.Ply;
+        var inCheck = context.Board.InCheck(context.Board.SideToMove);
         int ext = inCheck ? 1 : 0;
 
-        if (MyGameState.GameBoard.History.IsPositionDrawn(MyBoard.HashKey) ||
-            MyBoard.IsInsufficientMaterial())
+        if (context.GameState.GameBoard.History.IsPositionDrawn(context.Board.HashKey) ||
+            context.Board.IsInsufficientMaterial())
             return CurrentDrawScore;
 
-        if (MyGameState.TimeUp)
+        if (context.GameState.TimeUp)
         {
             return alpha;
         }
 
         Move bestMove = Move.Null;
         if (depth+ext <= 0)
-            return Quiesce(alpha, beta);
+            return Quiesce(context, alpha, beta);
 
         //first let's look for a transposition
-        var hasEntry = TranspositionTable.Instance.TryProbe(MyBoard.HashKey, out var entry);
+        var hasEntry = TranspositionTable.Instance.TryProbe(context.Board.HashKey, out var entry);
         if (hasEntry)
         {
             //we have a hit from the TTable
             if (entry.Depth >= depth){
-                var ttScore = TranspositionTable.ValueFromTT(entry.Score, Ply);
+                var ttScore = TranspositionTable.ValueFromTT(entry.Score, context.Ply);
                 if(entry.Type == (byte)EntryType.CUT && ttScore >= beta)
                     return beta;
                 else if(entry.Type==(byte)EntryType.ALL && ttScore <= alpha)
@@ -302,33 +160,33 @@ public partial class AlphaBeta
         }
 
         int mateThreat = 0;
-        var myPieceCount = MyBoard.PieceCount(MyBoard.SideToMove);
+        var myPieceCount = context.Board.PieceCount(context.Board.SideToMove);
         //next try a Null Move
-        if (Ply > 0 &&
+        if (context.Ply > 0 &&
             depth > 1 &&
             alpha==beta-1 &&
             !inCheck &&
-            !MyBoard.History[Ply - 1].IsNullMove &&
+            !context.Board.History[context.Ply - 1].IsNullMove &&
             myPieceCount > 0 &&
             (myPieceCount > 2 || depth < 7))
         {
-            Metrics.NullMoveTries++;
-            MakeNullMove();
+            context.Metrics.NullMoveTries++;
+            MakeNullMove(context);
             var nullReductionDepth = depth > 6 ? 4 : 3;
             int nmScore;
             if (depth - nullReductionDepth - 1 > 0)
-                nmScore = -Search(-beta, 1 - beta, depth - nullReductionDepth - 1);
+                nmScore = -Search(context,-beta, 1 - beta, depth - nullReductionDepth - 1);
             else
-                nmScore = -Quiesce(-beta, 1 - beta);
-            UnmakeNullMove();
+                nmScore = -Quiesce(context,-beta, 1 - beta);
+            UnmakeNullMove(context);
 
             if (MyGameState.TimeUp)
                 return alpha;
 
             if (nmScore >= beta)
             {
-                Metrics.NullMoveFailHigh++;
-                TranspositionTable.Instance.Store(MyBoard.HashKey, Move.Null, depth, nmScore, EntryType.CUT, Ply);
+                context.Metrics.NullMoveFailHigh++;
+                TranspositionTable.Instance.Store(context.Board.HashKey, Move.Null, depth, nmScore, EntryType.CUT, context.Ply);
                 return nmScore;
             }
 
@@ -337,15 +195,15 @@ public partial class AlphaBeta
             //don't let LMR/futility pruning skip past our defense below
             if (nmScore <= -9900)
             {
-                Metrics.MateThreats++;
+                context.Metrics.MateThreats++;
                 mateThreat = 1;
             }
         }
 
         Span<Move> moveBuffer = stackalloc Move[MoveList.StackCapacity];
         var moves = new MoveList(moveBuffer);
-        MoveGenerator.GenerateMoves(MyBoard, ref moves);
-        OrderMoves(ref moves, hasEntry, entry);
+        MoveGenerator.GenerateMoves(context.Board, ref moves);
+        OrderMoves(context,ref moves, hasEntry, entry);
         Move lastMove = Move.Null;
         int lmr = 0, nonCaptureMoves = 0, movesSearched = 0;
 
@@ -354,15 +212,15 @@ public partial class AlphaBeta
             var m = moves[moveIndex];
             bool fprune = false;
             int score;
-            if (!Make(m))
+            if (!context.Make(m))
                 continue;
 
-            var justGaveCheck = MyBoard.InCheck(MyBoard.SideToMove);
+            var justGaveCheck = context.Board.InCheck(context.Board.SideToMove);
             var capture = ((m.Bits & (byte)MoveBits.Capture) != 0);
             if (!capture && (!hasEntry || entry.MoveValue!=m.Value)) // don't count the hash move as a non-capture
                 ++nonCaptureMoves;                                     // while it might not be a capture, the point 
                                                                        // here is to start counting after generated captures
-            var passedpawnpush = (m.Bits & (byte)MoveBits.Pawn) > 0 && (Evaluator.PassedPawnMask[MyBoard.SideToMove^1,m.To] & MyBoard.Pawns[MyBoard.SideToMove]) == 0;                                               
+            var passedpawnpush = (m.Bits & (byte)MoveBits.Pawn) > 0 && (Evaluator.PassedPawnMask[context.Board.SideToMove^1,m.To] & context.Board.Pawns[context.Board.SideToMove]) == 0;                                               
             //LATE MOVE REDUCTIONS
             if (ext == 0 && //no extension
                 !inCheck && //i am not in check at this node
@@ -376,15 +234,15 @@ public partial class AlphaBeta
                 //FUTILITY PRUNING
                 else if (depth < 3 && alpha > -9900 && beta < 9900)
                 {
-                    if (depth == 2 && -Evaluator.EvaluateMaterial(MyBoard) + Evaluator.PieceValues[(int)Piece.Rook] <= alpha)
+                    if (depth == 2 && -Evaluator.EvaluateMaterial(context.Board) + Evaluator.PieceValues[(int)Piece.Rook] <= alpha)
                     {
-                        Metrics.EFPrune++;
+                        context.Metrics.EFPrune++;
                         fprune = true;
                     }
 
-                    else if (depth == 1 && -Evaluator.EvaluateMaterial(MyBoard) + Evaluator.PieceValues[(int)Piece.Knight] <= alpha)
+                    else if (depth == 1 && -Evaluator.EvaluateMaterial(context.Board) + Evaluator.PieceValues[(int)Piece.Knight] <= alpha)
                     {
-                        Metrics.FPrune++;
+                        context.Metrics.FPrune++;
                         fprune = true;
                     }
 
@@ -394,43 +252,43 @@ public partial class AlphaBeta
             {
                 //if we don't yet have a move, then search full window (PV Node)
                 if (bestMove.IsNull)
-                    score = -Search(-beta, -alpha, depth - 1 - lmr + ext);
+                    score = -Search(context,-beta, -alpha, depth - 1 - lmr + ext);
                 else //otherwise, use a zero window
                 {
                     //zero window search
-                    score = -Search(-alpha - 1, -alpha, depth - 1 - lmr + ext);
+                    score = -Search(context,-alpha - 1, -alpha, depth - 1 - lmr + ext);
 
                     if (score > alpha)
                     {
                         //this move might be better than our current best move
                         //we have to research with full window
 
-                        score = -Search(-beta, -alpha, depth - 1 - lmr + ext);
+                        score = -Search(context,-beta, -alpha, depth - 1 - lmr + ext);
 
                         if (score > alpha && lmr > 0)
                         {
                             //let's research again without the lmr
-                            Metrics.LMRResearch++;
-                            score = -Search(-beta, -alpha, depth - 1);
+                            context.Metrics.LMRResearch++;
+                            score = -Search(context,-beta, -alpha, depth - 1);
                         }
                     }
                 }
             }
             else
             {
-                score = -Quiesce(-beta, -alpha);
+                score = -Quiesce(context,-beta, -alpha);
             }
 
-            TakeBack();
+            context.TakeBack();
             ++movesSearched;
-            if (MyGameState.TimeUp)
+            if (context.GameState.TimeUp)
                 return alpha;
 
             if (score >= beta)
             {
-                SearchFailHigh(m, score, depth, hasEntry, entry);
+                SearchFailHigh(context, m, score, depth, hasEntry, entry);
                 if (lastMove.IsNull)
-                    Metrics.FirstMoveFailHigh++;
+                    context.Metrics.FirstMoveFailHigh++;
                 return score;
             }
 
@@ -440,10 +298,10 @@ public partial class AlphaBeta
                 bestMove = m;
                 // PV Node
                 //update the PV
-                UpdatePv(bestMove);
+                UpdatePv(context, bestMove);
                 //Add to hashtable
                 TranspositionTable.Instance.Store(
-                    MyBoard.HashKey, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV, Ply);
+                    context.Board.HashKey, bestMove, depth, alpha, TranspositionTableEntry.EntryType.PV, context.Ply);
             }
 
             lastMove = m;
@@ -454,7 +312,7 @@ public partial class AlphaBeta
         {
             //we can't make a move. check for mate or stalemate.
             if (inCheck)
-                return -10000 + Ply;
+                return -10000 + context.Ply;
             else
                 return CurrentDrawScore;
         }
@@ -464,56 +322,56 @@ public partial class AlphaBeta
         {
             //ALL NODE
             TranspositionTable.Instance.Store(
-                MyBoard.HashKey, Move.Null, depth, alpha,
-                TranspositionTableEntry.EntryType.ALL, Ply);
+                context.Board.HashKey, Move.Null, depth, alpha,
+                TranspositionTableEntry.EntryType.ALL, context.Ply);
         }
 
         return alpha;
     }
 
-    private void UnmakeNullMove()
+    private void UnmakeNullMove(AlphaBetaContext context)
     {
-        var nullMove = MyBoard.History[MyBoard.History.Count - 1];
-        MyBoard.History.RemoveLast();
+        var nullMove = context.Board.History[context.Board.History.Count - 1];
+        context.Board.History.RemoveLast();
 
         if (nullMove.EnPassant > 0)
         {
-            MyBoard.EnPassant = nullMove.EnPassant;
-            var file = MyBoard.EnPassant.BitScanForward().File();
-            MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
+            context.Board.EnPassant = nullMove.EnPassant;
+            var file = context.Board.EnPassant.BitScanForward().File();
+            context.Board.HashKey ^= TranspositionTable.EnPassantFileKey[file];
         }
-        Ply--;
+        context.Ply--;
 
-        MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
-        MyBoard.SideToMove ^= 1;
+        context.Board.HashKey^=TranspositionTable.SideToMoveKey;
+        context.Board.SideToMove ^= 1;
     }
 
-    private void MakeNullMove()
+    private void MakeNullMove(AlphaBetaContext context)
     {
-        var nullMove = HistoryMove.NullMove(MyBoard.HashKey);
+        var nullMove = HistoryMove.NullMove(context.Board.HashKey);
 
-        MyBoard.SideToMove ^= 1;
-        MyBoard.HashKey^=TranspositionTable.SideToMoveKey;
+        context.Board.SideToMove ^= 1;
+        context.Board.HashKey^=TranspositionTable.SideToMoveKey;
 
-        Ply++;
-        if (MyBoard.EnPassant > 0)
+        context.Ply++;
+        if (context.Board.EnPassant > 0)
         {
-            nullMove.EnPassant = MyBoard.EnPassant;
-            var file = MyBoard.EnPassant.BitScanForward().File();
-            MyBoard.HashKey ^= TranspositionTable.EnPassantFileKey[file];
-            MyBoard.EnPassant = 0;
+            nullMove.EnPassant = context.Board.EnPassant;
+            var file = context.Board.EnPassant.BitScanForward().File();
+            context.Board.HashKey ^= TranspositionTable.EnPassantFileKey[file];
+            context.Board.EnPassant = 0;
         }
 
-        MyBoard.History.Add(nullMove);//store a null move in history
+        context.Board.History.Add(nullMove);//store a null move in history
     }
 
-    private void UpdatePv(Move bestMove)
+    private void UpdatePv(AlphaBetaContext context, Move bestMove)
     {
-        PrincipalVariation[Ply, Ply] = bestMove;
+        context.PrincipalVariation[context.Ply, context.Ply] = bestMove;
 
-        for (int i = Ply + 1; i < PvLength[Ply + 1]; i++)
-            PrincipalVariation[Ply, i] = PrincipalVariation[Ply + 1, i];
-        PvLength[Ply] = PvLength[Ply + 1];
+        for (int i = context.Ply + 1; i < context.PvLength[context.Ply + 1]; i++)
+            context.PrincipalVariation[context.Ply, i] = context.PrincipalVariation[context.Ply + 1, i];
+        context.PvLength[context.Ply] = context.PvLength[context.Ply + 1];
     }
 
     void NewRootMove(Move m){
@@ -522,7 +380,63 @@ public partial class AlphaBeta
         RootMoves.Insert(0,m);
     }
 
-    void OrderMoves(ref MoveList moves, bool hasEntry, in TranspositionTableEntry entry)
+
+    int OrderRootMove(AlphaBetaContext context, Move m)
+    {
+
+        //use the principal variation move first
+        if (!context.PrincipalVariation[0, 0].IsNull && context.PrincipalVariation[0, 0].Value == m.Value)
+            return int.MaxValue;
+
+        // otherwise we will use Qsearch to order the moves
+        if (!context.Board.MakeMove(m))
+            return int.MinValue;
+
+        var score = AlphaBeta.Quiesce(context, -10000, 10000);
+
+        context.Board.UnMakeMove();
+        return score;
+
+    }
+
+// Returns (tier, score): moves are sorted by tier first, then score
+    // within that tier - avoids needing every tier's numeric range to be
+    // hand-verified against every other tier's (a single combined int score
+    // would need history's accumulated counts to never grow large enough to
+    // spill into the killer/capture ranges above it).
+    (int Tier, int Score) OrderMove(AlphaBetaContext context, Move m, bool hasEntry, in TranspositionTableEntry entry)
+    {
+        if (hasEntry && m.Value == entry.MoveValue)
+            return (4, 0); // search this move first
+
+        if ((m.Bits & (byte)MoveBits.Capture) > 0)
+        {
+
+            //winning and even captures
+            if(Evaluator.PieceValueOnSquare(context.Board, m.To) >= Evaluator.PieceValues[(int)Move.GetPiece((MoveBits)m.Bits)])
+                return (3, AlphaBeta.LvaMvv(context.Board, m));
+            else
+            {
+                //verify that it is actually losing with SEE
+                if(StaticExchange.Eval(context.Board,m, context.Board.SideToMove) >= 0)
+                    return (3, AlphaBeta.LvaMvv(context.Board, m));
+                return (0, AlphaBeta.LvaMvv(context.Board, m));//losing captures at the bottom
+            }
+
+        }
+        else
+        {
+            //killers come before history-ordered quiets
+            if (!context.Killers[context.Ply, 0].IsNull && context.Killers[context.Ply, 0].Value == m.Value)
+                return (2, 1);
+            if (!context.Killers[context.Ply, 1].IsNull && context.Killers[context.Ply, 1].Value == m.Value)
+                return (2, 0);
+
+            return (1, context.HistoryHeuristic[context.Board.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To]);
+        }
+    }
+
+    void OrderMoves(AlphaBetaContext context, ref MoveList moves, bool hasEntry, in TranspositionTableEntry entry)
     {
         var count = moves.Count;
         Span<int> tiers = count <= 256 ? stackalloc int[count] : new int[count];
@@ -530,7 +444,7 @@ public partial class AlphaBeta
 
         for (int i = 0; i < count; i++)
         {
-            var order = OrderMove(moves[i], hasEntry, entry);
+            var order = OrderMove(context, moves[i], hasEntry, entry);
             tiers[i] = order.Tier;
             scores[i] = order.Score;
         }
@@ -561,35 +475,35 @@ public partial class AlphaBeta
         return leftTier < rightTier || (leftTier == rightTier && leftScore < rightScore);
     }
 
-    void SearchFailHigh(Move m, int score, int depth, bool hasEntry, in TranspositionTableEntry entry)
+    void SearchFailHigh(AlphaBetaContext context, Move m, int score, int depth, bool hasEntry, in TranspositionTableEntry entry)
     {
-        UpdateHeuristics(m,depth);
-        Metrics.FailHigh++;
+        UpdateHeuristics(context, m, depth);
+        context.Metrics.FailHigh++;
 
         if (hasEntry && entry.MoveValue == m.Value)
-            Metrics.TTFailHigh++;
+            context.Metrics.TTFailHigh++;
 
-        else if ((!Killers[Ply, 0].IsNull && m.Value == Killers[Ply, 0].Value) ||
-            (!Killers[Ply, 1].IsNull && m.Value == Killers[Ply, 1].Value))
-            Metrics.KillerFailHigh++;
+        else if ((!context.Killers[context.Ply, 0].IsNull && m.Value == context.Killers[context.Ply, 0].Value) ||
+            (!context.Killers[context.Ply, 1].IsNull && m.Value == context.Killers[context.Ply, 1].Value))
+            context.Metrics.KillerFailHigh++;
 
         //update the transposition table
         //the move doesn't matter if it is a CUT node
         TranspositionTable.Instance.Store(
-            MyBoard.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT, Ply);
+            context.Board.HashKey, m, depth, score, TranspositionTableEntry.EntryType.CUT, context.Ply);
     }
 
-    private void UpdateHeuristics(Move m, int depth)
+    private void UpdateHeuristics(AlphaBetaContext context, Move m, int depth)
     {
 
         if ((m.Bits & (byte)MoveBits.Capture) > 0)
             return;
 
-        HistoryHeuristic[MyBoard.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To] += depth * depth;
+        context.HistoryHeuristic[context.Board.SideToMove, (int)Move.GetPiece((MoveBits)m.Bits) - 1, m.To] += depth * depth;
 
-        if (!Killers[Ply, 1].IsNull && Killers[Ply, 1].Value != m.Value)
-            Killers[Ply, 0] = Killers[Ply, 1];
+        if (!context.Killers[context.Ply, 1].IsNull && context.Killers[context.Ply, 1].Value != m.Value)
+            context.Killers[context.Ply, 0] = context.Killers[context.Ply, 1];
 
-        Killers[Ply, 1] = m;
+        context.Killers[context.Ply, 1] = m;
     }
 }

@@ -32,8 +32,9 @@ public class SeePruningEvasionTests
         var board = Board.ParseFenString("Q6k/8/8/8/8/8/1b3PPP/r5K1 w - - 0 1");
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
+        var context = new AlphaBetaContext(state, board);
 
-        var result = ab.Quiesce(-10000, 10000);
+        var result = AlphaBeta.Quiesce(context, -10000, 10000);
 
         Assert.NotEqual(-10000, result); // must not be reported as checkmate
     }

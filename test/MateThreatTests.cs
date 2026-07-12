@@ -24,10 +24,11 @@ public class MateThreatTests
         var board = Board.ParseFenString("r5k1/5ppp/8/8/8/8/5PPP/N1B3KN b - - 0 1");
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
+        AlphaBetaContext context = new AlphaBetaContext(state, board);
 
-        ab.SearchRoot(-10000, 10000, 10);
+        ab.SearchRoot(context,-10000, 10000, 10);
 
-        Assert.True(ab.Metrics.MateThreats > 0,
-            $"expected the null-move search to flag a mate threat, got {ab.Metrics.MateThreats}");
+        Assert.True(context.Metrics.MateThreats > 0,
+            $"expected the null-move search to flag a mate threat, got {context.Metrics.MateThreats}");
     }
 }

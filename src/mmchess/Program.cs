@@ -8,8 +8,10 @@ public class Program
     {
         ConsoleInputQueue.Start();
 
-        var gameState = new GameState();
-        gameState.GameBoard = new Board();
+        var gameState = new GameState
+        {
+            GameBoard = new Board()
+        };
 
         Command cmd = null;
 

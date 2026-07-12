@@ -1,17 +1,9 @@
-using System.Reflection;
 using Xunit;
 
 namespace mmchess.Test;
 
 public class MaxDepthTests
 {
-    static void SetPly(AlphaBeta ab, int ply)
-    {
-        var plyProperty = typeof(AlphaBeta).GetProperty("Ply", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(plyProperty);
-        plyProperty.SetValue(ab, ply);
-    }
-
     [Fact]
     public void SearchAtMaxDepthDoesNotUnmakeCallerMove()
     {
@@ -22,9 +14,12 @@ public class MaxDepthTests
         var historyCountAfterCallerMove = board.History.Count;
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
-        SetPly(ab, AlphaBeta.MAX_DEPTH);
-
-        ab.Search(-10000, 10000, 1);
+        
+        var context = new AlphaBetaContext(state, board)
+        {
+            Ply = AlphaBeta.MAX_DEPTH
+        };
+        ab.Search(context, -10000, 10000, 1);
 
         Assert.Equal(hashAfterCallerMove, board.HashKey);
         Assert.Equal(historyCountAfterCallerMove, board.History.Count);
@@ -41,9 +36,12 @@ public class MaxDepthTests
         var historyCountAfterCallerMove = board.History.Count;
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
-        SetPly(ab, AlphaBeta.MAX_DEPTH);
-
-        ab.Quiesce(-10000, 10000);
+        
+        var context = new AlphaBetaContext(state, board)
+        {
+            Ply = AlphaBeta.MAX_DEPTH
+        };
+        AlphaBeta.Quiesce(context, -10000, 10000);
 
         Assert.Equal(hashAfterCallerMove, board.HashKey);
         Assert.Equal(historyCountAfterCallerMove, board.History.Count);

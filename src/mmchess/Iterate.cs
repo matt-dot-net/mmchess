@@ -206,6 +206,8 @@ public static class Iterate
             interrupt();
         });
 
+        AlphaBetaContext context = new AlphaBetaContext(state, state.GameBoard, interrupt);
+
         //increment transposition table search Id
         TranspositionTable.Instance.NextSearchId();
 
@@ -214,7 +216,7 @@ public static class Iterate
         Move bestMove = Move.Null;
         Move ponderMove = Move.Null;
         //Console.WriteLine("Ply\tScore\tMillis\tNodes\tPV");
-        ab.Metrics.Depth = 0;
+        context.Metrics.Depth = 0;
         for (int i = 0; i < AlphaBeta.MAX_DEPTH && !state.TimeUp; i++)
         {
             int score;
@@ -227,13 +229,13 @@ public static class Iterate
 
             do
             {
-                score = ab.SearchRoot(alpha, beta, i);
-                bestMove=ab.PrincipalVariation[0,0];
+                score = ab.SearchRoot(context,alpha, beta, i);
+                bestMove=context.PrincipalVariation[0,0];
                 
                 if(!state.TimeUp && uciOutput && !suppressThinking && i > 0)
-                    PrintUciSearchResult(state, startTime, ab, i, score);
+                    PrintUciSearchResult(context, startTime, ab, i, score);
                 else if(!state.TimeUp && state.ShowThinking && !suppressThinking)
-                    PrintSearchResult(state, startTime, ab, i, score);
+                    PrintSearchResult(context, startTime, ab, i, score);
                 if (score > alpha && score < beta)
                 {
                     alpha = score;
@@ -258,10 +260,10 @@ public static class Iterate
 
             if (!state.TimeUp)
             {
-                ab.Metrics.DepthNodes[i] = ab.Metrics.Nodes;
-                ab.Metrics.Depth = i;
-                if (updatePonderMove && ab.PvLength[0] > 1)
-                    ponderMove = ab.PrincipalVariation[0, 1];
+                context.Metrics.DepthNodes[i] = context.Metrics.Nodes;
+                context.Metrics.Depth = i;
+                if (updatePonderMove && context.PvLength[0] > 1)
+                    ponderMove = context.PrincipalVariation[0, 1];
             }
 
             if (Math.Abs(score) > 9900) // stop if we have found mate
@@ -275,56 +277,56 @@ public static class Iterate
                 break;
         }
         if (state.ShowThinking && !suppressThinking)
-            PrintMetrics(ab.Metrics, DateTime.Now - startTime);
-        metrics = ab.Metrics;
+            PrintMetrics(context.Metrics, DateTime.Now - startTime);
+        metrics = context.Metrics;
         if (updatePonderMove)
             state.PonderMove = ponderMove;
         return bestMove;
     }
 
-    private static void PrintSearchResult(GameState state, DateTime startTime, AlphaBeta ab, int i, int score)
+    private static void PrintSearchResult(AlphaBetaContext context, DateTime startTime, AlphaBeta ab, int i, int score)
     {
         Console.Write("{0} {1} {2:0} {3} ", i, score,
-            (DateTime.Now - startTime).TotalMilliseconds / 10, ab.Metrics.Nodes);
-        PrintPV(state.GameBoard, ab);
+            (DateTime.Now - startTime).TotalMilliseconds / 10, context.Metrics.Nodes);
+        PrintPV(context);
         Console.WriteLine();
     }
 
-    private static void PrintUciSearchResult(GameState state, DateTime startTime, AlphaBeta ab, int i, int score)
+    private static void PrintUciSearchResult(AlphaBetaContext context, DateTime startTime, AlphaBeta ab, int i, int score)
     {
         var elapsed = DateTime.Now - startTime;
         var milliseconds = Math.Max(1, (long)elapsed.TotalMilliseconds);
-        var nps = (long)(ab.Metrics.Nodes * 1000.0 / milliseconds);
+        var nps = (long)(context.Metrics.Nodes * 1000.0 / milliseconds);
         Console.Write("info depth {0} score cp {1} time {2} nodes {3} nps {4} pv ",
             i,
             score,
             milliseconds,
-            ab.Metrics.Nodes,
+            context.Metrics.Nodes,
             nps);
-        PrintUciPV(state.GameBoard, ab);
+        PrintUciPV(context);
         Console.WriteLine();
     }
 
-    private static void PrintUciPV(Board b, AlphaBeta ab)
+    private static void PrintUciPV(AlphaBetaContext context)
     {
-        for (int j = 0; j < ab.PvLength[0]; j++)
+        for (int j = 0; j < context.PvLength[0]; j++)
         {
-            var m = ab.PrincipalVariation[0, j];
+            var m = context.PrincipalVariation[0, j];
             Console.Write("{0} ", m.ToCoordinateString());
-            b.MakeMove(m);
+            context.Board.MakeMove(m);
         }
 
-        for (int j = ab.PvLength[0] - 1; j >= 0; j--)
-            b.UnMakeMove();
+        for (int j = context.PvLength[0] - 1; j >= 0; j--)
+            context.Board.UnMakeMove();
     }
 
-    private static void PrintPV(Board b, AlphaBeta ab)
+    private static void PrintPV(AlphaBetaContext context)
     {
-        for (int j = 0; j < ab.PvLength[0]; j++)
+        for (int j = 0; j < context.PvLength[0]; j++)
         {
-            var m = ab.PrincipalVariation[0, j];
-            Console.Write("{0} ", m.ToAlegbraicNotation(b));
-            b.MakeMove(m);
+            var m = context.PrincipalVariation[0, j];
+            Console.Write("{0} ", m.ToAlegbraicNotation(context.Board));
+            context.Board.MakeMove(m);
         }
 
         //Walk through the TT table to augment the PV
@@ -333,24 +335,24 @@ public static class Iterate
         while (true)
         {
             //don't let the hashtable send us into a cycle
-            if (hashKeys.Contains(b.HashKey))
+            if (hashKeys.Contains(context.Board.HashKey))
                 break;
 
-            if (!TranspositionTable.Instance.TryProbe(b.HashKey, out var entry) ||
+            if (!TranspositionTable.Instance.TryProbe(context.Board.HashKey, out var entry) ||
                 entry.Type != (byte)TranspositionTableEntry.EntryType.PV)
                 break;
             var m = new Move(entry.MoveValue);
-            Console.Write("{0}(HT) ", m.ToAlegbraicNotation(b));
-            if (!b.MakeMove(m))
+            Console.Write("{0}(HT) ", m.ToAlegbraicNotation(context.Board));
+            if (!context.Board.MakeMove(m))
                 throw new Exception("invalid move from HT!");
             hashTableMoves++;
-            hashKeys.Add(b.HashKey);
+            hashKeys.Add(context.Board.HashKey);
         }
         while (hashTableMoves-- > 0)
-            b.UnMakeMove();
+            context.Board.UnMakeMove();
 
-        for (int j = ab.PvLength[0] - 1; j >= 0; j--)
-            b.UnMakeMove();
+        for (int j = context.PvLength[0] - 1; j >= 0; j--)
+            context.Board.UnMakeMove();
 
     }
 }

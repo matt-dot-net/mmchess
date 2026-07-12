@@ -16,12 +16,12 @@ public class QuiesceCheckmateTests
         // correctly there).
         var board = Board.ParseFenString("7k/8/8/6bp/8/7K/5q2/6n1 w - - 0 77");
         var state = new GameState { GameBoard = board };
-        var ab = new AlphaBeta(state, () => { });
-
+       
         // deliberately use a narrow, non-mate-value window - the broken
         // fallback ("return alpha") would return -500 here, not a real mate
         // score, so this window actually discriminates between the two
-        var result = ab.Quiesce(-500, 500);
+        var context = new AlphaBetaContext(state, board);
+        var result = AlphaBeta.Quiesce(context, -500, 500);
 
         Assert.Equal(-10000, result); // mate detected at Ply=0 -> -10000+0
     }
@@ -38,11 +38,12 @@ public class QuiesceCheckmateTests
         var board = Board.ParseFenString("7k/8/8/6bp/8/8/5qpK/8 w - - 2 76");
         var state = new GameState { GameBoard = board };
         var ab = new AlphaBeta(state, () => { });
+        var context = new AlphaBetaContext(state, board);
 
-        ab.SearchRoot(-10000, 10000, 0);
+        ab.SearchRoot(context, -10000, 10000, 0);
 
-        Assert.False(ab.PrincipalVariation[0, 0].IsNull);
-        Assert.Equal(55, ab.PrincipalVariation[0, 0].From); // h2
-        Assert.Equal(47, ab.PrincipalVariation[0, 0].To);   // h3
+        Assert.False(context.PrincipalVariation[0, 0].IsNull);
+        Assert.Equal(55, context.PrincipalVariation[0, 0].From); // h2
+        Assert.Equal(47, context.PrincipalVariation[0, 0].To);   // h3
     }
 }
