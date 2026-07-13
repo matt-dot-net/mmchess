@@ -9,7 +9,7 @@ namespace mmchess;
 
 public partial class AlphaBeta
 {
-    const int MinSplitDepth = 6;
+    const int MinSplitDepth = 12;
     const int MinSplitMovesRemaining = 3;
     const int MaxSplitNesting = 1;
 

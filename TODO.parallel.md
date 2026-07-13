@@ -315,7 +315,21 @@ ownership.
 ### Phase 6: Tune and optimize
 
 - Benchmark fixed positions at fixed depth with 1, 2, 4, and 8 workers.
+  - Use depth 16 for the current diagnostic position and warm each fresh engine
+    process before recording results so tiered JIT does not penalize the first
+    worker count.
+  - Warmed Release baseline for the diagnostic FEN at depth 16:
+    1 thread = 391 ms / 1,520,888 nodes; 2 threads = 304 ms / 1,423,907 nodes
+    (1.29x); 4 threads = 205 ms / 1,342,886 nodes (1.91x).
+- Measure best-move, score, and PV stability without requiring exact equality.
+  Shared worker TT writes and completion-order processing can legitimately choose
+  a different equal-scoring move or selective-search result.
 - Tune minimum depth, moves remaining, nesting, and queue size.
+  - Raised the initial internal split depth from 6 to 12 after diagnostics showed
+    root-only splitting scaled at depth 12 while shallower internal splits erased
+    the gain through speculative clone and scheduling overhead.
+  - Moved pawn-hash hit/probe metrics to per-thread counters so evaluation does
+    not serialize workers on global `Interlocked` increments.
 - Consider work stealing or faster TT synchronization only after profiling.
 - Evaluate whether and how to merge worker heuristic updates.
 
@@ -339,7 +353,9 @@ Track enough data to distinguish useful parallelism from node inflation:
 
 - One-worker parallel mode returns the same move, score, and PV as sequential
   mode.
-- Multi-worker mode returns the same move and score across repeated runs.
+- Multi-worker mode returns a legal move and completes all scheduled work; best
+  move, score, and PV variation from shared TT writes is measured rather than
+  prohibited.
 - A fail-low against an older alpha is accepted without re-search.
 - A fail-high against an older alpha is re-scouted at current alpha.
 - A reduced fail-high is eventually searched at unreduced depth.
@@ -358,7 +374,8 @@ Track enough data to distinguish useful parallelism from node inflation:
 The first usable version is complete when root-only splitting:
 
 - Uses bounded long-lived workers.
-- Produces the same best move and score as sequential search.
+- Produces a legal best move while documenting move, score, and PV variation
+  caused by shared TT writes and completion-order processing.
 - Correctly re-searches stale fail-high results.
 - Preserves repetition and fifty-move detection in worker boards.
 - Has a thread-safe TT and stop mechanism.

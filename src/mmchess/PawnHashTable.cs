@@ -25,11 +25,16 @@ public class PawnHashTable
 
     readonly Entry[] table = new Entry[EntryCount];
 
-    long hits;
-    long probes;
+    sealed class Metrics
+    {
+        public ulong Hits;
+        public ulong Probes;
+    }
 
-    public ulong Hits => (ulong)Interlocked.Read(ref hits);
-    public ulong Probes => (ulong)Interlocked.Read(ref probes);
+    readonly ThreadLocal<Metrics> metrics = new(() => new Metrics(), trackAllValues: true);
+
+    public ulong Hits => SumMetrics(value => value.Hits);
+    public ulong Probes => SumMetrics(value => value.Probes);
 
     static readonly object _lock = new object();
     static PawnHashTable _instance;
@@ -51,11 +56,12 @@ public class PawnHashTable
 
     public bool TryProbe(ulong pawnHashKey, out PawnScore score)
     {
-        Interlocked.Increment(ref probes);
+        var localMetrics = metrics.Value;
+        localMetrics.Probes++;
         var e = Volatile.Read(ref table[pawnHashKey & KeyMask]);
         if (e != null && e.Key == pawnHashKey)
         {
-            Interlocked.Increment(ref hits);
+            localMetrics.Hits++;
             score = e.Score;
             return true;
         }
@@ -72,7 +78,18 @@ public class PawnHashTable
     public void Clear()
     {
         System.Array.Clear(table, 0, table.Length);
-        Interlocked.Exchange(ref hits, 0);
-        Interlocked.Exchange(ref probes, 0);
+        foreach (var value in metrics.Values)
+        {
+            value.Hits = 0;
+            value.Probes = 0;
+        }
+    }
+
+    ulong SumMetrics(System.Func<Metrics, ulong> selector)
+    {
+        ulong total = 0;
+        foreach (var value in metrics.Values)
+            total += selector(value);
+        return total;
     }
 }
