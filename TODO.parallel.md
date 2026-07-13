@@ -274,14 +274,16 @@ search returns.
 - [x] Separate TT statistics into per-context metrics; keep pawn-table global
   counters atomic because pawn probes do not currently receive a search context.
 
-### Phase 3: Extract sibling-search operations
+### Phase 3: Extract sibling-search operations (complete)
 
-- Refactor the current PVS/LMR sequence into reusable scout, full-window, and
+- [x] Refactor the current PVS/LMR sequence into reusable scout, full-window, and
   unreduced re-search operations.
-- Preserve the existing sequential behavior before adding concurrency.
-- Add focused tests for the extracted re-search state machine.
+- [x] Preserve the existing sequential behavior before adding concurrency.
+- [x] Add focused tests for the extracted re-search state machine.
+  - Release depth-16 diagnostics restored the exact sequential baseline of
+    1,520,888 nodes after correcting root depth-zero dispatch.
 
-### Phase 4: Root-only split/join
+### Phase 4: Root-only split/join (complete)
 
 - [x] Build the bounded worker scheduler.
   - Use long-lived background workers and a bounded, non-blocking queue.
@@ -323,6 +325,7 @@ ownership.
     physical-core-first affinity can be evaluated later only if profiling shows
     migration or SMT contention.
 - Benchmark fixed positions at fixed depth with 1, 2, 4, and 8 workers.
+  - Completed the initial 1-, 2-, and 4-thread comparison; defer 8 threads.
   - Use depth 16 for the current diagnostic position and warm each fresh engine
     process before recording results so tiered JIT does not penalize the first
     worker count.

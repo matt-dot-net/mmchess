@@ -11,6 +11,10 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="test" />
+  </ItemGroup>
+
   <!-- Version = VersionPrefix + git commit count (e.g. 0.1.47), so every commit gets a distinct,
        reproducible build number without a local counter file to maintain. -->
   <Target Name="SetVersionFromGitCommitCount" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo;CoreCompile">

@@ -295,21 +295,19 @@ public partial class AlphaBeta
             return false;
         }
 
-        score = result.Score;
-        if (alpha != result.AlphaSnapshot)
-        {
-            score = depth > 0
-                ? -Search(context, -alpha - 1, -alpha, depth - 1)
-                : -Quiesce(context, -alpha - 1, -alpha);
-        }
-
-        if (score > alpha)
-        {
+        var research = PvsResearch.Execute(
+            result.Score,
+            alpha != result.AlphaSnapshot,
+            alpha,
+            beta,
+            depth - 1,
+            depth - 1,
+            reduction: 0,
+            (_, searchAlpha, searchBeta, searchDepth) =>
+                SearchRootChild(context, searchAlpha, searchBeta, searchDepth));
+        score = research.Score;
+        if (research.FullWindowSearched)
             context.Metrics.FullWindowResearches++;
-            score = depth > 0
-                ? -Search(context, -beta, -alpha, depth - 1)
-                : -Quiesce(context, -beta, -alpha);
-        }
 
         context.TakeBack();
         return true;
@@ -332,9 +330,16 @@ public partial class AlphaBeta
 
         if (depth > 0 && !bestMove.IsNull)
         {
-            score = -Search(context, -alpha - 1, -alpha, depth - 1);
-            if (score > alpha)
-                score = -Search(context, -beta, -alpha, depth - 1);
+            score = PvsResearch.Execute(
+                alpha,
+                scoutRequired: true,
+                alpha,
+                beta,
+                depth - 1,
+                depth - 1,
+                reduction: 0,
+                (_, searchAlpha, searchBeta, searchDepth) =>
+                    SearchRootChild(context, searchAlpha, searchBeta, searchDepth)).Score;
         }
         else
         {
@@ -919,16 +924,19 @@ public partial class AlphaBeta
         }
         else
         {
-            score = SearchChild(context, alpha, alpha + 1, work.SearchDepth);
-            if (score > alpha)
-            {
-                score = SearchChild(context, alpha, beta, work.SearchDepth);
-                if (score > alpha && work.Reduction > 0)
-                {
-                    context.Metrics.LMRResearch++;
-                    score = SearchChild(context, alpha, beta, work.UnreducedDepth);
-                }
-            }
+            var research = PvsResearch.Execute(
+                alpha,
+                scoutRequired: true,
+                alpha,
+                beta,
+                work.SearchDepth,
+                work.UnreducedDepth,
+                work.Reduction,
+                (_, searchAlpha, searchBeta, searchDepth) =>
+                    SearchChild(context, searchAlpha, searchBeta, searchDepth));
+            score = research.Score;
+            if (research.UnreducedSearched)
+                context.Metrics.LMRResearch++;
         }
 
         context.TakeBack();
@@ -948,20 +956,21 @@ public partial class AlphaBeta
             return false;
         }
 
-        score = result.Score;
-        if (alpha != result.AlphaSnapshot)
-            score = SearchChild(context, alpha, alpha + 1, result.SearchDepth);
-
-        if (score > alpha)
-        {
+        var research = PvsResearch.Execute(
+            result.Score,
+            alpha != result.AlphaSnapshot,
+            alpha,
+            beta,
+            result.SearchDepth,
+            result.UnreducedDepth,
+            result.Reduction,
+            (_, searchAlpha, searchBeta, searchDepth) =>
+                SearchChild(context, searchAlpha, searchBeta, searchDepth));
+        score = research.Score;
+        if (research.FullWindowSearched)
             context.Metrics.FullWindowResearches++;
-            score = SearchChild(context, alpha, beta, result.SearchDepth);
-            if (score > alpha && result.Reduction > 0)
-            {
-                context.Metrics.LMRResearch++;
-                score = SearchChild(context, alpha, beta, result.UnreducedDepth);
-            }
-        }
+        if (research.UnreducedSearched)
+            context.Metrics.LMRResearch++;
 
         context.TakeBack();
         return true;
@@ -970,6 +979,13 @@ public partial class AlphaBeta
     int SearchChild(AlphaBetaContext context, int alpha, int beta, int depth)
     {
         return depth > 0
+            ? -Search(context, -beta, -alpha, depth)
+            : -Quiesce(context, -beta, -alpha);
+    }
+
+    int SearchRootChild(AlphaBetaContext context, int alpha, int beta, int depth)
+    {
+        return depth >= 0
             ? -Search(context, -beta, -alpha, depth)
             : -Quiesce(context, -beta, -alpha);
     }
