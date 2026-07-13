@@ -22,6 +22,28 @@ public class SearchSchedulerTests
     }
 
     [Fact]
+    public void IdleWorkerStateTracksRunningWork()
+    {
+        using var scheduler = new SearchScheduler(workerCount: 1, capacity: 1);
+        using var started = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+
+        Assert.True(scheduler.HasIdleWorker);
+        Assert.True(scheduler.TrySchedule(() =>
+        {
+            started.Set();
+            release.Wait();
+        }));
+        Assert.True(started.Wait(TimeSpan.FromSeconds(5)));
+        Assert.False(scheduler.HasIdleWorker);
+
+        release.Set();
+        Assert.True(SpinWait.SpinUntil(
+            () => scheduler.HasIdleWorker,
+            TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
     public void QueueIsBoundedAndSchedulingNeverBlocks()
     {
         using var scheduler = new SearchScheduler(workerCount: 1, capacity: 2);
@@ -115,12 +137,14 @@ public class SearchSchedulerTests
     [Fact]
     public void ParallelRootScoutsMatchSequentialSearchAndPreserveParentBoard()
     {
+        TranspositionTable.Clear();
         var sequentialBoard = new Board();
         var sequentialState = new GameState { GameBoard = sequentialBoard };
         var sequentialContext = new AlphaBetaContext(sequentialState, sequentialBoard);
         var sequentialSearch = new AlphaBeta(sequentialState, () => { });
         var sequentialScore = sequentialSearch.SearchRoot(sequentialContext, -10000, 10000, 3);
         var sequentialMove = sequentialContext.PrincipalVariation[0, 0];
+        TranspositionTable.Clear();
 
         var parallelBoard = new Board();
         var originalHash = parallelBoard.HashKey;
@@ -180,6 +204,99 @@ public class SearchSchedulerTests
             using var reused = new ManualResetEventSlim();
             Assert.True(state.SearchScheduler.TrySchedule(reused.Set));
             Assert.True(reused.Wait(TimeSpan.FromSeconds(5)));
+        }
+        finally
+        {
+            state.SearchScheduler.Dispose();
+        }
+    }
+
+    [Fact]
+    public void InternalSplitMatchesSequentialSearchAndStopsAtOneLevel()
+    {
+        const string fen = "7k/8/8/2ppp3/3Q4/8/8/7K w - - 0 1";
+        var sequentialBoard = Board.ParseFenString(fen);
+        var sequentialState = new GameState { GameBoard = sequentialBoard };
+        var sequentialContext = new AlphaBetaContext(sequentialState, sequentialBoard);
+        var sequentialSearch = new AlphaBeta(sequentialState, () => { });
+        var sequentialScore = sequentialSearch.Search(sequentialContext, -10000, 10000, 6);
+        TranspositionTable.Clear();
+
+        var parallelBoard = Board.ParseFenString(fen);
+        var originalHash = parallelBoard.HashKey;
+        var originalHistoryCount = parallelBoard.History.Count;
+        var parallelState = new GameState { GameBoard = parallelBoard };
+        parallelState.SetThreadCount(3);
+
+        try
+        {
+            var parallelContext = new AlphaBetaContext(parallelState, parallelBoard);
+            var parallelSearch = new AlphaBeta(parallelState, () => { });
+            var parallelScore = parallelSearch.Search(parallelContext, -10000, 10000, 6);
+
+            Assert.Equal(sequentialScore, parallelScore);
+            Assert.Equal(1UL, parallelContext.Metrics.SplitPointsCreated);
+            Assert.True(parallelContext.Metrics.WorkItemsScheduled > 0);
+            Assert.Equal(
+                parallelContext.Metrics.WorkItemsScheduled,
+                parallelContext.Metrics.WorkItemsCompleted);
+            Assert.Equal(originalHash, parallelBoard.HashKey);
+            Assert.Equal(originalHistoryCount, parallelBoard.History.Count);
+            Assert.Equal(0, parallelContext.Ply);
+        }
+        finally
+        {
+            parallelState.SearchScheduler.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RootSplitPreventsNestedInternalSplitPoints()
+    {
+        var board = Board.ParseFenString("7k/8/8/2ppp3/3Q4/8/8/7K w - - 0 1");
+        var state = new GameState { GameBoard = board };
+        state.SetThreadCount(3);
+
+        try
+        {
+            var context = new AlphaBetaContext(state, board);
+            var search = new AlphaBeta(state, () => { });
+
+            search.SearchRoot(context, -10000, 10000, 7);
+
+            Assert.True(context.Metrics.SplitPointsCreated >= 1);
+            Assert.Equal(1, context.Metrics.MaxSplitNesting);
+            Assert.Equal(
+                context.Metrics.WorkItemsScheduled,
+                context.Metrics.WorkItemsCompleted);
+        }
+        finally
+        {
+            state.SearchScheduler.Dispose();
+        }
+    }
+
+    [Theory]
+    [InlineData(5, 0)]
+    [InlineData(6, 1)]
+    public void InternalSplitPolicyRejectsShallowOrNestedNodes(int depth, int splitNesting)
+    {
+        var board = Board.ParseFenString("7k/8/8/2ppp3/3Q4/8/8/7K w - - 0 1");
+        var state = new GameState { GameBoard = board };
+        state.SetThreadCount(2);
+
+        try
+        {
+            var context = new AlphaBetaContext(state, board)
+            {
+                SplitNesting = splitNesting
+            };
+            var search = new AlphaBeta(state, () => { });
+
+            search.Search(context, -10000, 10000, depth);
+
+            Assert.Equal(0UL, context.Metrics.SplitPointsCreated);
+            Assert.Equal(0UL, context.Metrics.WorkItemsScheduled);
         }
         finally
         {

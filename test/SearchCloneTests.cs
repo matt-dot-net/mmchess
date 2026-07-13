@@ -94,7 +94,7 @@ public class SearchCloneTests
     {
         var board = new Board();
         var state = new GameState { GameBoard = board };
-        var context = new AlphaBetaContext(state, board) { Ply = 3 };
+        var context = new AlphaBetaContext(state, board) { Ply = 3, SplitNesting = 2 };
         var pvMove = LegalMoves(board)[0];
         var killer = LegalMoves(board)[1];
         context.PrincipalVariation[3, 3] = pvMove;
@@ -116,6 +116,8 @@ public class SearchCloneTests
         Assert.NotSame(context.Metrics, split.Metrics);
         Assert.NotSame(context.TTMetrics, split.TTMetrics);
         Assert.Equal(context.Ply, split.Ply);
+        Assert.Equal(3, split.SplitNesting);
+        Assert.Equal(2, context.SplitNesting);
         Assert.Equal(pvMove, split.PrincipalVariation[3, 3]);
         Assert.Equal(4, split.PvLength[3]);
         Assert.Equal(killer, split.Killers[3, 0]);

@@ -13,11 +13,13 @@ public sealed class SearchScheduler : IDisposable
     readonly ConcurrentQueue<Exception> workerExceptions = new ConcurrentQueue<Exception>();
     readonly Thread[] workers;
     int disposed;
+    int activeWorkers;
 
     public int WorkerCount => workers.Length;
     public int Capacity { get; }
     public int PendingCount => workQueue.Count;
     public bool IsEnabled => WorkerCount > 0;
+    public bool HasIdleWorker => Volatile.Read(ref activeWorkers) < WorkerCount;
 
     public SearchScheduler(int workerCount, int? capacity = null)
     {
@@ -71,6 +73,7 @@ public sealed class SearchScheduler : IDisposable
     {
         foreach (var work in workQueue.GetConsumingEnumerable())
         {
+            Interlocked.Increment(ref activeWorkers);
             try
             {
                 work();
@@ -81,6 +84,10 @@ public sealed class SearchScheduler : IDisposable
                 // Split work will normally capture errors in its own result;
                 // this queue is the scheduler-level safety net.
                 workerExceptions.Enqueue(ex);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref activeWorkers);
             }
         }
     }

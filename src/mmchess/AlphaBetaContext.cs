@@ -16,6 +16,7 @@ public struct AlphaBetaContext
     public Move[,] PrincipalVariation { get; private set; }
     public int[] PvLength = new int[AlphaBeta.MAX_DEPTH];
     public int Ply { get; set; }
+    public int SplitNesting { get; set; }
     public Move[,] Killers = new Move[AlphaBeta.MAX_DEPTH, 2];
     // [side to move, piece type - 1, to-square]: unlike Killers (indexed by
     // ply, where side-to-move already alternates implicitly along one line
@@ -36,6 +37,7 @@ public struct AlphaBetaContext
         PrincipalVariation = new Move[AlphaBeta.MAX_DEPTH, AlphaBeta.MAX_DEPTH];
         PvLength[0] = 0;
         Ply = 0;
+        SplitNesting = 0;
         Board = gameBoard;
         Metrics = new AlphaBetaMetrics();
         TTMetrics = new TTMetrics();
@@ -69,7 +71,8 @@ public struct AlphaBetaContext
 
         var split = new AlphaBetaContext(GameState, clonedBoard, Interrupt, localStop)
         {
-            Ply = Ply
+            Ply = Ply,
+            SplitNesting = SplitNesting + 1
         };
 
         Array.Copy(PrincipalVariation, split.PrincipalVariation, PrincipalVariation.Length);
@@ -95,6 +98,7 @@ public struct AlphaBetaContext
         Metrics.FPrune += metrics.FPrune;
         Metrics.EFPrune += metrics.EFPrune;
         Metrics.SplitPointsCreated += metrics.SplitPointsCreated;
+        Metrics.MaxSplitNesting = Math.Max(Metrics.MaxSplitNesting, metrics.MaxSplitNesting);
         Metrics.WorkItemsScheduled += metrics.WorkItemsScheduled;
         Metrics.WorkItemsStarted += metrics.WorkItemsStarted;
         Metrics.WorkItemsCompleted += metrics.WorkItemsCompleted;

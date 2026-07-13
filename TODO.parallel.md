@@ -306,10 +306,10 @@ ownership.
 
 ### Phase 5: Internal YBWC split points
 
-- Add the conservative eligibility policy to internal nodes.
-- Let the owner continue searching siblings while workers run.
-- Enforce the initial split-nesting limit.
-- Reuse exactly the same result classification and owner re-search rules as the
+- [x] Add the conservative eligibility policy to internal nodes.
+- [x] Let the owner continue searching siblings while workers run.
+- [x] Enforce the initial split-nesting limit.
+- [x] Reuse exactly the same result classification and owner re-search rules as the
   root implementation.
 
 ### Phase 6: Tune and optimize

@@ -15,6 +15,7 @@ public class AlphaBetaMetrics{
     public ulong FPrune{get;set;}
     public ulong EFPrune {get;set;}
     public ulong SplitPointsCreated { get; set; }
+    public int MaxSplitNesting { get; set; }
     public ulong WorkItemsScheduled { get; set; }
     public ulong WorkItemsStarted { get; set; }
     public ulong WorkItemsCompleted { get; set; }

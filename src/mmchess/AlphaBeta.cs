@@ -9,7 +9,10 @@ namespace mmchess;
 
 public partial class AlphaBeta
 {
-    
+    const int MinSplitDepth = 6;
+    const int MinSplitMovesRemaining = 3;
+    const int MaxSplitNesting = 1;
+
     public static readonly long InterruptCheckTargetTicks = Stopwatch.Frequency * InterruptCheckTargetMilliseconds / 1000;
     const int InterruptCheckTargetMilliseconds = 75;
     AlphaBetaContext Context{get;set;}
@@ -132,12 +135,14 @@ public partial class AlphaBeta
         ref Move lastMove,
         out int terminalScore)
     {
-        using var results = new BlockingCollection<RootScoutResult>();
+        using var results = new BlockingCollection<SplitResult>();
         var localMoves = new List<Move>();
-        var splitPoint = new RootSplitPoint();
+        var splitPoint = new SplitPoint();
         var scheduledCount = 0;
         var alphaSnapshot = alpha;
         context.Metrics.SplitPointsCreated++;
+        context.Metrics.MaxSplitNesting = Math.Max(
+            context.Metrics.MaxSplitNesting, context.SplitNesting + 1);
 
         for (var moveIndex = nextMoveIndex; moveIndex < RootMoves.Count && !MyGameState.TimeUp; moveIndex++)
         {
@@ -147,10 +152,10 @@ public partial class AlphaBeta
 
             var workerContext = context.Split(splitPoint.Stop);
             context.TakeBack();
-            var work = new RootScoutWork(
-                move, depth, alphaSnapshot, workerContext, splitPoint);
+            var work = new SplitWork(
+                move, depth - 1, depth - 1, 0, alphaSnapshot, workerContext, splitPoint);
 
-            if (MyGameState.SearchScheduler.TrySchedule(() => RunRootScout(work, results)))
+            if (MyGameState.SearchScheduler.TrySchedule(() => RunSplitScout(work, results)))
             {
                 context.Metrics.WorkItemsScheduled++;
                 scheduledCount++;
@@ -161,6 +166,7 @@ public partial class AlphaBeta
             }
         }
 
+        context.SplitNesting++;
         var hasTerminalScore = false;
         terminalScore = alpha;
         foreach (var move in localMoves)
@@ -226,9 +232,9 @@ public partial class AlphaBeta
         return hasTerminalScore;
     }
 
-    void RunRootScout(
-        RootScoutWork work,
-        BlockingCollection<RootScoutResult> results)
+    void RunSplitScout(
+        SplitWork work,
+        BlockingCollection<SplitResult> results)
     {
         Exception exception = null;
         var score = work.AlphaSnapshot;
@@ -245,9 +251,9 @@ public partial class AlphaBeta
                 {
                     CurrentDrawScore = CurrentDrawScore
                 };
-                score = work.Depth > 0
+                score = work.SearchDepth > 0
                     ? -workerSearch.Search(
-                        work.Context, -work.AlphaSnapshot - 1, -work.AlphaSnapshot, work.Depth - 1)
+                        work.Context, -work.AlphaSnapshot - 1, -work.AlphaSnapshot, work.SearchDepth)
                     : -Quiesce(work.Context, -work.AlphaSnapshot - 1, -work.AlphaSnapshot);
             }
         }
@@ -261,10 +267,13 @@ public partial class AlphaBeta
             if (cancelled)
                 work.Context.Metrics.WorkItemsCancelled++;
             work.Context.Metrics.WorkItemsCompleted++;
-            results.Add(new RootScoutResult(
+            results.Add(new SplitResult(
                 work.Move,
                 score,
                 work.AlphaSnapshot,
+                work.SearchDepth,
+                work.UnreducedDepth,
+                work.Reduction,
                 work.Context.Metrics,
                 work.Context.TTMetrics,
                 exception,
@@ -274,7 +283,7 @@ public partial class AlphaBeta
 
     bool TrySearchRootScoutCandidate(
         AlphaBetaContext context,
-        RootScoutResult result,
+        SplitResult result,
         int alpha,
         int beta,
         int depth,
@@ -373,30 +382,36 @@ public partial class AlphaBeta
         return false;
     }
 
-    sealed class RootScoutWork
+    sealed class SplitWork
     {
         public Move Move { get; }
-        public int Depth { get; }
+        public int SearchDepth { get; }
+        public int UnreducedDepth { get; }
+        public int Reduction { get; }
         public int AlphaSnapshot { get; }
         public AlphaBetaContext Context;
-        public RootSplitPoint SplitPoint { get; }
+        public SplitPoint SplitPoint { get; }
 
-        public RootScoutWork(
+        public SplitWork(
             Move move,
-            int depth,
+            int searchDepth,
+            int unreducedDepth,
+            int reduction,
             int alphaSnapshot,
             AlphaBetaContext context,
-            RootSplitPoint splitPoint)
+            SplitPoint splitPoint)
         {
             Move = move;
-            Depth = depth;
+            SearchDepth = searchDepth;
+            UnreducedDepth = unreducedDepth;
+            Reduction = reduction;
             AlphaSnapshot = alphaSnapshot;
             Context = context;
             SplitPoint = splitPoint;
         }
     }
 
-    sealed class RootSplitPoint
+    sealed class SplitPoint
     {
         public SearchStop Stop { get; } = new SearchStop();
         public bool IsClosed => Stop.IsRequested;
@@ -407,20 +422,26 @@ public partial class AlphaBeta
         }
     }
 
-    sealed class RootScoutResult
+    sealed class SplitResult
     {
         public Move Move { get; }
         public int Score { get; }
         public int AlphaSnapshot { get; }
+        public int SearchDepth { get; }
+        public int UnreducedDepth { get; }
+        public int Reduction { get; }
         public AlphaBetaMetrics Metrics { get; }
         public TTMetrics TTMetrics { get; }
         public Exception Exception { get; }
         public bool Cancelled { get; }
 
-        public RootScoutResult(
+        public SplitResult(
             Move move,
             int score,
             int alphaSnapshot,
+            int searchDepth,
+            int unreducedDepth,
+            int reduction,
             AlphaBetaMetrics metrics,
             TTMetrics ttMetrics,
             Exception exception,
@@ -429,6 +450,9 @@ public partial class AlphaBeta
             Move = move;
             Score = score;
             AlphaSnapshot = alphaSnapshot;
+            SearchDepth = searchDepth;
+            UnreducedDepth = unreducedDepth;
+            Reduction = reduction;
             Metrics = metrics;
             TTMetrics = ttMetrics;
             Exception = exception;
@@ -655,6 +679,31 @@ public partial class AlphaBeta
             }
 
             lastMove = m;
+
+            if (movesSearched == 1 &&
+                CanSplitInternal(context, depth, moves.Count - moveIndex - 1))
+            {
+                var remainingMoves = new Move[moves.Count - moveIndex - 1];
+                for (var remainingIndex = 0; remainingIndex < remainingMoves.Length; remainingIndex++)
+                    remainingMoves[remainingIndex] = moves[moveIndex + remainingIndex + 1];
+
+                return SearchInternalRemainingParallel(
+                    context,
+                    remainingMoves,
+                    alpha,
+                    beta,
+                    depth,
+                    ext,
+                    inCheck,
+                    mateThreat,
+                    hasEntry,
+                    entry,
+                    bestMove,
+                    lastMove,
+                    nonCaptureMoves,
+                    movesSearched,
+                    lmr);
+            }
         }
 
         //check for mate
@@ -677,6 +726,287 @@ public partial class AlphaBeta
         }
 
         return alpha;
+    }
+
+    bool CanSplitInternal(AlphaBetaContext context, int depth, int movesRemaining)
+    {
+        return depth >= MinSplitDepth &&
+            movesRemaining >= MinSplitMovesRemaining &&
+            context.SplitNesting < MaxSplitNesting &&
+            !context.StopRequested &&
+            MyGameState.SearchScheduler.HasIdleWorker;
+    }
+
+    int SearchInternalRemainingParallel(
+        AlphaBetaContext context,
+        Move[] remainingMoves,
+        int alpha,
+        int beta,
+        int depth,
+        int extension,
+        bool inCheck,
+        int mateThreat,
+        bool hasEntry,
+        in TranspositionTableEntry entry,
+        Move bestMove,
+        Move lastMove,
+        int nonCaptureMoves,
+        int movesSearched,
+        int lmr)
+    {
+        using var results = new BlockingCollection<SplitResult>();
+        var localWork = new List<SplitWork>();
+        var splitPoint = new SplitPoint();
+        var alphaSnapshot = alpha;
+        var scheduledCount = 0;
+        context.Metrics.SplitPointsCreated++;
+        context.Metrics.MaxSplitNesting = Math.Max(
+            context.Metrics.MaxSplitNesting, context.SplitNesting + 1);
+
+        foreach (var move in remainingMoves)
+        {
+            if (context.StopRequested || !context.Make(move))
+                continue;
+
+            var justGaveCheck = context.Board.InCheck(context.Board.SideToMove);
+            var capture = (move.Bits & (byte)MoveBits.Capture) != 0;
+            if (!capture && (!hasEntry || entry.MoveValue != move.Value))
+                nonCaptureMoves++;
+            var passedPawnPush =
+                (move.Bits & (byte)MoveBits.Pawn) > 0 &&
+                (Evaluator.PassedPawnMask[context.Board.SideToMove ^ 1, move.To] &
+                    context.Board.Pawns[context.Board.SideToMove]) == 0;
+
+            if (extension == 0 &&
+                !inCheck &&
+                !justGaveCheck &&
+                mateThreat == 0 &&
+                !passedPawnPush &&
+                nonCaptureMoves > 0)
+            {
+                lmr = movesSearched > 2 ? 2 : 1;
+            }
+
+            var searchDepth = depth - 1 - lmr + extension;
+            var workerContext = context.Split(splitPoint.Stop);
+            context.TakeBack();
+            var work = new SplitWork(
+                move,
+                searchDepth,
+                depth - 1,
+                lmr,
+                alphaSnapshot,
+                workerContext,
+                splitPoint);
+
+            if (MyGameState.SearchScheduler.TrySchedule(() => RunSplitScout(work, results)))
+            {
+                context.Metrics.WorkItemsScheduled++;
+                scheduledCount++;
+            }
+            else
+            {
+                localWork.Add(work);
+            }
+            movesSearched++;
+        }
+
+        context.SplitNesting++;
+        var hasTerminalScore = false;
+        var terminalScore = alpha;
+        foreach (var work in localWork)
+        {
+            if (hasTerminalScore || context.StopRequested)
+                break;
+            if (!TrySearchInternalWorkSequential(
+                context, work, alpha, beta, bestMove, out var score))
+                continue;
+
+            hasTerminalScore = ApplyInternalMoveResult(
+                context,
+                work.Move,
+                score,
+                beta,
+                depth,
+                hasEntry,
+                entry,
+                ref alpha,
+                ref bestMove,
+                ref lastMove,
+                out terminalScore);
+            if (hasTerminalScore)
+            {
+                splitPoint.Cancel();
+                if (!MyGameState.TimeUp && score >= beta)
+                    context.Metrics.ParallelBetaCutoffs++;
+            }
+        }
+
+        if (context.StopRequested)
+            splitPoint.Cancel();
+
+        for (var resultIndex = 0; resultIndex < scheduledCount; resultIndex++)
+        {
+            var result = results.Take();
+            context.JoinMetrics(result.Metrics, result.TTMetrics);
+            if (result.Exception != null)
+                throw new InvalidOperationException("Parallel internal scout failed.", result.Exception);
+            if (result.Cancelled || hasTerminalScore || context.StopRequested)
+                continue;
+
+            if (result.Score <= result.AlphaSnapshot)
+            {
+                context.Metrics.WorkerFailLows++;
+                lastMove = result.Move;
+                continue;
+            }
+
+            context.Metrics.WorkerFailHighCandidates++;
+            if (!TrySearchInternalScoutCandidate(context, result, alpha, beta, out var score))
+                continue;
+            if (score <= alpha && alpha != result.AlphaSnapshot)
+                context.Metrics.CandidatesInvalidatedByAlpha++;
+
+            hasTerminalScore = ApplyInternalMoveResult(
+                context,
+                result.Move,
+                score,
+                beta,
+                depth,
+                hasEntry,
+                entry,
+                ref alpha,
+                ref bestMove,
+                ref lastMove,
+                out terminalScore);
+            if (hasTerminalScore)
+            {
+                splitPoint.Cancel();
+                if (!MyGameState.TimeUp && score >= beta)
+                    context.Metrics.ParallelBetaCutoffs++;
+            }
+        }
+
+        if (context.StopRequested)
+            return alpha;
+        if (hasTerminalScore)
+            return terminalScore;
+        if (bestMove.IsNull)
+        {
+            TranspositionTable.Instance.Store(
+                context, Move.Null, depth, alpha, EntryType.ALL);
+        }
+        return alpha;
+    }
+
+    bool TrySearchInternalWorkSequential(
+        AlphaBetaContext context,
+        SplitWork work,
+        int alpha,
+        int beta,
+        Move bestMove,
+        out int score)
+    {
+        if (!context.Make(work.Move))
+        {
+            score = alpha;
+            return false;
+        }
+
+        if (bestMove.IsNull)
+        {
+            score = SearchChild(context, alpha, beta, work.SearchDepth);
+        }
+        else
+        {
+            score = SearchChild(context, alpha, alpha + 1, work.SearchDepth);
+            if (score > alpha)
+            {
+                score = SearchChild(context, alpha, beta, work.SearchDepth);
+                if (score > alpha && work.Reduction > 0)
+                {
+                    context.Metrics.LMRResearch++;
+                    score = SearchChild(context, alpha, beta, work.UnreducedDepth);
+                }
+            }
+        }
+
+        context.TakeBack();
+        return true;
+    }
+
+    bool TrySearchInternalScoutCandidate(
+        AlphaBetaContext context,
+        SplitResult result,
+        int alpha,
+        int beta,
+        out int score)
+    {
+        if (!context.Make(result.Move))
+        {
+            score = alpha;
+            return false;
+        }
+
+        score = result.Score;
+        if (alpha != result.AlphaSnapshot)
+            score = SearchChild(context, alpha, alpha + 1, result.SearchDepth);
+
+        if (score > alpha)
+        {
+            context.Metrics.FullWindowResearches++;
+            score = SearchChild(context, alpha, beta, result.SearchDepth);
+            if (score > alpha && result.Reduction > 0)
+            {
+                context.Metrics.LMRResearch++;
+                score = SearchChild(context, alpha, beta, result.UnreducedDepth);
+            }
+        }
+
+        context.TakeBack();
+        return true;
+    }
+
+    int SearchChild(AlphaBetaContext context, int alpha, int beta, int depth)
+    {
+        return depth > 0
+            ? -Search(context, -beta, -alpha, depth)
+            : -Quiesce(context, -beta, -alpha);
+    }
+
+    bool ApplyInternalMoveResult(
+        AlphaBetaContext context,
+        Move move,
+        int score,
+        int beta,
+        int depth,
+        bool hasEntry,
+        in TranspositionTableEntry entry,
+        ref int alpha,
+        ref Move bestMove,
+        ref Move lastMove,
+        out int terminalScore)
+    {
+        lastMove = move;
+        terminalScore = alpha;
+        if (context.StopRequested)
+            return true;
+
+        if (score >= beta)
+        {
+            SearchFailHigh(context, move, score, depth, hasEntry, entry);
+            terminalScore = score;
+            return true;
+        }
+
+        if (score > alpha)
+        {
+            alpha = score;
+            bestMove = move;
+            UpdatePv(context, bestMove);
+            TranspositionTable.Instance.Store(context, bestMove, depth, alpha, EntryType.PV);
+        }
+        return false;
     }
 
     private void UnmakeNullMove(AlphaBetaContext context)
