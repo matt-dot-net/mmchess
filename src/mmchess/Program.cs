@@ -76,6 +76,8 @@ public class Program
                 }
             }
         }
+
+        gameState.SearchScheduler.Dispose();
     }
 
     static Command ReadNextCommand(GameState gameState)

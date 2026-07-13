@@ -283,11 +283,18 @@ search returns.
 
 ### Phase 4: Root-only split/join
 
-- Build the bounded worker scheduler.
-- Search the first root move synchronously.
-- Scout remaining root moves on workers.
-- Perform all authoritative re-search and PV updates on the owner.
-- Implement cutoff cancellation and clean worker shutdown.
+- [x] Build the bounded worker scheduler.
+  - Use long-lived background workers and a bounded, non-blocking queue.
+  - Treat the configured thread count as total search threads: the search
+    owner is one thread and the scheduler owns `ThreadCount - 1` workers.
+  - UCI advertises `Threads` and accepts
+    `setoption name Threads value N`.
+  - XBoard advertises `feature smp=1` and accepts `cores N`.
+  - `Threads=1` or `cores 1` disables SMP and creates no workers.
+- [ ] Search the first root move synchronously.
+- [ ] Scout remaining root moves on workers.
+- [ ] Perform all authoritative re-search and PV updates on the owner.
+- [ ] Implement cutoff cancellation and clean worker shutdown.
 
 Root splitting is the first milestone because it validates scheduling, cloning,
 stale-window handling, PV joining, metrics, and cancellation with simple

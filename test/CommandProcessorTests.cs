@@ -53,6 +53,44 @@ public class CommandProcessorTests
     }
 
     [Fact]
+    public void SetOptionThreadsReconfiguresScheduler()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("setoption name Threads value 3"), state);
+
+            Assert.Equal(3, state.ThreadCount);
+            Assert.Equal(2, state.SearchScheduler.WorkerCount);
+
+            CommandParser.DoCommand(CommandParser.ParseCommand("setoption name Threads value 1"), state);
+            Assert.Equal(1, state.ThreadCount);
+            Assert.False(state.SearchScheduler.IsEnabled);
+        }
+        finally
+        {
+            state.SearchScheduler.Dispose();
+        }
+    }
+
+    [Fact]
+    public void XBoardCoresReconfiguresScheduler()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("cores 4"), state);
+
+            Assert.Equal(4, state.ThreadCount);
+            Assert.Equal(3, state.SearchScheduler.WorkerCount);
+        }
+        finally
+        {
+            state.SearchScheduler.Dispose();
+        }
+    }
+
+    [Fact]
     public void MoveNowRequestsSearchStop()
     {
         var state = new GameState { GameBoard = new Board() };
@@ -352,9 +390,51 @@ public class CommandProcessorTests
         Assert.Equal(new[]
         {
             "option name Hash type spin default 512 min 1 max 4096",
+            "option name Threads type spin default 1 min 1 max 256",
             "option name Clear Hash type button",
             "option name Ponder type check default false"
         }, optionLines);
+    }
+
+    [Fact]
+    public void UciCommandAdvertisesThreadsOptionBeforeUciOk()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("uci"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var output = stdout.ToString();
+        var threadsOption = "option name Threads type spin default 1 min 1 max 256";
+        Assert.Contains(threadsOption, output);
+        Assert.True(output.IndexOf(threadsOption, StringComparison.Ordinal) < output.IndexOf("uciok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void XBoardAdvertisesSmpSupport()
+    {
+        var state = new GameState { GameBoard = new Board() };
+        var stdout = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(stdout);
+        try
+        {
+            CommandParser.DoCommand(CommandParser.ParseCommand("protover 2"), state);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("smp=1", stdout.ToString());
     }
 
     [Fact]

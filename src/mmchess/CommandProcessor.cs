@@ -47,6 +47,7 @@ public enum CommandVal
     PonderHit,
     Draw,
     Memory,
+    Cores,
     SetOption,
     UciNewGame,
     Unknown
@@ -98,6 +99,7 @@ public static class CommandParser
         {
             state.TimeUp = true;
             state.ComputerSide = -1;
+            state.SearchScheduler.Dispose();
         }
         if (cmd.Value == CommandVal.xboard)
         {
@@ -253,13 +255,16 @@ public static class CommandParser
             Console.WriteLine("id author Matt McKnight");
             Console.WriteLine("option name Hash type spin default {0} min 1 max 4096",
                 TranspositionTable.DefaultSizeMb);
+            Console.WriteLine("option name Threads type spin default {0} min 1 max {1}",
+                GameState.DefaultThreadCount,
+                GameState.MaxThreadCount);
             Console.WriteLine("option name Clear Hash type button");
             Console.WriteLine("option name Ponder type check default false");
             Console.WriteLine("uciok");
         }
         else if (cmd.Value == CommandVal.Protover)
         {
-            Console.WriteLine("feature setboard=1 reuse=1 memory=1 myname=\"mmchess {0}\" done=1", VersionNumber);
+            Console.WriteLine("feature setboard=1 reuse=1 memory=1 smp=1 myname=\"mmchess {0}\" done=1", VersionNumber);
         }
         else if (cmd.Value == CommandVal.IsReady)
         {
@@ -359,6 +364,16 @@ public static class CommandParser
                 return;
             }
             TranspositionTable.SetSize(mb);
+        }
+        else if (cmd.Value == CommandVal.Cores)
+        {
+            if (cmd.Arguments.Length < 2 || !int.TryParse(cmd.Arguments[1], out var cores))
+            {
+                Console.Error.WriteLine("Error: invalid cores {0}",
+                    cmd.Arguments.Length > 1 ? cmd.Arguments[1] : "");
+                return;
+            }
+            state.SetThreadCount(cores);
         }
         else if (cmd.Value == CommandVal.SetOption)
         {
@@ -510,6 +525,11 @@ public static class CommandParser
         {
             if (hasValue && int.TryParse(args[valueIdx + 1], out var mb))
                 TranspositionTable.SetSize(mb);
+        }
+        else if (optionName.Equals("Threads", StringComparison.OrdinalIgnoreCase))
+        {
+            if (hasValue && int.TryParse(args[valueIdx + 1], out var threads))
+                state.SetThreadCount(threads);
         }
         else if (optionName.Equals("Clear Hash", StringComparison.OrdinalIgnoreCase))
         {
