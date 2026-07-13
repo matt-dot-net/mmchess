@@ -291,10 +291,14 @@ search returns.
     `setoption name Threads value N`.
   - XBoard advertises `feature smp=1` and accepts `cores N`.
   - `Threads=1` or `cores 1` disables SMP and creates no workers.
-- [ ] Search the first root move synchronously.
-- [ ] Scout remaining root moves on workers.
-- [ ] Perform all authoritative re-search and PV updates on the owner.
-- [ ] Implement cutoff cancellation and clean worker shutdown.
+- [x] Search the first root move synchronously.
+- [x] Scout remaining root moves on workers.
+- [x] Perform all authoritative re-search and PV updates on the owner.
+- [x] Implement cutoff cancellation and clean worker shutdown.
+  - Close the root split through a split-local stop without cancelling the
+    overall search.
+  - Skip queued scouts, unwind running scouts at normal stop checks, and drain
+    every scheduled result before returning so workers remain reusable.
 
 Root splitting is the first milestone because it validates scheduling, cloning,
 stale-window handling, PV joining, metrics, and cancellation with simple

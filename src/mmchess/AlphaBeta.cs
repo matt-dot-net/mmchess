@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -52,49 +53,53 @@ public partial class AlphaBeta
         int score;
         Move bestMove = Move.Null, lastMove = Move.Null;
         bool inCheck = context.Board.InCheck(context.Board.SideToMove);
-        foreach (var m in RootMoves)
+
+        if (!TrySearchFirstRootMoveSynchronously(
+            context, alpha, beta, depth, out var firstMove, out score, out var nextMoveIndex))
         {
-            if (!context.Make(m))
-                continue;
+            if (inCheck)
+                return -10000 + context.Ply;
+            return CurrentDrawScore;
+        }
 
-            if (depth > 0){
-                if(bestMove.IsNull)
-                    score = -Search(context,-beta, -alpha, depth-1);
-                else   {
-                    score = -Search(context,-alpha-1,-alpha,depth-1);
-                    if(score > alpha)
-                        score = -Search(context,-beta,-alpha, depth-1);
-                }
-                
-            }
-            else
-                score = -Quiesce(context,-beta, -alpha);
+        lastMove = firstMove;
+        if (MyGameState.TimeUp)
+            return alpha;
 
-            context.TakeBack();
+        if (score >= beta)
+        {
+            NewRootMove(firstMove);
+            context.PvLength[0] = 1;
+            context.PrincipalVariation[0,0] = firstMove;
+            return score;
+        }
 
-            if (MyGameState.TimeUp)
-                return alpha;
+        if (score > alpha)
+        {
+            alpha = score;
+            bestMove = firstMove;
+            UpdatePv(context, bestMove);
+            TranspositionTable.Instance.Store(context, firstMove, depth, alpha, EntryType.PV);
+        }
 
-            if (score >= beta)
-            {
-                //we want to try this move first next time
-                NewRootMove(m);
-                context.PvLength[0] = 1;
-                context.PrincipalVariation[0,0]=m;
+        if (MyGameState.SearchScheduler.IsEnabled)
+        {
+            if (SearchRemainingRootMovesParallel(
+                context, nextMoveIndex, beta, depth, ref alpha, ref bestMove, ref lastMove, out score))
                 return score;
-            }
-
-            if (score > alpha)
+        }
+        else
+        {
+            for (var moveIndex = nextMoveIndex; moveIndex < RootMoves.Count; moveIndex++)
             {
-                alpha = score;
-                bestMove = m;
-                // PV Node
-                //update the PV
-                UpdatePv(context,bestMove);
-                TranspositionTable.Instance.Store(context, m, depth, alpha, EntryType.PV);
-            }
+                var move = RootMoves[moveIndex];
+                if (!TrySearchRootMoveSequential(context, move, alpha, beta, depth, bestMove, out score))
+                    continue;
 
-            lastMove = m;
+                if (ApplyRootMoveResult(
+                    context, move, score, beta, depth, ref alpha, ref bestMove, ref lastMove, out var result))
+                    return result;
+            }
         }
 
         //check for mate
@@ -117,6 +122,351 @@ public partial class AlphaBeta
         return alpha;
     }
 
+    bool SearchRemainingRootMovesParallel(
+        AlphaBetaContext context,
+        int nextMoveIndex,
+        int beta,
+        int depth,
+        ref int alpha,
+        ref Move bestMove,
+        ref Move lastMove,
+        out int terminalScore)
+    {
+        using var results = new BlockingCollection<RootScoutResult>();
+        var localMoves = new List<Move>();
+        var splitPoint = new RootSplitPoint();
+        var scheduledCount = 0;
+        var alphaSnapshot = alpha;
+        context.Metrics.SplitPointsCreated++;
+
+        for (var moveIndex = nextMoveIndex; moveIndex < RootMoves.Count && !MyGameState.TimeUp; moveIndex++)
+        {
+            var move = RootMoves[moveIndex];
+            if (!context.Make(move))
+                continue;
+
+            var workerContext = context.Split(splitPoint.Stop);
+            context.TakeBack();
+            var work = new RootScoutWork(
+                move, depth, alphaSnapshot, workerContext, splitPoint);
+
+            if (MyGameState.SearchScheduler.TrySchedule(() => RunRootScout(work, results)))
+            {
+                context.Metrics.WorkItemsScheduled++;
+                scheduledCount++;
+            }
+            else
+            {
+                localMoves.Add(move);
+            }
+        }
+
+        var hasTerminalScore = false;
+        terminalScore = alpha;
+        foreach (var move in localMoves)
+        {
+            if (hasTerminalScore || MyGameState.TimeUp)
+                break;
+            if (!TrySearchRootMoveSequential(context, move, alpha, beta, depth, bestMove, out var score))
+                continue;
+
+            hasTerminalScore = ApplyRootMoveResult(
+                context, move, score, beta, depth, ref alpha, ref bestMove, ref lastMove, out terminalScore);
+            if (hasTerminalScore)
+            {
+                splitPoint.Cancel();
+                if (!MyGameState.TimeUp && score >= beta)
+                    context.Metrics.ParallelBetaCutoffs++;
+            }
+        }
+
+        if (MyGameState.TimeUp)
+            splitPoint.Cancel();
+
+        for (var resultIndex = 0; resultIndex < scheduledCount; resultIndex++)
+        {
+            var result = results.Take();
+            context.JoinMetrics(result.Metrics, result.TTMetrics);
+            if (result.Exception != null)
+                throw new InvalidOperationException("Parallel root scout failed.", result.Exception);
+            if (result.Cancelled)
+                continue;
+            if (hasTerminalScore || MyGameState.TimeUp)
+                continue;
+
+            int score;
+            if (result.Score <= result.AlphaSnapshot)
+            {
+                context.Metrics.WorkerFailLows++;
+                lastMove = result.Move;
+                continue;
+            }
+
+            context.Metrics.WorkerFailHighCandidates++;
+            if (!TrySearchRootScoutCandidate(context, result, alpha, beta, depth, out score))
+                continue;
+            if (score <= alpha && alpha != result.AlphaSnapshot)
+                context.Metrics.CandidatesInvalidatedByAlpha++;
+
+            hasTerminalScore = ApplyRootMoveResult(
+                context, result.Move, score, beta, depth, ref alpha, ref bestMove, ref lastMove, out terminalScore);
+            if (hasTerminalScore)
+            {
+                splitPoint.Cancel();
+                if (!MyGameState.TimeUp && score >= beta)
+                    context.Metrics.ParallelBetaCutoffs++;
+            }
+        }
+
+        if (MyGameState.TimeUp)
+        {
+            terminalScore = alpha;
+            return true;
+        }
+        return hasTerminalScore;
+    }
+
+    void RunRootScout(
+        RootScoutWork work,
+        BlockingCollection<RootScoutResult> results)
+    {
+        Exception exception = null;
+        var score = work.AlphaSnapshot;
+        try
+        {
+            work.Context.Metrics.WorkItemsStarted++;
+            if (work.SplitPoint.IsClosed)
+            {
+                work.Context.Metrics.WorkItemsSkipped++;
+            }
+            else
+            {
+                var workerSearch = new AlphaBeta(MyGameState)
+                {
+                    CurrentDrawScore = CurrentDrawScore
+                };
+                score = work.Depth > 0
+                    ? -workerSearch.Search(
+                        work.Context, -work.AlphaSnapshot - 1, -work.AlphaSnapshot, work.Depth - 1)
+                    : -Quiesce(work.Context, -work.AlphaSnapshot - 1, -work.AlphaSnapshot);
+            }
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+        }
+        finally
+        {
+            var cancelled = work.Context.StopRequested;
+            if (cancelled)
+                work.Context.Metrics.WorkItemsCancelled++;
+            work.Context.Metrics.WorkItemsCompleted++;
+            results.Add(new RootScoutResult(
+                work.Move,
+                score,
+                work.AlphaSnapshot,
+                work.Context.Metrics,
+                work.Context.TTMetrics,
+                exception,
+                cancelled));
+        }
+    }
+
+    bool TrySearchRootScoutCandidate(
+        AlphaBetaContext context,
+        RootScoutResult result,
+        int alpha,
+        int beta,
+        int depth,
+        out int score)
+    {
+        if (!context.Make(result.Move))
+        {
+            score = alpha;
+            return false;
+        }
+
+        score = result.Score;
+        if (alpha != result.AlphaSnapshot)
+        {
+            score = depth > 0
+                ? -Search(context, -alpha - 1, -alpha, depth - 1)
+                : -Quiesce(context, -alpha - 1, -alpha);
+        }
+
+        if (score > alpha)
+        {
+            context.Metrics.FullWindowResearches++;
+            score = depth > 0
+                ? -Search(context, -beta, -alpha, depth - 1)
+                : -Quiesce(context, -beta, -alpha);
+        }
+
+        context.TakeBack();
+        return true;
+    }
+
+    bool TrySearchRootMoveSequential(
+        AlphaBetaContext context,
+        Move move,
+        int alpha,
+        int beta,
+        int depth,
+        Move bestMove,
+        out int score)
+    {
+        if (!context.Make(move))
+        {
+            score = alpha;
+            return false;
+        }
+
+        if (depth > 0 && !bestMove.IsNull)
+        {
+            score = -Search(context, -alpha - 1, -alpha, depth - 1);
+            if (score > alpha)
+                score = -Search(context, -beta, -alpha, depth - 1);
+        }
+        else
+        {
+            score = depth > 0
+                ? -Search(context, -beta, -alpha, depth - 1)
+                : -Quiesce(context, -beta, -alpha);
+        }
+
+        context.TakeBack();
+        return true;
+    }
+
+    bool ApplyRootMoveResult(
+        AlphaBetaContext context,
+        Move move,
+        int score,
+        int beta,
+        int depth,
+        ref int alpha,
+        ref Move bestMove,
+        ref Move lastMove,
+        out int terminalScore)
+    {
+        lastMove = move;
+        terminalScore = alpha;
+        if (MyGameState.TimeUp)
+            return true;
+
+        if (score >= beta)
+        {
+            NewRootMove(move);
+            context.PvLength[0] = 1;
+            context.PrincipalVariation[0,0] = move;
+            terminalScore = score;
+            return true;
+        }
+
+        if (score > alpha)
+        {
+            alpha = score;
+            bestMove = move;
+            UpdatePv(context, bestMove);
+            TranspositionTable.Instance.Store(context, move, depth, alpha, EntryType.PV);
+        }
+        return false;
+    }
+
+    sealed class RootScoutWork
+    {
+        public Move Move { get; }
+        public int Depth { get; }
+        public int AlphaSnapshot { get; }
+        public AlphaBetaContext Context;
+        public RootSplitPoint SplitPoint { get; }
+
+        public RootScoutWork(
+            Move move,
+            int depth,
+            int alphaSnapshot,
+            AlphaBetaContext context,
+            RootSplitPoint splitPoint)
+        {
+            Move = move;
+            Depth = depth;
+            AlphaSnapshot = alphaSnapshot;
+            Context = context;
+            SplitPoint = splitPoint;
+        }
+    }
+
+    sealed class RootSplitPoint
+    {
+        public SearchStop Stop { get; } = new SearchStop();
+        public bool IsClosed => Stop.IsRequested;
+
+        public void Cancel()
+        {
+            Stop.Request();
+        }
+    }
+
+    sealed class RootScoutResult
+    {
+        public Move Move { get; }
+        public int Score { get; }
+        public int AlphaSnapshot { get; }
+        public AlphaBetaMetrics Metrics { get; }
+        public TTMetrics TTMetrics { get; }
+        public Exception Exception { get; }
+        public bool Cancelled { get; }
+
+        public RootScoutResult(
+            Move move,
+            int score,
+            int alphaSnapshot,
+            AlphaBetaMetrics metrics,
+            TTMetrics ttMetrics,
+            Exception exception,
+            bool cancelled)
+        {
+            Move = move;
+            Score = score;
+            AlphaSnapshot = alphaSnapshot;
+            Metrics = metrics;
+            TTMetrics = ttMetrics;
+            Exception = exception;
+            Cancelled = cancelled;
+        }
+    }
+
+    bool TrySearchFirstRootMoveSynchronously(
+        AlphaBetaContext context,
+        int alpha,
+        int beta,
+        int depth,
+        out Move firstMove,
+        out int score,
+        out int nextMoveIndex)
+    {
+        for (var moveIndex = 0; moveIndex < RootMoves.Count; moveIndex++)
+        {
+            var move = RootMoves[moveIndex];
+            if (!context.Make(move))
+                continue;
+
+            score = depth > 0
+                ? -Search(context, -beta, -alpha, depth - 1)
+                : -Quiesce(context, -beta, -alpha);
+            context.TakeBack();
+
+            firstMove = move;
+            nextMoveIndex = moveIndex + 1;
+            return true;
+        }
+
+        firstMove = Move.Null;
+        score = alpha;
+        nextMoveIndex = RootMoves.Count;
+        return false;
+    }
+
     public int Search(AlphaBetaContext context, int alpha, int beta, int depth)
     {
 
@@ -134,7 +484,7 @@ public partial class AlphaBeta
             context.Board.IsInsufficientMaterial())
             return CurrentDrawScore;
 
-        if (context.GameState.TimeUp)
+        if (context.StopRequested)
         {
             return alpha;
         }
@@ -180,7 +530,7 @@ public partial class AlphaBeta
                 nmScore = -Quiesce(context,-beta, 1 - beta);
             UnmakeNullMove(context);
 
-            if (MyGameState.TimeUp)
+            if (context.StopRequested)
                 return alpha;
 
             if (nmScore >= beta)
@@ -281,7 +631,7 @@ public partial class AlphaBeta
 
             context.TakeBack();
             ++movesSearched;
-            if (context.GameState.TimeUp)
+            if (context.StopRequested)
                 return alpha;
 
             if (score >= beta)

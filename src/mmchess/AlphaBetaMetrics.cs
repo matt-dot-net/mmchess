@@ -14,6 +14,17 @@ public class AlphaBetaMetrics{
     public ulong LMRResearch{get;set;}
     public ulong FPrune{get;set;}
     public ulong EFPrune {get;set;}
+    public ulong SplitPointsCreated { get; set; }
+    public ulong WorkItemsScheduled { get; set; }
+    public ulong WorkItemsStarted { get; set; }
+    public ulong WorkItemsCompleted { get; set; }
+    public ulong WorkItemsSkipped { get; set; }
+    public ulong WorkItemsCancelled { get; set; }
+    public ulong WorkerFailLows { get; set; }
+    public ulong WorkerFailHighCandidates { get; set; }
+    public ulong CandidatesInvalidatedByAlpha { get; set; }
+    public ulong FullWindowResearches { get; set; }
+    public ulong ParallelBetaCutoffs { get; set; }
     public ulong[] DepthNodes{get;set;}
     public int Depth{get;set;}
     public AlphaBetaMetrics (){

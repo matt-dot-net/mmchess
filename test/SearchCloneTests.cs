@@ -141,6 +141,39 @@ public class SearchCloneTests
         Assert.True(split.GameState.TimeUp);
     }
 
+    [Fact]
+    public void SplitLocalStopDoesNotCancelParentOrGlobalSearch()
+    {
+        var board = new Board();
+        var state = new GameState { GameBoard = board };
+        var parent = new AlphaBetaContext(state, board);
+        var localStop = new SearchStop();
+        var split = parent.Split(localStop);
+
+        localStop.Request();
+
+        Assert.True(split.StopRequested);
+        Assert.False(parent.StopRequested);
+        Assert.False(state.TimeUp);
+    }
+
+    [Fact]
+    public void SplitLocalStopUnwindsRecursiveSearchWithoutGlobalCancellation()
+    {
+        var board = new Board();
+        var state = new GameState { GameBoard = board };
+        var localStop = new SearchStop();
+        var split = new AlphaBetaContext(state, board).Split(localStop);
+        var search = new AlphaBeta(state, () => { });
+        localStop.Request();
+
+        var score = search.Search(split, -50, -49, 8);
+
+        Assert.Equal(-50, score);
+        Assert.Equal(1UL, split.Metrics.Nodes);
+        Assert.False(state.TimeUp);
+    }
+
     static void PlayFirstLegalMove(Board board)
     {
         Assert.True(board.MakeMove(LegalMoves(board)[0]));

@@ -23,4 +23,30 @@ public class FixedDepthTests
 
         Assert.Equal(3, metrics.Depth);
     }
+
+    [Fact]
+    public void ParallelFixedDepthSearchStopsAndUsesRootScouts()
+    {
+        var state = new GameState
+        {
+            GameBoard = new Board(),
+            TimeControl = new TimeControl { Type = TimeControlType.FixedDepth },
+            DepthLimit = 3
+        };
+        state.SetThreadCount(3);
+
+        try
+        {
+            var move = Iterate.DoIterate(state, () => { }, out var metrics);
+
+            Assert.False(move.IsNull);
+            Assert.Equal(3, metrics.Depth);
+            Assert.True(metrics.WorkItemsScheduled > 0);
+            Assert.Equal(metrics.WorkItemsScheduled, metrics.WorkItemsCompleted);
+        }
+        finally
+        {
+            state.SearchScheduler.Dispose();
+        }
+    }
 }

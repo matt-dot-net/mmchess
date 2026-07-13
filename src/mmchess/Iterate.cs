@@ -192,21 +192,26 @@ public static class Iterate
         var clockStartTime = startTime;
         var clockWasRunning = false;
         var timeLimit = GetThinkTimeSpan(state);
-        AlphaBeta ab = new AlphaBeta(state, () =>
+        var searchInterruptLock = new object();
+        Action searchInterrupt = () =>
         {
-            var clockIsRunning = useClock();
-            if (clockIsRunning && !clockWasRunning)
+            lock (searchInterruptLock)
             {
-                clockStartTime = DateTime.Now;
-                clockWasRunning = true;
+                var clockIsRunning = useClock();
+                if (clockIsRunning && !clockWasRunning)
+                {
+                    clockStartTime = DateTime.Now;
+                    clockWasRunning = true;
+                }
+
+                if (clockIsRunning && (DateTime.Now - clockStartTime) > timeLimit)
+                    state.TimeUp = true;
+                interrupt();
             }
+        };
 
-            if (clockIsRunning && (DateTime.Now - clockStartTime) > timeLimit)
-                state.TimeUp = true;
-            interrupt();
-        });
-
-        AlphaBetaContext context = new AlphaBetaContext(state, state.GameBoard, interrupt);
+        AlphaBeta ab = new AlphaBeta(state, searchInterrupt);
+        AlphaBetaContext context = new AlphaBetaContext(state, state.GameBoard, searchInterrupt);
 
         //increment transposition table search Id
         TranspositionTable.Instance.NextSearchId();
