@@ -314,6 +314,14 @@ ownership.
 
 ### Phase 6: Tune and optimize
 
+- Processor scheduling policy:
+  - `Threads=N` creates `N-1` worker threads; together with the owner, at most
+    `N` search threads execute concurrently.
+  - mmchess does not pin threads or alter thread priority. The OS may schedule
+    them on any available logical processor, which is the intended default.
+  - Benchmarks should not request more threads than `Environment.ProcessorCount`;
+    physical-core-first affinity can be evaluated later only if profiling shows
+    migration or SMT contention.
 - Benchmark fixed positions at fixed depth with 1, 2, 4, and 8 workers.
   - Use depth 16 for the current diagnostic position and warm each fresh engine
     process before recording results so tiered JIT does not penalize the first
