@@ -73,6 +73,31 @@ public static class CommandParser
     static readonly Regex MoveShape =
         new Regex("^[a-h][1-8][a-h][1-8][qrbn]?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    static readonly Regex EpdBestMoves =
+        new Regex(@"\bbm\s+(?<bms>[^;]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    internal static string[] ParseEpdBestMoves(string line)
+    {
+        var match = EpdBestMoves.Match(line);
+        if (!match.Success)
+            return Array.Empty<string>();
+
+        return match.Groups["bms"].Value.Split(
+            (char[])null,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    internal static bool MatchesEpdBestMove(string move, string[] bestMoves)
+    {
+        foreach (var bestMove in bestMoves)
+        {
+            if (String.Equals(bestMove, move, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
     public static Command ParseCommand(string input)
     {
         CommandVal cmd;
@@ -407,7 +432,8 @@ public static class CommandParser
     // the tactic in N seconds" (wall-clock time makes small deltas noise -
     // depth is what's reproducible across runs/machines). Use this to A/B
     // move-ordering changes: same file, same depth, compare FirstMoveFailHigh%
-    // and total node count before/after.
+    // and total node count before/after. EPD positions with a "bm" operation
+    // are also scored against the move returned by the fixed-depth search.
     static void Bench(Command cmd)
     {
         if (cmd.Arguments.Length < 2)
@@ -431,6 +457,8 @@ public static class CommandParser
 
         var aggregate = new AlphaBetaMetrics();
         int positions = 0;
+        int scoredPositions = 0;
+        int solvedPositions = 0;
         var sw = Stopwatch.StartNew();
 
         var originalError = Console.Error;
@@ -452,7 +480,15 @@ public static class CommandParser
                     DepthLimit = depth
                 };
 
-                Iterate.DoIterate(gameState, () => { }, out var metrics);
+                var found = Iterate.DoIterate(gameState, () => { }, out var metrics);
+                var bestMoves = ParseEpdBestMoves(line);
+                if (bestMoves.Length > 0)
+                {
+                    scoredPositions++;
+                    var move = found.ToAlegbraicNotation(gameState.GameBoard);
+                    if (MatchesEpdBestMove(move, bestMoves))
+                        solvedPositions++;
+                }
 
                 aggregate.Nodes += metrics.Nodes;
                 aggregate.QNodes += metrics.QNodes;
@@ -478,6 +514,7 @@ public static class CommandParser
 
         Console.WriteLine();
         Console.WriteLine("Bench: {0} positions at depth {1}", positions, depth);
+        Console.WriteLine("Solved={0}/{1}", solvedPositions, scoredPositions);
         Console.WriteLine("Nodes={0}, QNodes={1}, Elapsed={2:0.000}s, Knps={3:0}",
             aggregate.Nodes,
             aggregate.QNodes,
@@ -696,9 +733,7 @@ public static class CommandParser
                     if(String.IsNullOrEmpty(line))
                         break;
 
-                    var bmRegex = new Regex("bm (?<bms>[^;]*)");
-                    var match = bmRegex.Match(line);
-                    var bestMoves = match.Groups["bms"].Value.Split(' ');
+                    var bestMoves = ParseEpdBestMoves(line);
 
                     Console.WriteLine(line);
                     if (String.IsNullOrEmpty(line))
@@ -723,15 +758,7 @@ public static class CommandParser
                     });
 
                     var moveStr = found.ToAlegbraicNotation(gameState.GameBoard);
-                    bool fail = true;
-                    foreach (var bm in bestMoves)
-                    {
-                        if (bm.ToLower() == moveStr.ToLower())
-                        {
-                            fail = false;
-                            break;
-                        }
-                    }
+                    bool fail = !MatchesEpdBestMove(moveStr, bestMoves);
                     tests++;
                     if (fail)
                         Console.WriteLine("FAIL {0}/{1}",successes,tests);

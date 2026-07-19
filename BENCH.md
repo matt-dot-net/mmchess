@@ -5,7 +5,9 @@ Fixed-depth benchmark via the `bench <epdfile> [depth]` command (see
 depth and reports aggregate search-efficiency metrics - `FirstMoveFH%` above
 all for move ordering, since that's the fraction of fail-highs found on the
 very first move tried at a node (higher = less wasted search from better move
-ordering).
+ordering). It also reports `Solved=<correct>/<scorable>` for positions that
+provide an EPD `bm` operation; plain FEN positions still contribute performance
+metrics but are not included in the solved-position denominator.
 
 Compare entries at the **same depth** only - node counts aren't linearly
 comparable across depths, and Knps varies by machine. FirstMoveFH% and node

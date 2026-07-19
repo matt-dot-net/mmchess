@@ -6,6 +6,28 @@ namespace mmchess.Test;
 
 public class CommandProcessorTests
 {
+    [Fact]
+    public void EpdBestMovesAreParsedForBenchmarkScoring()
+    {
+        var moves = CommandParser.ParseEpdBestMoves(
+            "8/8/8/8/8/8/8/K6k w - - 0 1; id \"example\"; BM   Ka2   Kb2;");
+
+        Assert.Equal(new[] { "Ka2", "Kb2" }, moves);
+    }
+
+    [Fact]
+    public void BenchmarkSolutionMatchesAnyEpdBestMoveCaseInsensitively()
+    {
+        Assert.True(CommandParser.MatchesEpdBestMove("ka2", new[] { "Ka2", "Kb2" }));
+        Assert.False(CommandParser.MatchesEpdBestMove("Kxb2", new[] { "Ka2", "Kb2" }));
+    }
+
+    [Fact]
+    public void FenWithoutBestMoveIsNotScorable()
+    {
+        Assert.Empty(CommandParser.ParseEpdBestMoves("8/8/8/8/8/8/8/K6k w - - 0 1"));
+    }
+
     // cutechess-cli treats any engine output starting with "Illegal move"
     // as a formal claim that the opponent's last move was illegal, and
     // adjudicates the game AGAINST us when the claim is false. So only

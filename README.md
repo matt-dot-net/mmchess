@@ -53,7 +53,8 @@ bench and self-play), it graduates to Dorky.
 - Time controls: per-game, moves-in-N, fixed time per move, fixed depth.
 - `perft` / `perft <depth> parallel` for move-generation verification.
 - `bench <epd> [depth]` — fixed-depth move-ordering benchmark reporting
-  `FirstMoveFH%`, node counts, and pruning stats (see `BENCH.md`).
+  solved EPD `bm` positions, `FirstMoveFH%`, node counts, and pruning stats
+  (see `BENCH.md`).
 - `epdtest <file>` — timed EPD best-move test suite.
 
 ## Building & running
