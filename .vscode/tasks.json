@@ -16,6 +16,23 @@
                 "_id": "build",
                 "isDefault": false
             }
+        },
+        {
+            "label": "publish release self-contained",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "${workspaceFolder}\\src\\mmchess\\mmchess.csproj",
+                "--configuration",
+                "Release",
+                "--runtime",
+                "win-x64",
+                "--self-contained",
+                "true"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
         }
     ]
 }
