@@ -32,6 +32,22 @@
                 "true"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish release linux-x64 (self-contained)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "${workspaceRoot}\\src\\mmchess\\mmchess.csproj",
+                "--configuration",
+                "Release",
+                "--runtime",
+                "linux-x64",
+                "--self-contained",
+                "true"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ]
 }
